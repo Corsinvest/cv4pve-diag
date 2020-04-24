@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Version>1.0.0</Version>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>cv4pve-diag</AssemblyName>
+    <Company>Corsinvest Srl</Company>
+    <Authors>Daniele Corsini</Authors>
+    <Copyright>Corsinvest Srl</Copyright>
+    <Product>Corsinvest for Proxmox VE Diagnostic</Product>
+    <AssemblyTitle>Corsinvest for Proxmox VE Diagnostic</AssemblyTitle>
+    <Description>Corsinvest for Proxmox VE Diagnostic</Description>
+    <ApplicationIcon />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Fix RedHat, Centos,Fedora -->
+    <RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="true" />
+
+    <TrimmerRootAssembly Include="System.Net.WebClient" />
+
+    <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Shell\Corsinvest.ProxmoxVE.Api.Shell.csproj" /> -->
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Shell" Version="2.3.1" />
+
+    <!-- <ProjectReference Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" /> -->
+    <PackageReference Include="Corsinvest.ProxmoxVE.Diagnostic.Api" Version="1.0.0" />
+  </ItemGroup>
+</Project>
