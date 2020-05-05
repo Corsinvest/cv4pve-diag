@@ -906,7 +906,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                            DiagnosticResultContext context)
         {
             //autosnap
-            if (snapshots.Where(a => a.description == Corsinvest.ProxmoxVE.AutoSnap.Api.Application.NAME).Count() == 0)
+            if (snapshots.Where(a => a.description == "cv4pve-autosnap").Count() == 0)
             {
                 result.Add(new DiagnosticResult
                 {
