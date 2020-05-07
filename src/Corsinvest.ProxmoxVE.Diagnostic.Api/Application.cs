@@ -600,6 +600,20 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     });
                 }
 
+                //lock
+                if (vm.Detail.Config["lock"] != null)
+                {
+                    result.Add(new DiagnosticResult
+                    {
+                        Id = vm.id,
+                        ErrorCode = "WV0001",
+                        Description = $"VM is locked by '{vm.Detail.Config["lock"]}'",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "Status",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+
                 #region check virtio
                 //controller SCSI
                 if (vm.Detail.Config.scsihw != null &&
