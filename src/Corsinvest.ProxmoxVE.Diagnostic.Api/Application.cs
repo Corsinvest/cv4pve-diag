@@ -15,6 +15,7 @@ using Corsinvest.ProxmoxVE.Api.Extension.Info;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api
 {
@@ -39,7 +40,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             var validResource = clusterInfo.Resources.Where(a => a.status != "unknown");
 
             CheckStorage(result, validResource, settings);
-            CheckNode(result, validResource, settings);
+            CheckNode(clusterInfo, result, validResource, settings);
             CheckQemu(clusterInfo, result, validResource, settings);
             CheckLxc(clusterInfo, result, validResource, settings);
 
@@ -147,7 +148,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             #endregion
         }
 
-        private static void CheckNode(List<DiagnosticResult> result,
+        private static void CheckNode(ClusterInfo clusterInfo,
+                                      List<DiagnosticResult> result,
                                       IEnumerable<dynamic> validResource,
                                       Settings settings)
         {
@@ -297,7 +299,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
 
                 //certificates                
                 result.AddRange(((IEnumerable<dynamic>)node.Detail.Certificates)
-                                .Where(a => DateTimeUnixHelper.UnixTimeToDateTime((long)a.notafter) < DateTime.Now)
+                                .Where(a => DateTimeUnixHelper.UnixTimeToDateTime((long)a.notafter) < clusterInfo.Date)
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = node.node,
@@ -711,7 +713,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             //configured backup get vmdId
             var vmsIdBackup = string.Join(",", clusterInfo.Backups
                                                           .Where(a => a.enabled == 1)
-                                                          .Select(a => a.vmid)).Split(',');
+                                                          .Select(a => a.vmid))
+                                                          .Split(',');
 
             string vmId = vm.vmid.Value + "";
             if (!vmsIdBackup.Contains(vmId))
@@ -726,21 +729,35 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
-            else
+
+            //check exists backup and recent
+            var regex = new Regex(@"^.*:(.*\/)?");
+            var foundBackup = false;
+            foreach (var backup in ((IEnumerable<dynamic>)vm.Detail.Backups))
             {
-                //check exists backup
-                if (((IEnumerable<dynamic>)vm.Detail.Backups).Count() == 0)
+                var data = backup.volid.Value.Replace(regex.Match(backup.volid.Value).Value, "").Split('-');
+                var date = DateTime.ParseExact(data[3] + "_" + data[4].Substring(0, data[4].IndexOf(".")),
+                                                "yyyy_MM_dd_HH_mm_ss",
+                                                null);
+
+                if (clusterInfo.Date.Date >= date.Date.AddDays(+1))
                 {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = vmId,
-                        ErrorCode = "CC0001",
-                        Description = "No backups found!",
-                        Context = context,
-                        SubContext = "Backup",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    foundBackup = true;
+                    break;
                 }
+            }
+
+            if (!foundBackup)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = vmId,
+                    ErrorCode = "CC0001",
+                    Description = "No recent backups found!",
+                    Context = context,
+                    SubContext = "Backup",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
             }
             #endregion
 

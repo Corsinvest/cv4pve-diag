@@ -25,14 +25,14 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
     {
         static void Main(string[] args)
         {
-            var settingsFileName="settings.json";
+            var settingsFileName = "settings.json";
 
             var app = ShellHelper.CreateConsoleApp("cv4pve-diag", "Diagnostic for Proxmox VE");
 
             var optSettings = app.Option("--settings-file", "File settings (generated from settings-create)", CommandOptionType.SingleValue);
             optSettings.Accepts().ExistingFile();
 
-            var optOutput = app.OptionEnum<TableOutputType>("--output|-o", "Type output (default: text)");
+            var optOutput = app.OptionEnum<OutputType>("--output|-o", "Type output (default: text)");
 
             app.Command("settings-create", cmd =>
             {
@@ -41,7 +41,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
 
                 cmd.OnExecute(() =>
                 {
-                    File.WriteAllText(settingsFileName,JsonConvert.SerializeObject(new Settings(), Formatting.Indented));
+                    File.WriteAllText(settingsFileName, JsonConvert.SerializeObject(new Settings(), Formatting.Indented));
                     app.Out.WriteLine("Values form TimeSeries are: 0 = Day, 1 Week");
                     app.Out.WriteLine($"Create file: {settingsFileName}");
                 });
@@ -59,21 +59,55 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(optSettings.Value()));
                 }
 
-                var columns = new string[] { /*"Error Code", */"Id", "Description", "Context", "SubContext", "Gravity" };
-                var rows = Application.Analyze(ci, settings)
-                                      .OrderByDescending(a => a.Gravity)
-                                      .ThenBy(a => a.Context)
-                                      .ThenBy(a => a.SubContext)
-                                      .Select(a =>
-                                            new object[] {
-                                                // a.ErrorCode,
-                                                a.Id,
-                                                a.Description,
-                                                a.Context,
-                                                a.SubContext,
-                                                a.Gravity });
+                var rowsBase = Application.Analyze(ci, settings)
+                                            .OrderByDescending(a => a.Gravity)
+                                            .ThenBy(a => a.Context)
+                                            .ThenBy(a => a.SubContext);
 
-                app.Out.Write(TableHelper.Create(columns, rows, optOutput.GetEnumValue<TableOutputType>(), false));
+                var outType = optOutput.GetEnumValue<OutputType>();
+                if (outType == OutputType.Json || outType == OutputType.JsonPretty)
+                {
+                    var rows = rowsBase.Select(a => new
+                    {
+                        // a.ErrorCode,
+                        a.Id,
+                        a.Description,
+                        a.Context,
+                        a.SubContext,
+                        a.Gravity
+                    });
+
+                    app.Out.Write(JsonConvert.SerializeObject(rows,
+                                                              outType == OutputType.Json ? 
+                                                                Formatting.None : 
+                                                                Formatting.Indented));
+                }
+                else
+                {
+                    var tableOutputType = outType switch
+                    {
+                        OutputType.Html => TableOutputType.Html,
+                        OutputType.Markdown => TableOutputType.Markdown,
+                        OutputType.Text => TableOutputType.Text,
+                        OutputType.Unicode => TableOutputType.Unicode,
+                        OutputType.UnicodeAlt => TableOutputType.UnicodeAlt,
+                        _ => TableOutputType.Text,
+                    };
+
+                    var columns = new string[] { /*"Error Code", */"Id", "Description", "Context", "SubContext", "Gravity" };
+
+                    var rows = rowsBase.Select(a => new object[]
+                                                {
+                                                    // a.ErrorCode,
+                                                    a.Id,
+                                                    a.Description,
+                                                    a.Context,
+                                                    a.SubContext,
+                                                    a.Gravity
+                                                });
+
+                    app.Out.Write(TableHelper.Create(columns, rows, tableOutputType, false));
+                }
             });
 
             app.ExecuteConsoleApp(args);

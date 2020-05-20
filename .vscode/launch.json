@@ -17,7 +17,9 @@
                 "--username",
                 "test",
                 "--password",
-                "test"
+                "test",
+                "--output",
+                "text"
             ],
             "cwd": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
