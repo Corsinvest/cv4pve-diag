@@ -32,7 +32,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
             var optSettings = app.Option("--settings-file", "File settings (generated from settings-create)", CommandOptionType.SingleValue);
             optSettings.Accepts().ExistingFile();
 
-            var optOutput = app.OptionEnum<OutputType>("--output|-o", "Type output (default: text)");
+            var optOutput = app.OutputTypeArgument();
 
             app.Command("settings-create", cmd =>
             {
@@ -64,50 +64,19 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
                                             .ThenBy(a => a.Context)
                                             .ThenBy(a => a.SubContext);
 
-                var outType = optOutput.GetEnumValue<OutputType>();
-                if (outType == OutputType.Json || outType == OutputType.JsonPretty)
-                {
-                    var rows = rowsBase.Select(a => new
-                    {
-                        // a.ErrorCode,
-                        a.Id,
-                        a.Description,
-                        a.Context,
-                        a.SubContext,
-                        a.Gravity
-                    });
+                var columns = new string[] { /*"Error Code", */"Id", "Description", "Context", "SubContext", "Gravity" };
 
-                    app.Out.Write(JsonConvert.SerializeObject(rows,
-                                                              outType == OutputType.Json ? 
-                                                                Formatting.None : 
-                                                                Formatting.Indented));
-                }
-                else
-                {
-                    var tableOutputType = outType switch
-                    {
-                        OutputType.Html => TableOutputType.Html,
-                        OutputType.Markdown => TableOutputType.Markdown,
-                        OutputType.Text => TableOutputType.Text,
-                        OutputType.Unicode => TableOutputType.Unicode,
-                        OutputType.UnicodeAlt => TableOutputType.UnicodeAlt,
-                        _ => TableOutputType.Text,
-                    };
-
-                    var columns = new string[] { /*"Error Code", */"Id", "Description", "Context", "SubContext", "Gravity" };
-
-                    var rows = rowsBase.Select(a => new object[]
-                                                {
+                var rows = rowsBase.Select(a => new object[]
+                                            {
                                                     // a.ErrorCode,
-                                                    a.Id,
-                                                    a.Description,
-                                                    a.Context,
-                                                    a.SubContext,
-                                                    a.Gravity
-                                                });
+                                                a.Id,
+                                                a.Description,
+                                                a.Context,
+                                                a.SubContext,
+                                                a.Gravity
+                                            });
 
-                    app.Out.Write(TableHelper.Create(columns, rows, tableOutputType, false));
-                }
+                app.Out.Write(TableHelper.Create(columns, rows, optOutput.GetEnumValue<TableOutputType>(), false));
             });
 
             app.ExecuteConsoleApp(args);

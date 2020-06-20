@@ -894,14 +894,12 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         }
 
         private static dynamic GetTimeSeries(SettingsTimeSeriesType series, dynamic rrdData)
-        {
-            switch (series)
+            => series switch
             {
-                case SettingsTimeSeriesType.Day: return rrdData.Day;
-                case SettingsTimeSeriesType.Week: return rrdData.Week;
-                default: return rrdData.Day;
-            }
-        }
+                SettingsTimeSeriesType.Day => rrdData.Day,
+                SettingsTimeSeriesType.Week => rrdData.Week,
+                _ => rrdData.Day,
+            };
 
         private static void CheckThreshold(List<DiagnosticResult> result,
                                            SettingsThreshold<double> threshold,
