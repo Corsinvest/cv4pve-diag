@@ -9,7 +9,7 @@
  *
  * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
  */
- 
+
  using System;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api
@@ -64,7 +64,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// <summary>
         /// Decode context
         /// </summary>
-        public static DiagnosticResultContext DecodeContext(string text) 
+        public static DiagnosticResultContext DecodeContext(string text)
             => Enum.TryParse<DiagnosticResultContext>(text, true, out var ret) ?
                                 (DiagnosticResultContext)ret :
                                 DiagnosticResultContext.Cluster;

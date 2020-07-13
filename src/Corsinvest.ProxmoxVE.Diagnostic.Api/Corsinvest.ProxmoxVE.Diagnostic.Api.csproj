@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <Version>1.3.0</Version>
+    <Version>1.3.1</Version>
     <Company>Corsinvest Srl</Company>
     <Authors>Daniele Corsini</Authors>
     <Copyright>Corsinvest Srl</Copyright>
@@ -11,7 +11,7 @@
     <AssemblyTitle>Corsinvest for Proxmox VE Diagnostic Api</AssemblyTitle>
     <Description>Corsinvest for Proxmox VE Diagnostic Api</Description>
 
-    <PackageProjectUrl>https://github.com/Corsinvest/cv4pve-api-dotnet</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Corsinvest/cv4pve-diag</PackageProjectUrl>
     <PackageTags>ProxmoxVE;Api,Client;Rest;Corsinvest;Diagnostic</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes></PackageReleaseNotes>

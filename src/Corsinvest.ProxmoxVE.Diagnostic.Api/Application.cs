@@ -172,6 +172,20 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     continue;
                 }
 
+                //subscription
+                if (node.Detail.Subscription.status.Value != "Active")
+                {
+                    result.Add(new DiagnosticResult
+                    {
+                        Id = node.node,
+                        ErrorCode = "WN0001",
+                        Description = "Node not have subscription active",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "Subscription",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+
                 //rdd
                 CheckNodeRrd(result, settings, node.node.Value, node.Detail.RrdData);
 
@@ -297,7 +311,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                     Gravity = DiagnosticResultGravity.Warning,
                                 }));
 
-                //certificates                
+                //certificates
                 result.AddRange(((IEnumerable<dynamic>)node.Detail.Certificates)
                                 .Where(a => DateTimeUnixHelper.UnixTimeToDateTime((long)a.notafter) < clusterInfo.Date)
                                 .Select(a => new DiagnosticResult
@@ -326,6 +340,21 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                             Gravity = node.Detail.Ceph.Status.health.status.Value == "HEALTH_WARN" ?
                                         DiagnosticResultGravity.Critical :
                                         DiagnosticResultGravity.Warning
+                        });
+                    }
+
+                    //PGs active+clean
+                    if (((IEnumerable<dynamic>)node.Detail.Ceph.Status.pgmap.pgs_by_state)
+                            .Where(a => a.state_name == "active+clean").Count() == 0)
+                    {
+                        result.Add(new DiagnosticResult
+                        {
+                            Id = node.node,
+                            ErrorCode = "IN0001",
+                            Description = "Ceph PGs not active+clean",
+                            Context = DiagnosticResultContext.Node,
+                            SubContext = "Ceph",
+                            Gravity = DiagnosticResultGravity.Warning
                         });
                     }
 

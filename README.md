@@ -19,7 +19,7 @@ Options:
   --host            The host name host[:port],host1[:port],host2[:port]
   --username        User name <username>@<realm>
   --password        The password. Specify 'file:path_file' to store password in file.
-  --settings-file   File settings (generated from show-settings)  
+  --settings-file   File settings (generated from show-settings)
   -o|--output       Type output (default: text) Text,Unicode,UnicodeAlt,Markdown,Html
 
 Commands:
@@ -74,10 +74,10 @@ root@debian:~# unzip cv4pve-diag-linux-x64.zip
 This tool need basically no configuration.
 
 ```sh
-root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=fagiano 
+root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=fagiano
 ```
 
-```sh
+```txt
 -------------------------------------------------------------------------------------------------------------------------------------
 | Id                             | Description                                                  | Context | SubContext   | Gravity  |
 -------------------------------------------------------------------------------------------------------------------------------------
@@ -108,4 +108,4 @@ root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=f
 -------------------------------------------------------------------------------------------------------------------------------------
 ```
 
-For change settings create file using settings-create command. Edit file and execute new settings using parameter --settings-file.
+For change settings create file using settings-create command. Edit json file and execute new settings using parameter --settings-file.
