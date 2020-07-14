@@ -47,12 +47,46 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
                 });
             });
 
+            var fileExport = "data.json";
+            app.Command("export-collect", cmd =>
+            {
+                cmd.ShowInHelpText = false;
+                cmd.Description = $"Export collect data collect to {fileExport}";
+                cmd.AddFullNameLogo();
+
+                cmd.OnExecute(() =>
+                {
+                    var ci = new ClusterInfo();
+                    ci.Collect(app.ClientTryLogin());
+
+                    File.WriteAllText(fileExport, JsonConvert.SerializeObject(ci, Formatting.Indented));
+                    app.Out.WriteLine($"Exported {fileExport}!");
+                });
+            });
+
+            app.Command("examine-collect", cmd =>
+            {
+                cmd.ShowInHelpText = false;
+                cmd.Description = $"Examine collect data collect from {fileExport}";
+                cmd.AddFullNameLogo();
+                cmd.OnExecute(() =>
+                {
+                    var ci = JsonConvert.DeserializeObject<ClusterInfo>(File.ReadAllText(fileExport));
+                    Print(ci);
+                });
+            });
+
             app.OnExecute(() =>
             {
                 var ci = new ClusterInfo();
                 ci.Collect(app.ClientTryLogin());
                 ci = JsonConvert.DeserializeObject<ClusterInfo>(JsonConvert.SerializeObject(ci));
 
+                Print(ci);
+            });
+
+            void Print(ClusterInfo ci)
+            {
                 var settings = new Settings();
                 if (optSettings.HasValue())
                 {
@@ -77,7 +111,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
                                             });
 
                 app.Out.Write(TableHelper.Create(columns, rows, optOutput.GetEnumValue<TableOutputType>(), false));
-            });
+            }
 
             app.ExecuteConsoleApp(args);
         }

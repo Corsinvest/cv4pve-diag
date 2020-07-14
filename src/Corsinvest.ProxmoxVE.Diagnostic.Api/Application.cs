@@ -560,18 +560,34 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             foreach (var vm in validResource.Where(a => a.type == "qemu" && a.template != 1))
             {
                 //check version OS
-                if (osNotMaintained.TryGetValue(vm.Detail.Config.ostype.Value as string, out var osTypeDesc))
+                if (vm.Detail.Config.ostype == null)
                 {
                     result.Add(new DiagnosticResult
                     {
                         Id = vm.id,
                         ErrorCode = "WV0001",
-                        Description = $"OS '{osTypeDesc}' not maintained from vendor!",
+                        Description = "OsType not set!",
                         Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Agent",
-                        Gravity = DiagnosticResultGravity.Warning,
+                        SubContext = "OS",
+                        Gravity = DiagnosticResultGravity.Critical,
                     });
                 }
+                else
+                {
+                    if (osNotMaintained.TryGetValue(vm.Detail.Config.ostype.Value as string, out var osTypeDesc))
+                    {
+                        result.Add(new DiagnosticResult
+                        {
+                            Id = vm.id,
+                            ErrorCode = "WV0001",
+                            Description = $"OS '{osTypeDesc}' not maintained from vendor!",
+                            Context = DiagnosticResultContext.Qemu,
+                            SubContext = "OS",
+                            Gravity = DiagnosticResultGravity.Warning,
+                        });
+                    }
+                }
+
 
                 //agent
                 if (int.Parse(vm.Detail.Config.id ?? "0") == 0)
