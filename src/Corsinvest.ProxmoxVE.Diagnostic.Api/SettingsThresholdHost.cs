@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api
 {
@@ -12,6 +14,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// </summary>
         /// <value></value>
         [DisplayName("Time Series")]
+        [JsonConverter(typeof(StringEnumConverter))]
         public SettingsTimeSeriesType TimeSeries { get; set; } = SettingsTimeSeriesType.Day;
 
         /// <summary>

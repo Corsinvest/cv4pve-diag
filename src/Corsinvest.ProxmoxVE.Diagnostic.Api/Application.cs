@@ -29,11 +29,15 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// </summary>
         /// <param name="clusterInfo"></param>
         /// <param name="settings"></param>
+        /// <param name="ignoredIssues"></param>
         /// <returns></returns>
-        public static ICollection<DiagnosticResult> Analyze(ClusterInfo clusterInfo, Settings settings)
+        public static (ICollection<DiagnosticResult> Result, ICollection<DiagnosticResult> ResultIgnoredIssues) Analyze(ClusterInfo clusterInfo,
+                                                                                                                        Settings settings,
+                                                                                                                        List<DiagnosticResult> ignoredIssues)
         {
-            if (clusterInfo == null) { return null; }
             var result = new List<DiagnosticResult>();
+            var resultIgnoredIssues = new List<DiagnosticResult>();
+            if (clusterInfo == null) { return (result, resultIgnoredIssues); }
 
             CheckUnknown(result, clusterInfo);
 
@@ -44,7 +48,18 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             CheckQemu(clusterInfo, result, validResource, settings);
             CheckLxc(clusterInfo, result, validResource, settings);
 
-            return result;
+            //filter with ignore
+            foreach (var ignoredIssue in ignoredIssues)
+            {
+                foreach (var item in result)
+                {
+                    if (ignoredIssue.CheckIgnoreIssue(item)) { resultIgnoredIssues.Add(item); }
+                }
+            }
+
+            foreach (var item in resultIgnoredIssues) { result.Remove(item); }
+
+            return (result, resultIgnoredIssues);
         }
 
         private static void CheckUnknown(List<DiagnosticResult> result, ClusterInfo clusterInfo)
@@ -155,6 +170,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         {
             var nodes = validResource.Where(a => a.type == "node" && a.status == "online");
 
+            var hasCluster = clusterInfo.Config.Nodes.Count() > 0;
+
             //node
             foreach (var node in validResource.Where(a => a.type == "node"))
             {
@@ -170,6 +187,27 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                         Gravity = DiagnosticResultGravity.Warning,
                     });
                     continue;
+                }
+
+                //end of life
+                var ondOfLife = new Dictionary<string, DateTime>()
+                {
+                    {"5" , new DateTime(2020,07,01)},
+                    {"4" , new DateTime(2018,06,01)},
+                };
+
+                DateTime eolDate;
+                if (ondOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out eolDate))
+                {
+                    result.Add(new DiagnosticResult
+                    {
+                        Id = node.node,
+                        ErrorCode = "WN0001",
+                        Description = $"Version {node.Detail.Version.version.Value} end of life {eolDate.Date} ",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "EOL",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
                 }
 
                 //subscription
@@ -299,8 +337,11 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 }
 
                 //Services
+                var serviceExcluded = new List<string>();
+                if (!hasCluster) { serviceExcluded.Add("corosync"); }
+
                 result.AddRange(((IEnumerable<dynamic>)node.Detail.Services)
-                                .Where(a => a.state != "running")
+                                .Where(a => a.state != "running" && !serviceExcluded.Contains(a.name.Value))
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = node.node,
@@ -564,7 +605,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = "OsType not set!",
                         Context = DiagnosticResultContext.Qemu,
@@ -578,23 +619,22 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.id,
+                            Id = vm.vmid,
                             ErrorCode = "WV0001",
                             Description = $"OS '{osTypeDesc}' not maintained from vendor!",
                             Context = DiagnosticResultContext.Qemu,
-                            SubContext = "OS",
+                            SubContext = "OSNotMaintained",
                             Gravity = DiagnosticResultGravity.Warning,
                         });
                     }
                 }
-
 
                 //agent
                 if (int.Parse(vm.Detail.Config.id ?? "0") == 0)
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = "Qemu Agent not enabled",
                         Context = DiagnosticResultContext.Qemu,
@@ -609,7 +649,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.id,
+                            Id = vm.vmid,
                             ErrorCode = "WV0001",
                             Description = "Qemu Agent in guest not running",
                             Context = DiagnosticResultContext.Qemu,
@@ -624,7 +664,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = "Start on boot not enabled",
                         Context = DiagnosticResultContext.Qemu,
@@ -638,7 +678,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = "For production environment is better VM Protection = enabled",
                         Context = DiagnosticResultContext.Qemu,
@@ -652,7 +692,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = $"VM is locked by '{vm.Detail.Config["lock"]}'",
                         Context = DiagnosticResultContext.Qemu,
@@ -668,7 +708,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.id,
+                        Id = vm.vmid,
                         ErrorCode = "WV0001",
                         Description = "For more performance switch controller to VirtIO SCSI",
                         Context = DiagnosticResultContext.Qemu,
@@ -686,7 +726,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.id,
+                            Id = vm.vmid,
                             ErrorCode = "WV0001",
                             Description = $"For more performance switch '{id}' network to VirtIO",
                             Context = DiagnosticResultContext.Qemu,
@@ -701,7 +741,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                     .Where(a => !a.Image.StartsWith("virtio") && !a.Id.StartsWith("virtio"))
                                     .Select(a => new DiagnosticResult
                                     {
-                                        Id = vm.id,
+                                        Id = vm.vmid,
                                         ErrorCode = "WV0001",
                                         Description = $"For more performance switch '{a.Id}' hdd to VirtIO",
                                         Context = DiagnosticResultContext.Qemu,
@@ -717,7 +757,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.id,
+                            Id = vm.vmid,
                             ErrorCode = "IV0001",
                             Description = $"Unused disk{i}",
                             Context = DiagnosticResultContext.Qemu,
@@ -734,7 +774,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.id,
+                            Id = vm.vmid,
                             ErrorCode = "WV0002",
                             Description = "Cdrom mounted",
                             Context = DiagnosticResultContext.Qemu,
@@ -1012,7 +1052,6 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             var snapOldCount = snapshots.Where(a => a.name != "current" &&
                             DateTimeUnixHelper.UnixTimeToDateTime(a.snaptime.Value) < execution.AddMonths(-1))
                                         .Count();
-
             if (snapOldCount > 0)
             {
                 result.Add(new DiagnosticResult
@@ -1021,7 +1060,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     ErrorCode = "WV0003",
                     Description = $"{snapOldCount} snapshots older than 1 month",
                     Context = context,
-                    SubContext = "Snapshot",
+                    SubContext = "SnapshotOld",
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }

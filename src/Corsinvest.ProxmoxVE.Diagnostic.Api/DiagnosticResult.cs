@@ -10,7 +10,10 @@
  * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
  */
 
- using System;
+using System;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api
 {
@@ -29,18 +32,21 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// Tag
         /// </summary>
         /// <value></value>
+        [JsonIgnore]
         public object Tag { get; set; }
 
         /// <summary>
         /// Error code
         /// </summary>
         /// <value></value>
+        [JsonIgnore]
         public string ErrorCode { get; set; }
 
         /// <summary>
         /// Context
         /// </summary>
         /// <value></value>
+        [JsonConverter(typeof(StringEnumConverter))]
         public DiagnosticResultContext Context { get; set; }
 
         /// <summary>
@@ -50,7 +56,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         public string SubContext { get; set; }
 
         /// <summary>
-        /// Secription
+        /// Description
         /// </summary>
         /// <value></value>
         public string Description { get; set; }
@@ -59,6 +65,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// Gravity
         /// </summary>
         /// <value></value>
+        [JsonConverter(typeof(StringEnumConverter))]
         public DiagnosticResultGravity Gravity { get; set; }
 
         /// <summary>
@@ -68,5 +75,19 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             => Enum.TryParse<DiagnosticResultContext>(text, true, out var ret) ?
                                 (DiagnosticResultContext)ret :
                                 DiagnosticResultContext.Cluster;
+
+        /// <summary>
+        /// Check ignore issue
+        /// </summary>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        public bool CheckIgnoreIssue(DiagnosticResult result)
+            => CheckString(result.Id, Id) &&
+               CheckString(result.SubContext, SubContext) &&
+               CheckString(result.Description, Description) &&
+               result.Context == Context &&
+               result.Gravity == Gravity;
+
+        private bool CheckString(string text, string pattern) => pattern == null ? true : Regex.IsMatch(text, pattern);
     }
 }

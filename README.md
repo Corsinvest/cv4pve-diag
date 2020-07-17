@@ -14,18 +14,22 @@ Diagnostic for Proxmox VE         (Made in Italy)
 Usage: cv4pve-diag [options]
 
 Options:
-  -?|-h|--help      Show help information
-  --version         Show version information
-  --host            The host name host[:port],host1[:port],host2[:port]
-  --username        User name <username>@<realm>
-  --password        The password. Specify 'file:path_file' to store password in file.
-  --settings-file   File settings (generated from show-settings)
-  -o|--output       Type output (default: text) Text,Unicode,UnicodeAlt,Markdown,Html
+  -?|-h|--help           Show help information
+  --version              Show version information
+  --host                 The host name host[:port],host1[:port],host2[:port]
+  --username             User name <username>@<realm>
+  --password             The password. Specify 'file:path_file' to store password in file.
+  --settings-file        File settings (generated from create-settings)
+  --ignored-issues-file  File ignored issues (generated from create-ignored-issues)
+  --ignored-issues-show  Show second table with ignored issue
+  -o|--output            Type output (default: text) Text,Unicode,UnicodeAlt,Markdown,Html,Json,JsonPretty
+                         Allowed values are: Text, Unicode, UnicodeAlt, Markdown, Html, Json, JsonPretty
 
 Commands:
-  app-check-update  Check update application
-  app-upgrade       Upgrade application
-  settings-create   Create file settings (settings.json)
+  app-check-update       Check update application
+  app-upgrade            Upgrade application
+  create-ignored-issues  Create File ignored issues (ignored-issues.json)
+  create-settings        Create file settings (settings.json)
 
 Run 'cv4pve-diag [command] --help' for more information about a command.
 
@@ -60,6 +64,8 @@ this software collect data from Proxmox VE and output list of Warning/Critical/I
 * Installation unzip file extract binary
 * Not require installation in Proxmox VE
 * Execute out side Proxmox VE
+* Custom settings from file --settings-file
+* Ignore issue from file --ignored-issues-file
 
 ## Configuration
 
@@ -108,4 +114,25 @@ root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=f
 -------------------------------------------------------------------------------------------------------------------------------------
 ```
 
-For change settings create file using settings-create command. Edit json file and execute new settings using parameter --settings-file.
+## Settings
+
+For change default settings can create file using **create-settings** command.
+Edit settings.json file and execute new settings using parameter --settings-file.
+
+## Ignore Issue
+
+For ignore issues create file using **create-ignored-issues** command.
+Edit ignored-issues.json file and execute using parameter --ignored-issues-file.
+The regex rule is used for match in Id,SubContext,Description.
+
+```json
+[
+  {
+    "Id": "105",
+    "Context": "Qemu",
+    "SubContext": "Protection",
+    "Description": null,
+    "Gravity": "Critical"
+  }
+]
+```
