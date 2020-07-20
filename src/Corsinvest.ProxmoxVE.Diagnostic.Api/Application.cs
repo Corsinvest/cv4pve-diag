@@ -137,10 +137,10 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                                 .Distinct()
                                                 .ToList();
 
-            foreach (var item in validResource.Where(a => a.type == "qemu")
-                                                .SelectMany(a => (List<(string Id, string Image)>)GetVmImages(a)))
+            foreach (var (_, Image) in validResource.Where(a => a.type == "qemu")
+                                                    .SelectMany(a => (List<(string Id, string Image)>)GetVmImages(a)))
             {
-                var data = item.Image.Split(',');
+                var data = Image.Split(',');
                 if (storagesImages.Contains(data[0])) { storagesImages.Remove(data[0]); }
             }
 
@@ -196,8 +196,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     {"4" , new DateTime(2018,06,01)},
                 };
 
-                DateTime eolDate;
-                if (ondOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out eolDate))
+                if (ondOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out DateTime eolDate))
                 {
                     result.Add(new DiagnosticResult
                     {

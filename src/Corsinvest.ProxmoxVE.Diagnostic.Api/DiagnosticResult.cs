@@ -88,6 +88,6 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                result.Context == Context &&
                result.Gravity == Gravity;
 
-        private bool CheckString(string text, string pattern) => pattern == null ? true : Regex.IsMatch(text, pattern);
+        private bool CheckString(string text, string pattern) => pattern == null || Regex.IsMatch(text, pattern);
     }
 }
