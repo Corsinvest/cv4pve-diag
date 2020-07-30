@@ -31,13 +31,12 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
         /// <param name="settings"></param>
         /// <param name="ignoredIssues"></param>
         /// <returns></returns>
-        public static (ICollection<DiagnosticResult> Result, ICollection<DiagnosticResult> ResultIgnoredIssues) Analyze(ClusterInfo clusterInfo,
-                                                                                                                        Settings settings,
-                                                                                                                        List<DiagnosticResult> ignoredIssues)
+        public static ICollection<DiagnosticResult> Analyze(ClusterInfo clusterInfo,
+                                                            Settings settings,
+                                                            List<DiagnosticResult> ignoredIssues)
         {
             var result = new List<DiagnosticResult>();
-            var resultIgnoredIssues = new List<DiagnosticResult>();
-            if (clusterInfo == null) { return (result, resultIgnoredIssues); }
+            if (clusterInfo == null) { return result; }
 
             CheckUnknown(result, clusterInfo);
 
@@ -53,13 +52,11 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             {
                 foreach (var item in result)
                 {
-                    if (ignoredIssue.CheckIgnoreIssue(item)) { resultIgnoredIssues.Add(item); }
+                    if (ignoredIssue.CheckIgnoreIssue(item)) { item.IsIgnoredIssue = true; }
                 }
             }
 
-            foreach (var item in resultIgnoredIssues) { result.Remove(item); }
-
-            return (result, resultIgnoredIssues);
+            return result;
         }
 
         private static void CheckUnknown(List<DiagnosticResult> result, ClusterInfo clusterInfo)
@@ -190,13 +187,13 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 }
 
                 //end of life
-                var ondOfLife = new Dictionary<string, DateTime>()
+                var endOfLife = new Dictionary<string, DateTime>()
                 {
                     {"5" , new DateTime(2020,07,01)},
                     {"4" , new DateTime(2018,06,01)},
                 };
 
-                if (ondOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out DateTime eolDate))
+                if (endOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out DateTime eolDate))
                 {
                     result.Add(new DiagnosticResult
                     {
@@ -523,7 +520,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                             {
                                 Id = node.node,
                                 ErrorCode = "CN0003",
-                                Description = $"Disk ssd '{a.devpath}' wearout not valid",
+                                Description = $"Disk ssd '{a.devpath}' wearout not valid.",
                                 Context = DiagnosticResultContext.Node,
                                 SubContext = "SSD Wearout",
                                 Gravity = DiagnosticResultGravity.Warning,

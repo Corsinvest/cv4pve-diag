@@ -125,12 +125,12 @@ namespace Corsinvest.ProxmoxVE.Diagnostic
                                 JsonConvert.DeserializeObject<List<DiagnosticResult>>(File.ReadAllText(optIgnoredIssuesFile.Value())) :
                                 new List<DiagnosticResult>();
 
-            var (Result, ResultIgnoredIssues) = Application.Analyze(ci, settings, ignoredIssues);
 
             var outputType = optOutput.GetEnumValue<TableOutputType>();
+            var result = Application.Analyze(ci, settings, ignoredIssues);
 
-            PrintResult(app, Result, outputType);
-            if (optShowIgnoredIssues.HasValue()) { PrintResult(app, ResultIgnoredIssues, outputType); }
+            PrintResult(app, result.Where(a => !a.IsIgnoredIssue).ToList(), outputType);
+            if (optShowIgnoredIssues.HasValue()) { PrintResult(app, result.Where(a => a.IsIgnoredIssue).ToList(), outputType); }
         }
 
         private static void PrintResult(CommandLineApplication app,

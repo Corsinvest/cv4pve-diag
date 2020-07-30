@@ -17,6 +17,7 @@ Options:
   -?|-h|--help           Show help information
   --version              Show version information
   --host                 The host name host[:port],host1[:port],host2[:port]
+  --api-token            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
   --username             User name <username>@<realm>
   --password             The password. Specify 'file:path_file' to store password in file.
   --settings-file        File settings (generated from create-settings)
@@ -66,6 +67,13 @@ this software collect data from Proxmox VE and output list of Warning/Critical/I
 * Execute out side Proxmox VE
 * Custom settings from file --settings-file
 * Ignore issue from file --ignored-issues-file
+* Use Api token --api-token parameter
+
+## Api token
+
+From version 6.2 of Proxmox VE is possible to use [Api token](https://pve.proxmox.com/pve-docs/pveum-plain.html).
+This feature permit execute Api without using user and password.
+If using **Privilege Separation** when create api token remember specify in permission.
 
 ## Configuration
 
@@ -89,28 +97,28 @@ root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=f
 -------------------------------------------------------------------------------------------------------------------------------------
 | pve2                           | 1 Replication has errors                                     | Node    | Replication  | Critical |
 | pve2                           | Zfs 'rpool' health problem                                   | Node    | Zfs          | Critical |
-| qemu/312                       | Unknown resource qemu                                        | Qemu    | Status       | Critical |
+| 312                            | Unknown resource qemu                                        | Qemu    | Status       | Critical |
 | pve3                           | Node not online                                              | Node    | Status       | Warning  |
 | local-zfs:vm-117-disk-1        | Image Orphaned                                               | Storage | Image        | Warning  |
 | local-zfs:vm-105-disk-3        | Image Orphaned                                               | Storage | Image        | Warning  |
-| qemu/121                       | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
-| qemu/101                       | OS 'XP/2003' not mantained from vendor!                      | Qemu    | Agent        | Warning  |
-| qemu/101                       | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
+| 121                            | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
+| 101                            | OS 'XP/2003' not mantained from vendor!                      | Qemu    | Agent        | Warning  |
+| 101                            | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
 | 103                            | cv4pve-autosnap not configured                               | Qemu    | AutoSnapshot | Warning  |
 | 115                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
 | 205                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
 | 103                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
 | 313                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
-| qemu/117                       | Unused disk0                                                 | Qemu    | Hardware     | Warning  |
-| qemu/115                       | Cdrom mounted                                                | Qemu    | Hardware     | Warning  |
+| 117                            | Unused disk0                                                 | Qemu    | Hardware     | Warning  |
+| 115                            | Cdrom mounted                                                | Qemu    | Hardware     | Warning  |
 | 121                            | 10 snapshots older than 1 month                              | Qemu    | Snapshot     | Warning  |
 | 313                            | 10 snapshots older than 1 month                              | Qemu    | Snapshot     | Warning  |
-| qemu/500                       | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
-| qemu/117                       | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
+| 500                            | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
+| 117                            | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
 | 114                            | 10 snapshots older than 1 month                              | Lxc     | Snapshot     | Warning  |
 | pve1                           | 3 Update availble                                            | Node    | Update       | Info     |
 | pve2                           | 6 Update availble                                            | Node    | Update       | Info     |
-| qemu/109                       | For more performance switch 'scsi0' hdd to VirtIO            | Qemu    | VirtIO       | Info     |
+| 109                            | For more performance switch 'scsi0' hdd to VirtIO            | Qemu    | VirtIO       | Info     |
 -------------------------------------------------------------------------------------------------------------------------------------
 ```
 
