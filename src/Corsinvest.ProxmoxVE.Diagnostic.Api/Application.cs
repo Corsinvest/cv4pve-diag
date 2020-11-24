@@ -784,6 +784,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             }
         }
 
+
+
         private static void CheckCommonVm(ClusterInfo clusterInfo,
                                           List<DiagnosticResult> result,
                                           Settings settings,
@@ -812,14 +814,29 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             }
 
             //check exists backup and recent
-            var regex = new Regex(@"^.*:(.*\/)?");
+            var regex = new Regex(@"^.*?:(.*?\/)?");
             var foundBackup = false;
             foreach (var backup in ((IEnumerable<dynamic>)vm.Detail.Backups))
             {
-                var data = backup.volid.Value.Replace(regex.Match(backup.volid.Value).Value, "").Split('-');
-                var date = DateTime.ParseExact(data[3] + "_" + data[4].Substring(0, data[4].IndexOf(".")),
-                                                "yyyy_MM_dd_HH_mm_ss",
-                                                null);
+                var volid = (backup.volid.Value as string);
+                var nameBackup = volid.Replace(regex.Match(volid).Value, "");
+                var date = DateTime.Now;
+                switch (backup.format.Value)
+                {
+                    case "pbs-ct":
+                    case "pbs-vm":
+                        //Proxmox Backup Server PBS
+                        date = DateTime.ParseExact(nameBackup.Split("/")[2], "yyyy-MM-ddTHH:mm:ssZ", null);
+                        break;
+
+                    default:
+                        //Internal backup
+                        var data = nameBackup.Split('-');
+                        date = DateTime.ParseExact(data[3] + "_" + data[4].Substring(0, data[4].IndexOf(".")),
+                                                   "yyyy_MM_dd_HH_mm_ss",
+                                                   null);
+                        break;
+                }
 
                 if (clusterInfo.Date.Date >= date.Date.AddDays(+1))
                 {
