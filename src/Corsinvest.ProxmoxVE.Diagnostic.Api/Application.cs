@@ -784,8 +784,6 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
             }
         }
 
-
-
         private static void CheckCommonVm(ClusterInfo clusterInfo,
                                           List<DiagnosticResult> result,
                                           Settings settings,
@@ -799,8 +797,10 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                                           .Select(a => a.vmid))
                                                           .Split(',');
 
+            var allInBackup = clusterInfo.Backups.Any(a => a.enabled == 1 && a.all == 1);
+
             string vmId = vm.vmid.Value + "";
-            if (!vmsIdBackup.Contains(vmId))
+            if (!allInBackup && !vmsIdBackup.Contains(vmId))
             {
                 result.Add(new DiagnosticResult
                 {
@@ -812,6 +812,19 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
+
+            //check disk no backup
+            result.AddRange(((List<(string Id, string Image)>)GetVmImages(vm))
+                                .Where(a => a.Image.Contains("backup=0"))
+                                .Select(a => new DiagnosticResult
+                                {
+                                    Id = vm.vmid,
+                                    ErrorCode = "WV0001",
+                                    Description = $"Disk '{a.Id}' disabled for backup",
+                                    Context = DiagnosticResultContext.Qemu,
+                                    SubContext = "Backup",
+                                    Gravity = DiagnosticResultGravity.Critical,
+                                }));
 
             //check exists backup and recent
             var regex = new Regex(@"^.*?:(.*?\/)?");
