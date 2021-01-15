@@ -626,7 +626,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 }
 
                 //agent
-                if (int.Parse(vm.Detail.Config.id ?? "0") == 0)
+                if (int.Parse(vm.Detail.Config.agent == null ? "0" : vm.Detail.Config.agent.Value) == 0)
                 {
                     result.Add(new DiagnosticResult
                     {
@@ -641,7 +641,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 else
                 {
                     //agent in quest
-                    if (vm.status == "running" && !vm.AgentGuestRunning)
+                    if (vm.status == "running" && !vm.Detail.AgentGuestRunning.Value)
                     {
                         result.Add(new DiagnosticResult
                         {
