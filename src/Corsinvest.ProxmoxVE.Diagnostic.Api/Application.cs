@@ -626,7 +626,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 }
 
                 //agent
-                if (int.Parse(vm.Detail.Config.agent == null ? "0" : vm.Detail.Config.agent.Value) == 0)
+                if (int.Parse(vm.Detail.Config.agent == null ? "0" : vm.Detail.Config.agent.Value.Split(',')[0]) == 0)
                 {
                     result.Add(new DiagnosticResult
                     {

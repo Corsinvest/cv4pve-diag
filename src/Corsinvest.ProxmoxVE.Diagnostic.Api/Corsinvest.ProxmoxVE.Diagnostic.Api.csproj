@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <Version>1.4.10</Version>
+    <Version>1.4.11</Version>
     <Company>Corsinvest Srl</Company>
     <Authors>Daniele Corsini</Authors>
     <Copyright>Corsinvest Srl</Copyright>
