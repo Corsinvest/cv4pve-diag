@@ -10,12 +10,12 @@
  * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
  */
 
-using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
-using Corsinvest.ProxmoxVE.Api.Extension.Info;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
+using Corsinvest.ProxmoxVE.Api.Extension.Info;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api
 {
@@ -189,6 +189,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                 //end of life
                 var endOfLife = new Dictionary<string, DateTime>()
                 {
+                    {"6" , new DateTime(2022,07,01)},
                     {"5" , new DateTime(2020,07,01)},
                     {"4" , new DateTime(2018,06,01)},
                 };
@@ -845,7 +846,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                     default:
                         //Internal backup
                         var data = nameBackup.Split('-');
-                        date = DateTime.ParseExact(data[3] + "_" + data[4].Substring(0, data[4].IndexOf(".")),
+                        date = DateTime.ParseExact($"{data[3]}_{data[4][..data[4].IndexOf(".")]}",
                                                    "yyyy_MM_dd_HH_mm_ss",
                                                    null);
                         break;
@@ -896,9 +897,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                        string id,
                                        dynamic rrdData)
         {
-            var data = ((IEnumerable<dynamic>)GetTimeSeries(thresholdHost.TimeSeries, rrdData))
-                        .Where(a => a.cpu != null);
-            if (data.Count() == 0) { return; }
+            var data = ((IEnumerable<dynamic>)GetTimeSeries(thresholdHost.TimeSeries, rrdData))?.Where(a => a.cpu != null);
+            if (data?.Count() == 0) { return; }
 
             CheckThresholdHost(result, thresholdHost, context, id, data);
         }
@@ -968,9 +968,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                                          string id,
                                          dynamic rrdData)
         {
-            var data = ((IEnumerable<dynamic>)GetTimeSeries(settings.Node.TimeSeries, rrdData))
-                        .Where(a => a.cpu != null);
-            if (data.Count() == 0) { return; }
+            var data = ((IEnumerable<dynamic>)GetTimeSeries(settings.Node.TimeSeries, rrdData))?.Where(a => a.cpu != null);
+            if (data?.Count() == 0) { return; }
 
             CheckThresholdHost(result, settings.Node, DiagnosticResultContext.Node, id, data);
 
