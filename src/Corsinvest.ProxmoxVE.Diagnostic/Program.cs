@@ -1,153 +1,129 @@
 ﻿/*
- * This file is part of the cv4pve-diag https://github.com/Corsinvest/cv4pve-diag,
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Corsinvest Enterprise License (CEL)
- * Full copyright and license information is available in
- * LICENSE.md which is distributed with this source code.
- *
- * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
+ * SPDX-FileCopyrightText: Copyright Corsinvest Srl
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using System;
 using System.Collections.Generic;
+using System.CommandLine;
 using System.IO;
 using System.Linq;
-using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
-using Corsinvest.ProxmoxVE.Api.Extension.Info;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Corsinvest.ProxmoxVE.Api.Extension.Utils;
+using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 using Corsinvest.ProxmoxVE.Api.Shell.Helpers;
 using Corsinvest.ProxmoxVE.Diagnostic.Api;
-using McMaster.Extensions.CommandLineUtils;
-using Newtonsoft.Json;
 
-namespace Corsinvest.ProxmoxVE.Diagnostic
+namespace Corsinvest.ProxmoxVE.Diagnostic;
+
+class Program
 {
-    class Program
+    static async Task<int> Main(string[] args)
     {
-        static void Main(string[] args)
+        var settingsFileName = "settings.json";
+        var ignoredIssuesFileName = "ignored-issues.json";
+
+        var app = ConsoleHelper.CreateApp("cv4pve-diag", "Diagnostic for Proxmox VE");
+
+        var optSettingsFile = app.AddOption("--settings-file", "File settings (generated from create-settings)");
+        optSettingsFile.AddValidatorExistFile();
+
+        var optIgnoredIssuesFile = app.AddOption("--ignored-issues-file", "File ignored issues (generated from create-ignored-issues)");
+        optSettingsFile.AddValidatorExistFile();
+
+        var optShowIgnoredIssues = app.AddOption<bool>("--ignored-issues-show", "Show second table with ignored issue");
+
+        var optOutput = app.TableOutputOption();
+
+        var cmdCreateSettings = app.AddCommand("create-settings", $"Create file settings ({settingsFileName})");
+        cmdCreateSettings.SetHandler(() =>
         {
-            var settingsFileName = "settings.json";
-            var ignoredIssuesFileName = "ignored-issues.json";
+            File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
+            Console.Out.WriteLine(PrintEnum("SeriesType", typeof(SettingsTimeSeriesType)));
+            Console.Out.WriteLine($"Create file: {settingsFileName}");
+        });
 
-            var app = ShellHelper.CreateConsoleApp("cv4pve-diag", "Diagnostic for Proxmox VE");
+        var cmdCreateIgnoredIssues = app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})");
+        cmdCreateIgnoredIssues.SetHandler(() =>
+        {
+            File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
+            Console.Out.WriteLine(PrintEnum("Context", typeof(DiagnosticResultContext)));
+            Console.Out.WriteLine(PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
+            Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
+        });
 
-            var optSettingsFile = app.Option("--settings-file", "File settings (generated from create-settings)", CommandOptionType.SingleValue);
-            optSettingsFile.Accepts().ExistingFile();
-
-            var optIgnoredIssuesFile = app.Option("--ignored-issues-file", "File ignored issues (generated from create-ignored-issues)", CommandOptionType.SingleValue);
-            optIgnoredIssuesFile.Accepts().ExistingFile();
-
-            var optShowIgnoredIssues = app.Option("--ignored-issues-show", "Show second table with ignored issue", CommandOptionType.NoValue);
-
-            var optOutput = app.OutputTypeArgument();
-
-            app.Command("create-settings", cmd =>
-            {
-                cmd.Description = $"Create file settings ({settingsFileName})";
-                cmd.AddFullNameLogo();
-
-                cmd.OnExecute(() =>
-                {
-                    File.WriteAllText(settingsFileName, JsonConvert.SerializeObject(new Settings(), Formatting.Indented));
-                    app.Out.WriteLine(PrintEnum("SeriesType", typeof(SettingsTimeSeriesType)));
-                    app.Out.WriteLine($"Create file: {settingsFileName}");
-                });
-            });
-
-            app.Command("create-ignored-issues", cmd =>
-            {
-                cmd.Description = $"Create File ignored issues ({ignoredIssuesFileName})";
-                cmd.AddFullNameLogo();
-
-                cmd.OnExecute(() =>
-                {
-                    File.WriteAllText(ignoredIssuesFileName, JsonConvert.SerializeObject(new[] { new DiagnosticResult() }, Formatting.Indented));
-                    app.Out.WriteLine(PrintEnum("Context", typeof(DiagnosticResultContext)));
-                    app.Out.WriteLine(PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
-                    app.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
-                });
-            });
-
-            var fileExport = "data.json";
-            app.Command("export-collect", cmd =>
-            {
-                cmd.ShowInHelpText = false;
-                cmd.Description = $"Export collect data collect to {fileExport}";
-                cmd.AddFullNameLogo();
-
-                cmd.OnExecute(() =>
-                {
-                    var ci = new ClusterInfo();
-                    ci.Collect(app.ClientTryLogin());
-
-                    File.WriteAllText(fileExport, JsonConvert.SerializeObject(ci, Formatting.Indented));
-                    app.Out.WriteLine($"Exported {fileExport}!");
-                });
-            });
-
-            app.Command("examine-collect", cmd =>
-            {
-                cmd.ShowInHelpText = false;
-                cmd.Description = $"Examine collect data collect from {fileExport}";
-                cmd.AddFullNameLogo();
-                cmd.OnExecute(() =>
-                {
-                    var ci = JsonConvert.DeserializeObject<ClusterInfo>(File.ReadAllText(fileExport));
-                    Print(app, ci, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
-                });
-            });
-
-            app.OnExecute(() =>
-            {
-                var ci = new ClusterInfo();
-                ci.Collect(app.ClientTryLogin());
-                ci = JsonConvert.DeserializeObject<ClusterInfo>(JsonConvert.SerializeObject(ci));
-
-                Print(app, ci, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
-            });
-
-            app.ExecuteConsoleApp(args);
+        async Task<InfoHelper.Info> GetInfo()
+        {
+            var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());
+            var client = await app.ClientTryLogin(loggerFactory);
+            return await InfoHelper.Collect(client, true, 2, false, false);
         }
 
-        private static void Print(CommandLineApplication app,
-                                  ClusterInfo ci,
-                                  CommandOption optSettingsFile,
-                                  CommandOption optIgnoredIssuesFile,
-                                  CommandOption optShowIgnoredIssues,
-                                  CommandOption<TableOutputType> optOutput)
+        var fileExport = "data.json";
+        var cmdExportCollect = app.AddCommand("export-collect", $"Export collect data collect to {fileExport}");
+        cmdExportCollect.SetHandler(async () =>
+       {
+           File.WriteAllText(fileExport, JsonSerializer.Serialize(await GetInfo(), new JsonSerializerOptions { WriteIndented = true }));
+           Console.Out.WriteLine($"Exported {fileExport}!");
+       });
+
+        var cmdExamineCollect = app.AddCommand("examine-collect", $"Examine collect data collect from {fileExport}");
+        cmdExamineCollect.IsHidden = true;
+        cmdExamineCollect.SetHandler((string settingsFile,
+                                      string ignoredIssuesFile,
+                                      bool showIgnoredIssues,
+                                      TableGenerator.Output output) =>
         {
-            var settings = optSettingsFile.HasValue() ?
-                           JsonConvert.DeserializeObject<Settings>(File.ReadAllText(optSettingsFile.Value())) :
-                           new Settings();
+            var info = JsonSerializer.Deserialize<InfoHelper.Info>(File.ReadAllText(fileExport));
+            Print(info, settingsFile, ignoredIssuesFile, showIgnoredIssues, output);
+        }, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
 
-            var ignoredIssues = optIgnoredIssuesFile.HasValue() ?
-                                JsonConvert.DeserializeObject<List<DiagnosticResult>>(File.ReadAllText(optIgnoredIssuesFile.Value())) :
-                                new List<DiagnosticResult>();
-
-
-            var outputType = optOutput.GetEnumValue<TableOutputType>();
-            var result = Application.Analyze(ci, settings, ignoredIssues);
-
-            PrintResult(app, result.Where(a => !a.IsIgnoredIssue).ToList(), outputType);
-            if (optShowIgnoredIssues.HasValue()) { PrintResult(app, result.Where(a => a.IsIgnoredIssue).ToList(), outputType); }
-        }
-
-        private static void PrintResult(CommandLineApplication app,
-                                        ICollection<DiagnosticResult> data,
-                                        TableOutputType outputType)
+        var cmdExecute = app.AddCommand("execute", $"Execute diagnostic and print result to console");
+        cmdExecute.SetHandler(async (string settingsFile,
+                                            string ignoredIssuesFile,
+                                            bool showIgnoredIssues,
+                                            TableGenerator.Output output) =>
         {
-            var rows = data.OrderByDescending(a => a.Gravity)
-                           .ThenBy(a => a.Context)
-                           .ThenBy(a => a.SubContext)
-                           .Select(a => new object[] { a.Id, a.Description, a.Context, a.SubContext, a.Gravity });
+            Print(await GetInfo(), settingsFile, ignoredIssuesFile, showIgnoredIssues, output);
+        }, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
 
-            app.Out.Write(TableHelper.Create(new string[] { "Id", "Description", "Context", "SubContext", "Gravity" },
-                                             rows,
-                                             outputType, false));
-        }
-
-        private static string PrintEnum(string title, Type typeEnum)
-            => $"Values for {title}: {string.Join(", ", Enum.GetNames(typeEnum))}";
+        return await app.ExecuteApp(args);
     }
+
+    private static void Print(InfoHelper.Info info,
+                              string settingsFile,
+                              string ignoredIssuesFile,
+                              bool showIgnoredIssues,
+                              TableGenerator.Output output)
+    {
+        var settings = !string.IsNullOrWhiteSpace(settingsFile)
+                            ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile))
+                            : new Settings();
+
+        var ignoredIssues = !string.IsNullOrWhiteSpace(ignoredIssuesFile)
+                                ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(ignoredIssuesFile))
+                                : new List<DiagnosticResult>();
+
+        var result = Application.Analyze(info, settings, ignoredIssues);
+
+        PrintResult(result.Where(a => !a.IsIgnoredIssue).ToList(), output);
+        if (showIgnoredIssues) { PrintResult(result.Where(a => a.IsIgnoredIssue).ToList(), output); }
+    }
+
+    private static void PrintResult(ICollection<DiagnosticResult> data, TableGenerator.Output output)
+    {
+        var rows = data.OrderByDescending(a => a.Gravity)
+                       .ThenBy(a => a.Context)
+                       .ThenBy(a => a.SubContext)
+                       .Select(a => new object[] { a.Id, a.Description, a.Context, a.SubContext, a.Gravity });
+
+        Console.Out.Write(TableGenerator.To(new string[] { "Id", "Description", "Context", "SubContext", "Gravity" },
+                                            rows,
+                                            output));
+    }
+
+    private static string PrintEnum(string title, Type typeEnum)
+        => $"Values for {title}: {string.Join(", ", Enum.GetNames(typeEnum))}";
 }

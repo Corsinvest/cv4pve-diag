@@ -1,46 +1,38 @@
 /*
- * This file is part of the cv4pve-diag https://github.com/Corsinvest/cv4pve-diag,
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Corsinvest Enterprise License (CEL)
- * Full copyright and license information is available in
- * LICENSE.md which is distributed with this source code.
- *
- * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
+ * SPDX-FileCopyrightText: Copyright Corsinvest Srl
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
- namespace Corsinvest.ProxmoxVE.Diagnostic.Api
+ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
+
+/// <summary>
+/// Diagnostic Result Context
+/// </summary>
+public enum DiagnosticResultContext
 {
     /// <summary>
-    /// Diagnostic Result Context
+    /// Node
     /// </summary>
-    public enum DiagnosticResultContext
-    {
-        /// <summary>
-        /// Node
-        /// </summary>
-        Node,
+    Node,
 
-        /// <summary>
-        /// Cluster
-        /// </summary>
-        Cluster,
+    /// <summary>
+    /// Cluster
+    /// </summary>
+    Cluster,
 
-        /// <summary>
-        /// Storage
-        /// </summary>
-        Storage,
+    /// <summary>
+    /// Storage
+    /// </summary>
+    Storage,
 
-        /// <summary>
-        /// Qemu
-        /// </summary>
+    /// <summary>
+    /// Qemu
+    /// </summary>
 
-        Qemu,
+    Qemu,
 
-        /// <summary>
-        /// Lxc
-        /// </summary>
-        Lxc
-    }
+    /// <summary>
+    /// Lxc
+    /// </summary>
+    Lxc
 }

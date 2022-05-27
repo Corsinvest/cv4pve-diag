@@ -1,729 +1,766 @@
 ﻿/*
- * This file is part of the cv4pve-diag https://github.com/Corsinvest/cv4pve-diag,
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Corsinvest Enterprise License (CEL)
- * Full copyright and license information is available in
- * LICENSE.md which is distributed with this source code.
- *
- * Copyright (C) 2016 Corsinvest Srl	GPLv3 and CEL
+ * SPDX-FileCopyrightText: Copyright Corsinvest Srl
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text.RegularExpressions;
-using Corsinvest.ProxmoxVE.Api.Extension.Helpers;
-using Corsinvest.ProxmoxVE.Api.Extension.Info;
+using Corsinvest.ProxmoxVE.Api.Extension.Utils;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
+using Humanizer.Bytes;
 
-namespace Corsinvest.ProxmoxVE.Diagnostic.Api
+namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
+
+/// <summary>
+/// Diagnostic helper
+/// </summary>
+public class Application
 {
     /// <summary>
-    /// Diagnostic helper
+    /// Analyze
     /// </summary>
-    public class Application
+    /// <param name="info"></param>
+    /// <param name="settings"></param>
+    /// <param name="ignoredIssues"></param>
+    /// <returns></returns>
+    public static ICollection<DiagnosticResult> Analyze(InfoHelper.Info info,
+                                                        Settings settings,
+                                                        List<DiagnosticResult> ignoredIssues)
     {
-        /// <summary>
-        /// Analyze
-        /// </summary>
-        /// <param name="clusterInfo"></param>
-        /// <param name="settings"></param>
-        /// <param name="ignoredIssues"></param>
-        /// <returns></returns>
-        public static ICollection<DiagnosticResult> Analyze(ClusterInfo clusterInfo,
-                                                            Settings settings,
-                                                            List<DiagnosticResult> ignoredIssues)
+        var result = new List<DiagnosticResult>();
+        if (info == null) { return result; }
+
+        CheckUnknown(result, info);
+
+        var resources = info.Cluster.Resources.Where(a => !a.IsUnknown);
+
+        CheckStorage(info, result, resources, settings);
+        CheckNode(info, result, resources, settings);
+        CheckQemu(info, result, resources, settings);
+        CheckLxc(info, result, resources, settings);
+
+        //filter with ignore
+        foreach (var ignoredIssue in ignoredIssues)
         {
-            var result = new List<DiagnosticResult>();
-            if (clusterInfo == null) { return result; }
-
-            CheckUnknown(result, clusterInfo);
-
-            var validResource = clusterInfo.Resources.Where(a => a.status != "unknown");
-
-            CheckStorage(result, validResource, settings);
-            CheckNode(clusterInfo, result, validResource, settings);
-            CheckQemu(clusterInfo, result, validResource, settings);
-            CheckLxc(clusterInfo, result, validResource, settings);
-
-            //filter with ignore
-            foreach (var ignoredIssue in ignoredIssues)
+            foreach (var item in result)
             {
-                foreach (var item in result)
+                if (ignoredIssue.CheckIgnoreIssue(item)) { item.IsIgnoredIssue = true; }
+            }
+        }
+
+        return result;
+    }
+
+    private static void CheckUnknown(List<DiagnosticResult> result, InfoHelper.Info info)
+    {
+        result.AddRange(info.Cluster.Resources
+                                   .Where(a => a.IsUnknown)
+                                   .Select(a => new DiagnosticResult
+                                   {
+                                       Id = a.Id,
+                                       ErrorCode = "CU0001",
+                                       Description = $"Unknown resource {a.Type}",
+                                       Context = DiagnosticResult.DecodeContext(a.Type),
+                                       SubContext = "Status",
+                                       Gravity = DiagnosticResultGravity.Critical,
+                                   }));
+    }
+
+    class NodeStorageContentComparer : IEqualityComparer<NodeStorageContent>
+    {
+        public bool Equals(NodeStorageContent x, NodeStorageContent y) => x.Volume == y.Volume;
+
+        public int GetHashCode([DisallowNull] NodeStorageContent obj)
+        {
+            if (obj == null) { return 0; }
+            var NameHashCode = obj.Volume == null ? 0 : obj.Volume.GetHashCode();
+            return obj.Volume.GetHashCode() ^ NameHashCode;
+        }
+    }
+
+    private static void CheckStorage(InfoHelper.Info info,
+                                     List<DiagnosticResult> result,
+                                     IEnumerable<ClusterResource> resources,
+                                     Settings settings)
+    {
+        //storage
+        result.AddRange(resources
+                        .Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
+                        .Select(a => new DiagnosticResult
+                        {
+                            Id = a.Id,
+                            ErrorCode = "CS0001",
+                            Description = "Storage not available",
+                            Context = DiagnosticResultContext.Storage,
+                            SubContext = "Status",
+                            Gravity = DiagnosticResultGravity.Critical,
+                        }));
+
+        //storage usage
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "CS0001",
+                       DiagnosticResultContext.Storage,
+                       "Usage",
+                       resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
+                                .Select(a =>
+                                (
+                                    (double)a.DiskUsage,
+                                    (double)a.DiskSize,
+                                    a.Storage,
+                                    "Storage"
+                                )),
+                       false,
+                       true);
+
+        #region Orphaned Images
+        //images in storage
+        var storagesImages = new List<NodeStorageContent>();
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Storage
+                                                  && a.Content.Split(",").Contains("images")))
+        {
+            var node = GetNode(info, item.Node);
+            var content = node.Storages.Where(a => a.Detail.Storage == item.Storage
+                                                   && a.Detail.Content.Split(",").Contains("images"))
+                                       .SelectMany(a => a.Content)
+                                       .Where(a => a.Content == "images");
+            storagesImages.AddRange(content);
+        };
+
+        storagesImages = storagesImages.Distinct(new NodeStorageContentComparer()).ToList();
+
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
+        {
+            var node = GetNode(info, item.Node);
+            var config = item.VmType switch
+            {
+                VmType.Qemu => node.Qemu.First(a => a.Detail.VmId == item.VmId).Config,
+                VmType.Lxc => (VmConfig)node.Lxc.First(a => a.Detail.VmId == item.VmId).Config,
+                _ => null,
+            };
+
+            //check disk exists
+            foreach (var disk in config.Disks)
+            {
+                var images = storagesImages.Where(a => a.VmId == item.VmId
+                                                       && a.Storage == disk.Storage
+                                                       && a.FileName == disk.FileName)
+                                           .ToArray();
+
+                foreach (var image in images) { storagesImages.Remove(image); }
+            }
+        }
+
+        result.AddRange(storagesImages.Select(a => new DiagnosticResult
+        {
+            Id = a.Storage,
+            ErrorCode = "WN0001",
+            Description = $"Image Orphaned {ByteSize.FromBytes(a.Size)} file {a.FileName}",
+            Context = DiagnosticResultContext.Storage,
+            SubContext = "Image",
+            Gravity = DiagnosticResultGravity.Warning,
+        }));
+        #endregion
+    }
+
+    private static InfoHelper.Info.NodeInfo GetNode(InfoHelper.Info info, string node)
+        => info.Nodes.FirstOrDefault(a => a.Detail.Node == node);
+
+    private static void CheckNode(InfoHelper.Info info,
+                                  List<DiagnosticResult> result,
+                                  IEnumerable<ClusterResource> resources,
+                                  Settings settings)
+    {
+        var nodes = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
+        var hasCluster = info.Cluster.Config.Nodes.Any();
+
+        //node
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Node))
+        {
+            var errorId = item.Node;
+            var node = GetNode(info, item.Node);
+
+            if (!item.IsOnline)
+            {
+                result.Add(new DiagnosticResult
                 {
-                    if (ignoredIssue.CheckIgnoreIssue(item)) { item.IsIgnoredIssue = true; }
-                }
+                    Id = errorId,
+                    ErrorCode = "WN0001",
+                    Description = "Node not online",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Status",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+                continue;
             }
 
-            return result;
-        }
-
-        private static void CheckUnknown(List<DiagnosticResult> result, ClusterInfo clusterInfo)
-        {
-            result.AddRange(clusterInfo.Resources
-                            .Where(a => a.status == "unknown")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = a.id,
-                                ErrorCode = "CU0001",
-                                Description = $"Unknown resource {a.type}",
-                                Context = DiagnosticResult.DecodeContext(a.type.ToString()),
-                                SubContext = "Status",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            }));
-        }
-
-        private static List<(string Id, string Image)> GetVmImages(dynamic vm)
-        {
-            var ret = new List<(string Id, string image)>();
-
-            for (int i = 0; i < 256; i++)
+            #region End Of Life
+            var endOfLife = new Dictionary<int, DateOnly>()
             {
-                foreach (var item in new[] { "ide", "sata", "scsi", "virtio" })
+                {6 , new DateOnly(2022,07,01)},
+                {5 , new DateOnly(2020,07,01)},
+                {4 , new DateOnly(2018,06,01)},
+            };
+
+            var nodeVersion = int.Parse(node.Version.Version.Split('.')[0]);
+
+            if (endOfLife.TryGetValue(nodeVersion, out var eolDate))
+            {
+                result.Add(new DiagnosticResult
                 {
-                    var id = $"{item}{i}";
-                    var data = vm.Detail.Config[id];
-                    if (data != null && !data.Value.Contains("media=cdrom"))
-                    {
-                        ret.Add((id, data.Value));
-                    }
-                }
+                    Id = errorId,
+                    ErrorCode = "WN0001",
+                    Description = $"Version {node.Version.Version} end of life {eolDate} ",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "EOL",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
             }
-
-            return ret;
-        }
-
-        private static void CheckStorage(List<DiagnosticResult> result,
-                                         IEnumerable<dynamic> validResource,
-                                         Settings settings)
-        {
-            //storage
-            result.AddRange(validResource
-                            .Where(a => a.type == "storage" && a.status != "available")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = $"{a.storage} ({a.node})",
-                                ErrorCode = "CS0001",
-                                Description = "Storage not available",
-                                Context = DiagnosticResultContext.Storage,
-                                SubContext = "Status",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            }));
-
-            //storage usage
-            CheckThreshold(result,
-                           settings.Storage.Threshold,
-                           "CS0001",
-                           DiagnosticResultContext.Storage,
-                           "Usage",
-                           validResource.Where(a => a.type == "storage" && a.status == "available")
-                                        .Select(a =>
-                                        (
-                                            ((double)a.Detail.Status.used / (double)a.Detail.Status.total) * 100.0,
-                                            $"{a.storage} ({a.node})",
-                                            "Storage"
-                                        )));
-
-            #region Orphaned Images
-            //images in storage
-            var storagesImages = validResource.Where(a => a.type == "storage")
-                                                .SelectMany(a => (IEnumerable<dynamic>)a.Detail.Content)
-                                                .Where(a => a.content.Value.Contains("images"))
-                                                .Select(a => a.volid.Value)
-                                                .Distinct()
-                                                .ToList();
-
-            foreach (var (_, Image) in validResource.Where(a => a.type == "qemu")
-                                                    .SelectMany(a => (List<(string Id, string Image)>)GetVmImages(a)))
-            {
-                var data = Image.Split(',');
-                if (storagesImages.Contains(data[0])) { storagesImages.Remove(data[0]); }
-            }
-
-            foreach (var item in validResource.Where(a => a.type == "lxc")
-                                                .Select(a => a.Detail.Config.rootfs.Value))
-            {
-                var data = item.Split(",");
-                if (storagesImages.Contains(data[0])) { storagesImages.Remove(data[0]); }
-            }
-
-            result.AddRange(storagesImages.Select(a => new DiagnosticResult
-            {
-                Id = a,
-                ErrorCode = "WN0001",
-                Description = "Image Orphaned",
-                Context = DiagnosticResultContext.Storage,
-                SubContext = "Image",
-                Gravity = DiagnosticResultGravity.Warning,
-            }));
             #endregion
-        }
 
-        private static void CheckNode(ClusterInfo clusterInfo,
-                                      List<DiagnosticResult> result,
-                                      IEnumerable<dynamic> validResource,
-                                      Settings settings)
-        {
-            var nodes = validResource.Where(a => a.type == "node" && a.status == "online");
-
-            var hasCluster = clusterInfo.Config.Nodes.Count() > 0;
-
-            //node
-            foreach (var node in validResource.Where(a => a.type == "node"))
+            #region Subscription
+            if (node.Subscription.Status != "Active")
             {
-                if (node.status != "online")
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WN0001",
+                    Description = "Node not have subscription active",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Subscription",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
+
+            #region RrdData
+            var rrdData = settings.Node.TimeSeries switch
+            {
+                SettingsTimeSeriesType.Day => node.RrdData.Day,
+                SettingsTimeSeriesType.Week => node.RrdData.Week,
+                _ => null,
+            };
+
+            CheckNodeRrd(result, settings, errorId, rrdData);
+            #endregion
+
+            #region Check nodes difference
+            var checkInNodes = new bool[] { true, true, true, true };
+            foreach (var itemOtherNode in nodes)
+            {
+                var otherNode = GetNode(info, itemOtherNode.Node);
+
+                //version
+                if (checkInNodes[0] && !node.Version.IsEqual(otherNode.Version))
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = node.node,
+                        Id = errorId,
                         ErrorCode = "WN0001",
-                        Description = "Node not online",
+                        Description = "Nodes version not equal",
                         Context = DiagnosticResultContext.Node,
-                        SubContext = "Status",
-                        Gravity = DiagnosticResultGravity.Warning,
+                        SubContext = "Version",
+                        Gravity = DiagnosticResultGravity.Critical,
                     });
-                    continue;
+                    checkInNodes[0] = false;
                 }
 
-                //end of life
-                var endOfLife = new Dictionary<string, DateTime>()
-                {
-                    {"6" , new DateTime(2022,07,01)},
-                    {"5" , new DateTime(2020,07,01)},
-                    {"4" , new DateTime(2018,06,01)},
-                };
-
-                if (endOfLife.TryGetValue(node.Detail.Version.version.Value.Split('.')[0], out DateTime eolDate))
+                //hosts files
+                if (checkInNodes[1] && string.Join("", node.Hosts) != string.Join("", otherNode.Hosts))
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = node.node,
+                        Id = errorId,
                         ErrorCode = "WN0001",
-                        Description = $"Version {node.Detail.Version.version.Value} end of life {eolDate.Date} ",
+                        Description = "Nodes hosts configuration not equal",
                         Context = DiagnosticResultContext.Node,
-                        SubContext = "EOL",
+                        SubContext = "Hosts",
                         Gravity = DiagnosticResultGravity.Warning,
                     });
+                    checkInNodes[1] = false;
                 }
 
-                //subscription
-                if (node.Detail.Subscription.status.Value != "Active")
+                //DNS
+                if (checkInNodes[2] && !node.Dns.IsEqual(otherNode.Dns))
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = node.node,
+                        Id = errorId,
                         ErrorCode = "WN0001",
-                        Description = "Node not have subscription active",
+                        Description = "Nodes DNS not equal",
                         Context = DiagnosticResultContext.Node,
-                        SubContext = "Subscription",
+                        SubContext = "DNS",
                         Gravity = DiagnosticResultGravity.Warning,
                     });
+                    checkInNodes[2] = false;
                 }
 
-                //rdd
-                CheckNodeRrd(result, settings, node.node.Value, node.Detail.RrdData);
-
-                var checkInNodes = new bool[] { true, true, true, true };
-                foreach (var otherNode in nodes)
+                //timezone
+                if (checkInNodes[3] && node.Timezone != otherNode.Timezone)
                 {
-                    //version
-                    if (checkInNodes[0] &&
-                        $"{node.release}{node.version}{node.repoid}" !=
-                        $"{otherNode.release}{otherNode.version}{otherNode.repoid}")
+                    result.Add(new DiagnosticResult
                     {
+                        Id = errorId,
+                        ErrorCode = "WN0001",
+                        Description = "Nodes Timezone not equal",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "Timezone",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                    checkInNodes[3] = false;
+                }
+            }
+            #endregion
+
+            #region Network Card
+            result.AddRange(node.Network.Where(a => a.Type == "eth" && !a.Active)
+                          .Select(a => new DiagnosticResult
+                          {
+                              Id = errorId,
+                              ErrorCode = "WN0002",
+                              Description = $"Network card '{a.Interface}' not active",
+                              Context = DiagnosticResultContext.Node,
+                              SubContext = "Network",
+                              Gravity = DiagnosticResultGravity.Warning,
+                          }));
+            #endregion
+
+            #region Package Versions
+            var addErrPackageVersions = false;
+            foreach (var itemOtherNode in nodes)
+            {
+                if (addErrPackageVersions) { break; }
+
+                var otherNode = GetNode(info, itemOtherNode.Node);
+
+                foreach (var pkg in node.Apt.Version)
+                {
+                    if (!otherNode.Apt.Version.Any(a => a.Version == pkg.Version
+                                                        && a.Title == pkg.Title
+                                                        && a.Package == pkg.Package))
+                    {
+                        addErrPackageVersions = true;
                         result.Add(new DiagnosticResult
                         {
-                            Id = node.node,
+                            Id = errorId,
                             ErrorCode = "WN0001",
-                            Description = "Nodes version not equal",
+                            Description = "Nodes package version not equal",
                             Context = DiagnosticResultContext.Node,
-                            SubContext = "Version",
+                            SubContext = "PackageVersions",
                             Gravity = DiagnosticResultGravity.Critical,
                         });
-                        checkInNodes[0] = false;
-                    }
-
-                    //hosts files
-                    if (checkInNodes[1] && node.Detail.Hosts != otherNode.Detail.Hosts)
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = node.node,
-                            ErrorCode = "WN0001",
-                            Description = "Nodes hosts configuration not equal",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Hosts",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                        checkInNodes[1] = false;
-                    }
-
-                    //DNS
-                    if (checkInNodes[2] &&
-                        (node.Detail.Dns.search != otherNode.Detail.Dns.search ||
-                        node.Detail.Dns.dns1 != otherNode.Detail.Dns.dns1 ||
-                        node.Detail.Dns.dns2 != otherNode.Detail.Dns.dns2))
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = node.node,
-                            ErrorCode = "WN0001",
-                            Description = "Nodes DNS not equal",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "DNS",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                        checkInNodes[2] = false;
-                    }
-
-                    //timezone
-                    if (checkInNodes[3] && node.Detail.Timezone != otherNode.Detail.Timezone)
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = node.node,
-                            ErrorCode = "WN0001",
-                            Description = "Nodes Timezone not equal",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Timezone",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                        checkInNodes[3] = false;
+                        break;
                     }
                 }
+            }
+            #endregion
 
-                //network card
-                result.AddRange(((IEnumerable<dynamic>)node.Detail.Network)
-                              .Where(a => a.type == "eth" && a.active != 1)
-                              .Select(a => new DiagnosticResult
-                              {
-                                  Id = node.node,
-                                  ErrorCode = "WN0002",
-                                  Description = $"Network card '{a.iface}' not active",
-                                  Context = DiagnosticResultContext.Node,
-                                  SubContext = "Network",
-                                  Gravity = DiagnosticResultGravity.Warning,
-                              }));
+            #region Services
+            var serviceExcluded = new List<string>();
+            if (!hasCluster) { serviceExcluded.Add("corosync"); }
 
-                //Package Versions
-                var addErrPackageVersions = false;
-                foreach (var otherNode in nodes)
-                {
-                    if (addErrPackageVersions) { break; }
-                    foreach (var pkg in node.Detail.PackageVersions)
-                    {
-                        if (!((IEnumerable<dynamic>)node.Detail.PackageVersions)
-                            .Any(a => a.Version == pkg.Version &&
-                                    a.Title == pkg.Title &&
-                                    a.Package == pkg.Package))
-                        {
-                            addErrPackageVersions = true;
-                            result.Add(new DiagnosticResult
-                            {
-                                Id = node.node,
-                                ErrorCode = "WN0001",
-                                Description = "Nodes package version not equal",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "PackageVersions",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            });
-                            break;
-                        }
-                    }
-                }
+            //see https://pve.proxmox.com/wiki/Time_Synchronization
+            serviceExcluded.Add(nodeVersion >= 7 ? "systemd-timesyncd" : "chrony");
 
-                //Services
-                var serviceExcluded = new List<string>();
-                if (!hasCluster) { serviceExcluded.Add("corosync"); }
+            result.AddRange(node.Services.Where(a => !a.IsRunning && !serviceExcluded.Contains(a.Name))
+                                         .Select(a => new DiagnosticResult
+                                         {
+                                             Id = errorId,
+                                             ErrorCode = "WN0002",
+                                             Description = $"Service '{a.Description}' not running",
+                                             Context = DiagnosticResultContext.Node,
+                                             SubContext = "Service",
+                                             Gravity = DiagnosticResultGravity.Warning,
+                                         }));
+            #endregion
 
-                result.AddRange(((IEnumerable<dynamic>)node.Detail.Services)
-                                .Where(a => a.state != "running" && !serviceExcluded.Contains(a.name.Value))
+            #region Certificates
+            result.AddRange(node.Certificates
+                                .Where(a => DateTimeOffset.FromUnixTimeSeconds(a.Notafter) < info.Date)
                                 .Select(a => new DiagnosticResult
                                 {
-                                    Id = node.node,
+                                    Id = errorId,
                                     ErrorCode = "WN0002",
-                                    Description = $"Service '{a.desc}' not running",
-                                    Context = DiagnosticResultContext.Node,
-                                    SubContext = "Service",
-                                    Gravity = DiagnosticResultGravity.Warning,
-                                }));
-
-                //certificates
-                result.AddRange(((IEnumerable<dynamic>)node.Detail.Certificates)
-                                .Where(a => DateTimeUnixHelper.UnixTimeToDateTime((long)a.notafter) < clusterInfo.Date)
-                                .Select(a => new DiagnosticResult
-                                {
-                                    Id = node.node,
-                                    ErrorCode = "WN0002",
-                                    Description = $"Certificate '{a.filename}' expired",
+                                    Description = $"Certificate '{a.FileName}' expired",
                                     Context = DiagnosticResultContext.Node,
                                     SubContext = "Certificates",
                                     Gravity = DiagnosticResultGravity.Critical,
                                 }));
+            #endregion
 
-                //Ceph
-                if (node.Detail.Ceph.Config != null)
-                {
-                    //Cluster
-                    if (node.Detail.Ceph.Status.health.status.Value != "HEALTH_OK")
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = node.node,
-                            ErrorCode = "IN0001",
-                            Description = $"Ceph status '{node.Detail.Ceph.Status.health.status.Value}'",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Ceph",
-                            Gravity = node.Detail.Ceph.Status.health.status.Value == "HEALTH_WARN" ?
-                                        DiagnosticResultGravity.Critical :
-                                        DiagnosticResultGravity.Warning
-                        });
-                    }
+            // //Ceph
+            // if (item.Detail.Ceph.Config != null)
+            // {
+            //     //Cluster
+            //     if (item.Detail.Ceph.Status.health.status.Value != "HEALTH_OK")
+            //     {
+            //         result.Add(new DiagnosticResult
+            //         {
+            //             Id = errorId,
+            //             ErrorCode = "IN0001",
+            //             Description = $"Ceph status '{item.Detail.Ceph.Status.health.status.Value}'",
+            //             Context = DiagnosticResultContext.Node,
+            //             SubContext = "Ceph",
+            //             Gravity = item.Detail.Ceph.Status.health.status.Value == "HEALTH_WARN" ?
+            //                         DiagnosticResultGravity.Critical :
+            //                         DiagnosticResultGravity.Warning
+            //         });
+            //     }
 
-                    //PGs active+clean
-                    if (((IEnumerable<dynamic>)node.Detail.Ceph.Status.pgmap.pgs_by_state)
-                            .Where(a => a.state_name == "active+clean").Count() == 0)
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = node.node,
-                            ErrorCode = "IN0001",
-                            Description = "Ceph PGs not active+clean",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Ceph",
-                            Gravity = DiagnosticResultGravity.Warning
-                        });
-                    }
+            //     //PGs active+clean
+            //     if (((IEnumerable<dynamic>)item.Detail.Ceph.Status.pgmap.pgs_by_state)
+            //             .Where(a => a.state_name == "active+clean").Count() == 0)
+            //     {
+            //         result.Add(new DiagnosticResult
+            //         {
+            //             Id = errorId,
+            //             ErrorCode = "IN0001",
+            //             Description = "Ceph PGs not active+clean",
+            //             Context = DiagnosticResultContext.Node,
+            //             SubContext = "Ceph",
+            //             Gravity = DiagnosticResultGravity.Warning
+            //         });
+            //     }
 
-                    //Osd
-                    void OsdRic(IEnumerable<dynamic> children)
-                    {
-                        result.AddRange(children.Where(a => a.type == "osd" && a.status != "up" && a.host == node.node)
-                                        .Select(a => new DiagnosticResult
-                                        {
-                                            Id = node.node,
-                                            ErrorCode = "WN0002",
-                                            Description = $"Osd '{a.name}' not up",
-                                            Context = DiagnosticResultContext.Node,
-                                            SubContext = "Ceph",
-                                            Gravity = DiagnosticResultGravity.Critical,
-                                        }));
+            //     //Osd
+            //     void OsdRic(IEnumerable<dynamic> children)
+            //     {
+            //         result.AddRange(children.Where(a => a.type == "osd" && a.status != "up" && a.host == item.node)
+            //                         .Select(a => new DiagnosticResult
+            //                         {
+            //                             Id = errorId,
+            //                             ErrorCode = "WN0002",
+            //                             Description = $"Osd '{a.name}' not up",
+            //                             Context = DiagnosticResultContext.Node,
+            //                             SubContext = "Ceph",
+            //                             Gravity = DiagnosticResultGravity.Critical,
+            //                         }));
 
-                        foreach (var item in children)
-                        {
-                            if (item.children != null) { OsdRic(item.children); }
-                        }
-                    }
-                    OsdRic(node.Detail.Ceph.Osd.root.children);
-                }
+            //         foreach (var item in children)
+            //         {
+            //             if (item.children != null) { OsdRic(item.children); }
+            //         }
+            //     }
+            //     OsdRic(item.Detail.Ceph.Osd.root.children);
+            // }
 
-                CheckNodeDisk(result, settings, node);
-
-                //update
-                var updateCount = ((IEnumerable<dynamic>)node.Detail.AptUpdate).Count();
-                if (updateCount > 0)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = node.node,
-                        ErrorCode = "IN0001",
-                        Description = $"{updateCount} Update availble",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Update",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
-
-                //update important
-                var updateImportantCount = ((IEnumerable<dynamic>)node.Detail.AptUpdate)
-                                            .Where(a => a.Priority == "important").Count();
-                if (updateImportantCount > 0)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = node.node,
-                        ErrorCode = "IN0001",
-                        Description = $"{updateImportantCount} Update Important availble",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Update",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
-
-                //task history
-                CheckTaskHistory(result,
-                                 (IEnumerable<dynamic>)node.Detail.Tasks,
-                                 DiagnosticResultContext.Node,
-                                 node.node.Value);
-
-                //replication
-                var replCount = ((IEnumerable<dynamic>)node.Detail.Replication)
-                                    .Where(a => a.error != null)
-                                    .Count();
-                if (replCount > 0)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = node.node,
-                        ErrorCode = "IN0001",
-                        Description = $"{replCount} Replication has errors",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Replication",
-                        Gravity = DiagnosticResultGravity.Critical,
-                    });
-                }
-            }
-        }
-
-        private static void CheckTaskHistory(List<DiagnosticResult> result,
-                                             IEnumerable<dynamic> tasks,
-                                             DiagnosticResultContext context,
-                                             string id)
-        {
-            //task history
-            var tasksCount = tasks.Count();
-            if (tasksCount > 0)
+            #region Replication
+            var replCount = node.Replication.Count(a => a.ExtensionData != null
+                                                        && a.ExtensionData.ContainsKey("errors"));
+            if (replCount > 0)
             {
                 result.Add(new DiagnosticResult
                 {
-                    Id = id,
+                    Id = errorId,
                     ErrorCode = "IN0001",
-                    Description = $"{tasksCount} Task history has errors",
-                    Context = context,
-                    SubContext = "Tasks",
+                    Description = $"{replCount} Replication has errors",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Replication",
                     Gravity = DiagnosticResultGravity.Critical,
                 });
             }
-        }
+            #endregion
 
-        private static void CheckNodeDisk(List<DiagnosticResult> result,
-                                          Settings settings,
-                                          dynamic node)
-        {
-            //disks
-            result.AddRange(((IEnumerable<dynamic>)node.Detail.Disks.List)
-                            .Where(a => a.health != "PASSED" && a.health != "OK")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = node.node,
-                                ErrorCode = "CN0003",
-                                Description = $"Disk '{a.devpath}' S.M.A.R.T. status problem",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            }));
+            CheckNodeDisk(result, settings, node, errorId);
 
-            //sdd Wearout N/A
-            result.AddRange(((IEnumerable<dynamic>)node.Detail.Disks.List)
-                            .Where(a => a.type == "ssd" && a.wearout + "" == "N/A")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = node.node,
-                                ErrorCode = "CN0003",
-                                Description = $"Disk ssd '{a.devpath}' wearout not valid.",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "SSD Wearout",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            }));
-
-            //sdd Wearout not in range
-            CheckThreshold(result,
-                           settings.SsdWearoutThreshold,
-                           "CN0003",
-                           DiagnosticResultContext.Node,
-                           "SSD Wearout",
-                            ((IEnumerable<dynamic>)node.Detail.Disks.List)
-                            .Where(a => a.type == "ssd" && a.wearout + "" != "N/A")
-                            .Select(a =>
-                            (
-                                100.0 - (double)a.wearout,
-                                $"{node.node} ({a.devpath})",
-                                $"SSD '{a.devpath}'"
-                            )));
-
-            //zfs
-            result.AddRange(((IEnumerable<dynamic>)node.Detail.Disks.Zfs)
-                            .Where(a => a.health != "ONLINE")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = node.node,
-                                ErrorCode = "CN0003",
-                                Description = $"Zfs '{a.name}' health problem",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "Zfs",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            }));
-
-            //zfs used
-            CheckThreshold(result,
-                           settings.Storage.Threshold,
-                           "CS0001",
-                           DiagnosticResultContext.Storage,
-                           "Zfs",
-                           ((IEnumerable<dynamic>)node.Detail.Disks.Zfs)
-                            .Select(a =>
-                            (
-                                ((double)a.alloc / (double)a.size) * 100.0,
-                                $"{node.node} ({a.name})",
-                                $"Zfs '{a.name}'"
-                            )));
-        }
-
-        private static void CheckLxc(ClusterInfo clusterInfo,
-                                     List<DiagnosticResult> result,
-                                     IEnumerable<dynamic> validResource,
-                                     Settings settings)
-        {
-            foreach (var vm in validResource.Where(a => a.type == "lxc" && a.template != 1))
+            #region Update
+            var updateCount = node.Apt.Update.Count();
+            if (updateCount > 0)
             {
-                CheckCommonVm(clusterInfo, result, settings, vm, DiagnosticResultContext.Lxc);
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "IN0001",
+                    Description = $"{updateCount} Update availble",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Update",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
             }
+            #endregion
+
+            #region Update Important
+            var updateImportantCount = node.Apt.Update.Count(a => a.Priority == "important");
+            if (updateImportantCount > 0)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "IN0001",
+                    Description = $"{updateImportantCount} Update Important availble",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Update",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
+
+            //task history
+            CheckTaskHistory(result, node.Tasks, DiagnosticResultContext.Node, errorId);
         }
+    }
 
-        private static void CheckQemu(ClusterInfo clusterInfo,
-                                      List<DiagnosticResult> result,
-                                      IEnumerable<dynamic> validResource,
-                                      Settings settings)
+    private static void CheckNodeDisk(List<DiagnosticResult> result,
+                                      Settings settings,
+                                      InfoHelper.Info.NodeInfo node,
+                                      string id)
+    {
+        #region Disks
+        result.AddRange(node.Disks.List.Where(a => a.Disk.Health != "PASSED" && a.Disk.Health != "OK")
+                                       .Select(a => new DiagnosticResult
+                                       {
+                                           Id = id,
+                                           ErrorCode = "CN0003",
+                                           Description = $"Disk '{a.Disk.DevPath}' S.M.A.R.T. status problem",
+                                           Context = DiagnosticResultContext.Node,
+                                           SubContext = "S.M.A.R.T.",
+                                           Gravity = DiagnosticResultGravity.Warning,
+                                       }));
+        #endregion
+
+        #region Sdd Wearout N/A
+        result.AddRange(node.Disks.List.Where(a => a.Disk.IsSsd && a.Disk.Wearout == "N/A")
+                                       .Select(a => new DiagnosticResult
+                                       {
+                                           Id = id,
+                                           ErrorCode = "CN0003",
+                                           Description = $"Disk ssd '{a.Disk.DevPath}' wearout not valid.",
+                                           Context = DiagnosticResultContext.Node,
+                                           SubContext = "SSD Wearout",
+                                           Gravity = DiagnosticResultGravity.Warning,
+                                       }));
+        #endregion
+
+        #region Sdd Wearout not in range
+        CheckThreshold(result,
+                       settings.SsdWearoutThreshold,
+                       "CN0003",
+                       DiagnosticResultContext.Node,
+                       "SSD Wearout",
+                       node.Disks.List.Where(a => a.Disk.IsSsd && a.Disk.Wearout != "N/A")
+                                 .Select(a =>
+                                 (
+                                     100.0 - a.Disk.WearoutValue,
+                                     0d,
+                                     id,
+                                     $"SSD '{a.Disk.DevPath}'"
+                                 )),
+                       true,
+                       false);
+        #endregion
+
+        #region Zfs
+        result.AddRange(node.Disks.Zfs.Where(a => a.Zfs.Health != "ONLINE")
+                        .Select(a => new DiagnosticResult
+                        {
+                            Id = id,
+                            ErrorCode = "CN0003",
+                            Description = $"Zfs '{a.Zfs.Name}' health problem {a.Zfs.Health}",
+                            Context = DiagnosticResultContext.Node,
+                            SubContext = "Zfs",
+                            Gravity = DiagnosticResultGravity.Critical,
+                        }));
+        #endregion
+
+        #region Zfs used
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "CS0001",
+                       DiagnosticResultContext.Storage,
+                       "Zfs",
+                       node.Disks.Zfs.Select(a =>
+                       (
+                            (double)a.Zfs.Alloc,
+                            (double)a.Zfs.Size,
+                            $"{id} ({a.Zfs.Name})",
+                            $"Zfs '{a.Zfs.Name}'"
+                       )),
+                       false,
+                       true);
+        #endregion
+    }
+
+    private static void CheckLxc(InfoHelper.Info info,
+                                 List<DiagnosticResult> result,
+                                 IEnumerable<ClusterResource> resources,
+                                 Settings settings)
+    {
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                      && a.VmType == VmType.Lxc
+                                                      && !a.IsTemplate))
         {
-            var osNotMaintained = new Dictionary<string, string>()
-            {
-                { "win8" ,"8.x/2012/2012r2"},
-                { "win7" ,"7/2008r2"},
-                { "w2k8" ,"Vista/2008"},
-                { "wxp" ,"XP/2003"},
-                { "w2k","2000" }
-            };
+            var node = GetNode(info, item.Node);
+            var vm = node.Lxc.FirstOrDefault(a => a.Detail.VmId == item.VmId);
+            CheckCommonVm(info, result, settings.Qemu, vm, DiagnosticResultContext.Lxc, node, item.VmId.ToString());
+        }
+    }
 
-            foreach (var vm in validResource.Where(a => a.type == "qemu" && a.template != 1))
+    private static void CheckQemu(InfoHelper.Info info,
+                                  List<DiagnosticResult> result,
+                                  IEnumerable<ClusterResource> resources,
+                                  Settings settings)
+    {
+        var osNotMaintained = new[] { "win8", "win7", "w2k8", "wxp", "w2k" };
+
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                      && a.VmType == VmType.Qemu
+                                                      && !a.IsTemplate))
+        {
+            var node = GetNode(info, item.Node);
+            var vm = node.Qemu.FirstOrDefault(a => a.Detail.VmId == item.VmId);
+            var errorId = item.VmId.ToString();
+
+            #region Check version OS
+            if (vm.Config.OsType == null)
             {
-                //check version OS
-                if (vm.Detail.Config.ostype == null)
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "OsType not set!",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "OS",
+                    Gravity = DiagnosticResultGravity.Critical,
+                });
+            }
+            else
+            {
+                if (osNotMaintained.Contains(vm.Config.OsType))
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.vmid,
+                        Id = errorId,
                         ErrorCode = "WV0001",
-                        Description = "OsType not set!",
+                        Description = $"OS '{vm.Config.OsTypeDecode}' not maintained from vendor!",
                         Context = DiagnosticResultContext.Qemu,
-                        SubContext = "OS",
-                        Gravity = DiagnosticResultGravity.Critical,
+                        SubContext = "OSNotMaintained",
+                        Gravity = DiagnosticResultGravity.Warning,
                     });
                 }
-                else
-                {
-                    if (osNotMaintained.TryGetValue(vm.Detail.Config.ostype.Value as string, out var osTypeDesc))
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = vm.vmid,
-                            ErrorCode = "WV0001",
-                            Description = $"OS '{osTypeDesc}' not maintained from vendor!",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "OSNotMaintained",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
+            }
+            #endregion
 
-                //agent
-                if (int.Parse(vm.Detail.Config.agent == null ? "0" : vm.Detail.Config.agent.Value.Split(',')[0]) == 0)
+            #region Agent
+            if (!vm.Config.AgentEnabled)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "Qemu Agent not enabled",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Agent",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            else
+            {
+                //agent in quest
+                if (item.IsRunning && string.IsNullOrWhiteSpace(vm.Agent.GetHostName?.Result?.HostName))
                 {
                     result.Add(new DiagnosticResult
                     {
-                        Id = vm.vmid,
+                        Id = errorId,
                         ErrorCode = "WV0001",
-                        Description = "Qemu Agent not enabled",
+                        Description = "Qemu Agent in guest not running",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "Agent",
                         Gravity = DiagnosticResultGravity.Warning,
                     });
                 }
-                else
+            }
+            #endregion
+
+            #region Start on boot
+            if (!vm.Config.OnBoot)
+            {
+                result.Add(new DiagnosticResult
                 {
-                    //agent in quest
-                    if (vm.status == "running" && !vm.Detail.AgentGuestRunning.Value)
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "Start on boot not enabled",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "StartOnBoot",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
+
+            #region Protection
+            if (!vm.Config.Protection)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "For production environment is better VM Protection = enabled",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Protection",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+            }
+            #endregion
+
+            #region Lock
+            if (vm.Config.IsLocked)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = $"VM is locked by '{vm.Config.Lock}'",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Status",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
+
+            #region Check Virtio
+            //controller SCSI
+            if (vm.Config.ExtensionData.TryGetValue("scsihw", out var scsiHw)
+                && !scsiHw.ToString().StartsWith("virtio"))
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "For more performance switch controller to VirtIO SCSI",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "VirtIO",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+
+                //disks
+                result.AddRange(vm.Config.Disks.Where(a => !a.Id.StartsWith("virtio"))
+                                               .Select(a => new DiagnosticResult
+                                               {
+                                                   Id = errorId,
+                                                   ErrorCode = "WV0001",
+                                                   Description = $"For more performance switch '{a.Id}' hdd to VirtIO",
+                                                   Context = DiagnosticResultContext.Qemu,
+                                                   SubContext = "VirtIO",
+                                                   Gravity = DiagnosticResultGravity.Info,
+                                               }));
+            }
+
+            //network
+            for (int i = 0; i < 256; i++)
+            {
+                var id = $"net{i}";
+                if (vm.Config.ExtensionData.TryGetValue(id, out object value))
+                {
+                    var data = value + "";
+                    if (data != null && !data.StartsWith("virtio"))
                     {
                         result.Add(new DiagnosticResult
                         {
-                            Id = vm.vmid,
-                            ErrorCode = "WV0001",
-                            Description = "Qemu Agent in guest not running",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Agent",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
-
-                //start on boot
-                if ((vm.Detail.Config.onboot ?? 0) == 0)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = vm.vmid,
-                        ErrorCode = "WV0001",
-                        Description = "Start on boot not enabled",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "StartOnBoot",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
-
-                //protection
-                if ((vm.Detail.Config.protection ?? 0) == 0)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = vm.vmid,
-                        ErrorCode = "WV0001",
-                        Description = "For production environment is better VM Protection = enabled",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Protection",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
-
-                //lock
-                if (vm.Detail.Config["lock"] != null)
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = vm.vmid,
-                        ErrorCode = "WV0001",
-                        Description = $"VM is locked by '{vm.Detail.Config["lock"]}'",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Status",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
-
-                #region check virtio
-                //controller SCSI
-                if (vm.Detail.Config.scsihw != null &&
-                    !(vm.Detail.Config.scsihw.Value as string).StartsWith("virtio"))
-                {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = vm.vmid,
-                        ErrorCode = "WV0001",
-                        Description = "For more performance switch controller to VirtIO SCSI",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "VirtIO",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
-
-                //network
-                for (int i = 0; i < 256; i++)
-                {
-                    var id = $"net{i}";
-                    var data = vm.Detail.Config[id];
-                    if (data != null && !data.Value.StartsWith("virtio"))
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = vm.vmid,
+                            Id = errorId,
                             ErrorCode = "WV0001",
                             Description = $"For more performance switch '{id}' network to VirtIO",
                             Context = DiagnosticResultContext.Qemu,
@@ -732,363 +769,428 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api
                         });
                     }
                 }
-
-                //disks
-                result.AddRange(((List<(string Id, string Image)>)GetVmImages(vm))
-                                    .Where(a => !a.Image.StartsWith("virtio") && !a.Id.StartsWith("virtio"))
-                                    .Select(a => new DiagnosticResult
-                                    {
-                                        Id = vm.vmid,
-                                        ErrorCode = "WV0001",
-                                        Description = $"For more performance switch '{a.Id}' hdd to VirtIO",
-                                        Context = DiagnosticResultContext.Qemu,
-                                        SubContext = "VirtIO",
-                                        Gravity = DiagnosticResultGravity.Info,
-                                    }));
-                #endregion
-
-                //unused
-                for (int i = 0; i < 256; i++)
-                {
-                    if (vm.Detail.Config[$"unused{i}"] != null)
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = vm.vmid,
-                            ErrorCode = "IV0001",
-                            Description = $"Unused disk{i}",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Hardware",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
-
-                //cdrom
-                foreach (string value in vm.Detail.Config)
-                {
-                    if (value.Contains("media=cdrom") && value != "none,media=cdrom")
-                    {
-                        result.Add(new DiagnosticResult
-                        {
-                            Id = vm.vmid,
-                            ErrorCode = "WV0002",
-                            Description = "Cdrom mounted",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Hardware",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
-
-                CheckCommonVm(clusterInfo, result, settings, vm, DiagnosticResultContext.Qemu);
             }
-        }
+            #endregion
 
-        private static void CheckCommonVm(ClusterInfo clusterInfo,
-                                          List<DiagnosticResult> result,
-                                          Settings settings,
-                                          dynamic vm,
-                                          DiagnosticResultContext context)
-        {
-            #region Backup
-            //configured backup get vmdId
-            var vmsIdBackup = string.Join(",", clusterInfo.Backups
-                                                          .Where(a => a.enabled == 1)
-                                                          .Select(a => a.vmid))
-                                                          .Split(',');
-
-            var allInBackup = clusterInfo.Backups.Any(a => a.enabled == 1 && a.all == 1);
-
-            string vmId = vm.vmid.Value + "";
-            if (!allInBackup && !vmsIdBackup.Contains(vmId))
+            #region Unused disk
+            foreach (var unused in vm.Config.ExtensionData.Keys.Where(a => a.StartsWith("unused")))
             {
+                var volume = vm.Config.ExtensionData[unused].ToString();
+                var data = volume.Split(":");
+                var storage = node.Storages.FirstOrDefault(a => a.Detail.Storage == data[0]);
+                var size = storage != null
+                            ? ByteSize.FromBytes(storage.Content.FirstOrDefault(a => a.Volume == volume).Size).ToString()
+                            : "";
+
                 result.Add(new DiagnosticResult
                 {
-                    Id = vmId,
-                    ErrorCode = "CC0001",
-                    Description = "vzdump backup not configured",
-                    Context = context,
-                    SubContext = "Backup",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-
-            //check disk no backup
-            result.AddRange(((List<(string Id, string Image)>)GetVmImages(vm))
-                                .Where(a => a.Image.Contains("backup=0"))
-                                .Select(a => new DiagnosticResult
-                                {
-                                    Id = vm.vmid,
-                                    ErrorCode = "WV0001",
-                                    Description = $"Disk '{a.Id}' disabled for backup",
-                                    Context = DiagnosticResultContext.Qemu,
-                                    SubContext = "Backup",
-                                    Gravity = DiagnosticResultGravity.Critical,
-                                }));
-
-            //check exists backup and recent
-            var regex = new Regex(@"^.*?:(.*?\/)?");
-            var foundBackup = false;
-            foreach (var backup in ((IEnumerable<dynamic>)vm.Detail.Backups))
-            {
-                var volid = (backup.volid.Value as string);
-                var nameBackup = volid.Replace(regex.Match(volid).Value, "");
-                var date = DateTime.Now;
-                switch (backup.format.Value)
-                {
-                    case "pbs-ct":
-                    case "pbs-vm":
-                        //Proxmox Backup Server PBS
-                        date = DateTime.ParseExact(nameBackup.Split("/")[2], "yyyy-MM-ddTHH:mm:ssZ", null);
-                        break;
-
-                    default:
-                        //Internal backup
-                        var data = nameBackup.Split('-');
-                        date = DateTime.ParseExact($"{data[3]}_{data[4][..data[4].IndexOf(".")]}",
-                                                   "yyyy_MM_dd_HH_mm_ss",
-                                                   null);
-                        break;
-                }
-
-                if (clusterInfo.Date.Date >= date.Date.AddDays(+1))
-                {
-                    foundBackup = true;
-                    break;
-                }
-            }
-
-            if (!foundBackup)
-            {
-                result.Add(new DiagnosticResult
-                {
-                    Id = vmId,
-                    ErrorCode = "CC0001",
-                    Description = "No recent backups found!",
-                    Context = context,
-                    SubContext = "Backup",
+                    Id = errorId,
+                    ErrorCode = "IV0001",
+                    Description = $"disk '{unused}' {size} ",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Hardware",
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
             #endregion
 
-            CheckTaskHistory(result,
-                             (IEnumerable<dynamic>)vm.Detail.Tasks,
-                             context,
-                             vmId);
-
-            CheckSnapshots(result,
-                           (IEnumerable<dynamic>)vm.Detail.Snapshots,
-                           clusterInfo.Date,
-                           vmId,
-                           context);
-
-            CheckVmRrd(result,
-                       settings.Lxc,
-                       context,
-                       vmId,
-                       vm.Detail.RrdData);
-        }
-
-        private static void CheckVmRrd(List<DiagnosticResult> result,
-                                       SettingsThresholdHost thresholdHost,
-                                       DiagnosticResultContext context,
-                                       string id,
-                                       dynamic rrdData)
-        {
-            var data = ((IEnumerable<dynamic>)GetTimeSeries(thresholdHost.TimeSeries, rrdData))?.Where(a => a.cpu != null);
-            if (data?.Count() == 0) { return; }
-
-            CheckThresholdHost(result, thresholdHost, context, id, data);
-        }
-
-        private static void CheckThresholdHost(List<DiagnosticResult> result,
-                                               SettingsThresholdHost thresholdHost,
-                                               DiagnosticResultContext context,
-                                               string id,
-                                               IEnumerable<dynamic> rrdData)
-        {
-            var count = rrdData.Count();
-
-            CheckThreshold(result,
-                           thresholdHost.Cpu,
-                           "WV0002",
-                           context,
-                           "Usage",
-                           new[] { ( rrdData.Sum(a => (double)a.cpu) / count * 100.0,
-                                    id,
-                                    $"CPU (rrd {thresholdHost.TimeSeries} AVERAGE)") });
-
-            var memUsed = 0.0d;
-            switch (context)
+            #region Cdrom
+            foreach (string value in vm.Config.ExtensionData.Values)
             {
-                case DiagnosticResultContext.Node:
-                    memUsed = rrdData.Sum(a => (double)a.memused / (double)a.memtotal);
-                    break;
+                if (value.Contains("media=cdrom") && value != "none,media=cdrom")
+                {
+                    result.Add(new DiagnosticResult
+                    {
+                        Id = errorId,
+                        ErrorCode = "WV0002",
+                        Description = "Cdrom mounted",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "Hardware",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+            }
+            #endregion
 
-                case DiagnosticResultContext.Lxc:
-                case DiagnosticResultContext.Qemu:
-                    memUsed = rrdData.Sum(a => (double)a.mem / (double)a.maxmem);
-                    break;
+            CheckCommonVm(info, result, settings.Qemu, vm, DiagnosticResultContext.Qemu, node, errorId);
+        }
+    }
 
-                default: break;
+    private static void CheckCommonVm<TDetail, TConfig>(InfoHelper.Info info,
+                                                        List<DiagnosticResult> result,
+                                                        SettingsThresholdHost thresholdHost,
+                                                        InfoHelper.Info.NodeInfo.VmBaseInfo<TDetail, TConfig> vm,
+                                                        DiagnosticResultContext context,
+                                                        InfoHelper.Info.NodeInfo node,
+                                                        string id)
+        where TDetail : NodeVmBase
+        where TConfig : VmConfig
+    {
+        var vmid = vm.Detail.VmId;
+
+        #region Vm State
+        result.AddRange(vm.Pending.Where(a => a.Key == "vmstate")
+                            .Select(a => new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "WV0001",
+                                Description = $"Found vmstate '{a.Value}'",
+                                Context = DiagnosticResultContext.Qemu,
+                                SubContext = "VM State",
+                                Gravity = DiagnosticResultGravity.Critical,
+                            }));
+        #endregion
+
+        #region Backup
+        //configured backup get vmdId
+        var found = info.Cluster.Backups.Any(a => a.Enabled && a.All);
+        if (!found)
+        {
+            //in all backup
+            found = info.Cluster.Backups.Where(a => a.Enabled)
+                                       .SelectMany(a => a.VmId.Split(','))
+                                       .Any(a => Convert.ToInt64(a) == vmid);
+
+            if (!found)
+            {
+                //in pool
+                foreach (var item in info.Cluster.Backups
+                                                 .Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool))
+                                                 .Select(a => a.Pool))
+                {
+                    found = info.Pools.Where(a => a.Id == item)
+                                             .SelectMany(a => a.Detail.Members)
+                                             .Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmid);
+
+                    if (found) { break; }
+                }
+            }
+        }
+
+        if (!found)
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "CC0001",
+                Description = "vzdump backup not configured",
+                Context = context,
+                SubContext = "Backup",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+
+        //check disk no backup
+        result.AddRange(vm.Config.Disks.Where(a => !a.Backup)
+                            .Select(a => new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "WV0001",
+                                Description = $"Disk '{a.Id}' disabled for backup",
+                                Context = DiagnosticResultContext.Qemu,
+                                SubContext = "Backup",
+                                Gravity = DiagnosticResultGravity.Critical,
+                            }));
+
+
+        //check exists backup and recent
+        var dayOld = 60;
+        var foundOldBackup = node.Storages.Where(a => a.Detail.Content.Split(",").Contains("backup"))
+                                          .SelectMany(a => a.Content)
+                                          .Where(a => a.VmId == vmid
+                                                      && a.Content == "backup"
+                                                      && a.CreationDate.Date <= info.Date.Date.AddDays(-dayOld));
+        if (foundOldBackup.Any())
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "CC0001",
+                Description = $"{foundOldBackup.Count()} backup" +
+                              $" {ByteSize.FromBytes(foundOldBackup.Sum(a => a.Size))} more {dayOld} days are found!",
+                Context = context,
+                SubContext = "Backup",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+
+        //check exists backup and recent
+        var foundBackup = node.Storages.Where(a => a.Detail.Content.Split(",").Contains("backup"))
+                                       .SelectMany(a => a.Content)
+                                       .Any(a => a.VmId == vmid
+                                                 && a.Content == "backup"
+                                                 && a.CreationDate.Date <= info.Date.Date.AddDays(1));
+        if (!foundBackup)
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "CC0001",
+                Description = "No recent backups found!",
+                Context = context,
+                SubContext = "Backup",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+        #endregion
+
+        CheckTaskHistory(result,
+                         node.Tasks.Where(a => a.VmId == vmid.ToString()),
+                         context,
+                         id);
+
+        CheckSnapshots(result, vm.Snapshots, info.Date, id, context);
+
+        var rrdData = thresholdHost.TimeSeries switch
+        {
+            SettingsTimeSeriesType.Day => vm.RrdData.Day,
+            SettingsTimeSeriesType.Week => vm.RrdData.Week,
+            _ => null,
+        };
+
+        CheckThresholdHost(result,
+                           thresholdHost,
+                           context,
+                           id,
+                           rrdData.Select(a => ((IMemory)a, (INetIO)a, (ICpu)a)));
+    }
+
+    private static void CheckTaskHistory(List<DiagnosticResult> result,
+                                         IEnumerable<NodeTask> tasks,
+                                         DiagnosticResultContext context,
+                                         string id)
+    {
+        var tasksCount = tasks.Count(a => !a.StatusOk);
+        if (tasksCount > 0)
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "IN0001",
+                Description = $"{tasksCount} Task history has errors",
+                Context = context,
+                SubContext = "Tasks",
+                Gravity = DiagnosticResultGravity.Critical,
+            });
+        }
+    }
+
+    private static void CheckThresholdHost(List<DiagnosticResult> result,
+                                           SettingsThresholdHost thresholdHost,
+                                           DiagnosticResultContext context,
+                                           string id,
+                                           IEnumerable<(IMemory Memory, INetIO NetIO, ICpu Cpu)> rrdData)
+    {
+        CheckThreshold(result,
+                       thresholdHost.Cpu,
+                       "WV0002",
+                       context,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100,
+                                0d,
+                                id,
+                                $"CPU (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       true,
+                       false);
+
+        CheckThreshold(result,
+                       thresholdHost.Memory,
+                       "WV0002",
+                       context,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.Memory.MemoryUsage),
+                                rrdData.Average(a => a.Memory.MemorySize),
+                                id,
+                                $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       false,
+                       true);
+
+        CheckThreshold(result,
+                       thresholdHost.Network,
+                        "WV0002",
+                        context,
+                        "Usage",
+                        new[] { (rrdData.Average(a => a.NetIO.NetIn),
+                                 0d,
+                                 id,
+                                 $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                        true,
+                        false);
+
+        CheckThreshold(result,
+                       thresholdHost.Network,
+                       "WV0002",
+                       context,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.NetIO.NetOut),
+                                0d,
+                                id,
+                                $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       true,
+                       false);
+    }
+
+    private static void CheckNodeRrd(List<DiagnosticResult> result,
+                                     Settings settings,
+                                     string id,
+                                     IEnumerable<NodeRrdData> rrdData)
+    {
+        CheckThresholdHost(result,
+                           settings.Node,
+                           DiagnosticResultContext.Node,
+                           id,
+                           rrdData.Select(a => ((IMemory)a, (INetIO)a, (ICpu)a)));
+
+        CheckThreshold(result,
+                       settings.Node.Cpu,
+                       "WV0002",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.IoWait) * 100,
+                                0d,
+                                id,
+                                $"IOWait (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       true,
+                       false);
+
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "WV0002",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.RootUsage),
+                                rrdData.Average(a => a.RootSize),
+                                id,
+                                $"Root space (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       false,
+                       true);
+
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "WV0002",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       new[] { (rrdData.Average(a => a.SwapUsage),
+                                rrdData.Average(a =>  a.SwapSize) ,
+                                id,
+                                $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       false,
+                       true);
+    }
+
+    private static void CheckThreshold(List<DiagnosticResult> result,
+                                       SettingsThreshold<double> threshold,
+                                       string errorCode,
+                                       DiagnosticResultContext context,
+                                       string subContext,
+                                       IEnumerable<(double Usage, double Size, string Id, string PrefixDescription)> data,
+                                       bool isValue,
+                                       bool formatByte)
+    {
+        if (threshold.Warning == 0 || threshold.Critical == 0) { return; }
+
+        var ranges = new[] { threshold.Warning, threshold.Critical, threshold.Critical * 100 };
+        var gravity = new[] { DiagnosticResultGravity.Warning, DiagnosticResultGravity.Critical };
+
+        for (int i = 0; i < 3; i++)
+        {
+            double GetValue(double usage, double size) => Math.Round(isValue ? usage : usage / size * 100.0, 1);
+
+            string MakeDescription(string PrefixDescription, double usage, double size)
+            {
+                var txt = $"{PrefixDescription} usage {GetValue(usage, size)}%";
+                if (formatByte) { txt += $" {ByteSize.FromBytes(usage)} of {ByteSize.FromBytes(size)}"; }
+                return txt;
             }
 
-            CheckThreshold(result,
-                           thresholdHost.Memory,
-                           "WV0002",
-                           context,
-                           "Usage",
-                           new[] { (memUsed / count * 100,
-                                    id,
-                                    $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") });
-
-            CheckThreshold(result,
-                           thresholdHost.Network,
-                            "WV0002",
-                            context,
-                            "Usage",
-                            new[] { (rrdData.Sum(a => (double)a.netin) / count,
-                                     id,
-                                     $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") });
-
-            CheckThreshold(result,
-                           thresholdHost.Network,
-                           "WV0002",
-                           context,
-                           "Usage",
-                           new[] { (rrdData.Sum(a => (double)a.netout) / count,
-                                    id,
-                                    $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") });
-        }
-
-        private static void CheckNodeRrd(List<DiagnosticResult> result,
-                                         Settings settings,
-                                         string id,
-                                         dynamic rrdData)
-        {
-            var data = ((IEnumerable<dynamic>)GetTimeSeries(settings.Node.TimeSeries, rrdData))?.Where(a => a.cpu != null);
-            if (data?.Count() == 0) { return; }
-
-            CheckThresholdHost(result, settings.Node, DiagnosticResultContext.Node, id, data);
-
-            //var loadavg = data.Sum(a => (double)a.loadavg) / data.Count();
-
-            CheckThreshold(result,
-                           settings.Node.Cpu,
-                           "WV0002",
-                           DiagnosticResultContext.Node,
-                           "Usage",
-                           new[] { (data.Sum(a => (double)a.iowait) / data.Count() * 100,
-                                    id,
-                                    $"IOWait (rrd {settings.Node.TimeSeries} AVERAGE)") });
-
-            CheckThreshold(result,
-                           settings.Storage.Threshold,
-                           "WV0002",
-                           DiagnosticResultContext.Node,
-                           "Usage",
-                           new[] { (data.Sum(a => (double)a.rootused / (double)a.roottotal) / data.Count() * 100,
-                                    id,
-                                    $"Root space (rrd {settings.Node.TimeSeries} AVERAGE)") });
-
-            CheckThreshold(result,
-                           settings.Storage.Threshold,
-                           "WV0002",
-                           DiagnosticResultContext.Node,
-                           "Usage",
-                           new[] { (data.Sum(a => (double)a.swapused / (double)a.swaptotal) / data.Count() * 100,
-                                    id,
-                                    $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") });
-        }
-
-        private static dynamic GetTimeSeries(SettingsTimeSeriesType series, dynamic rrdData)
-            => series switch
-            {
-                SettingsTimeSeriesType.Day => rrdData.Day,
-                SettingsTimeSeriesType.Week => rrdData.Week,
-                _ => rrdData.Day,
-            };
-
-        private static void CheckThreshold(List<DiagnosticResult> result,
-                                           SettingsThreshold<double> threshold,
-                                           string errorCode,
-                                           DiagnosticResultContext context,
-                                           string subContext,
-                                           IEnumerable<(double Usage, string Id, string PrefixDescription)> data)
-        {
-            if (threshold.Warning == 0 || threshold.Critical == 0) { return; }
-
-            var ranges = new[] { threshold.Warning, threshold.Critical, threshold.Critical * 100 };
-            var gravity = new[] { DiagnosticResultGravity.Warning, DiagnosticResultGravity.Critical };
-            for (int i = 0; i < 3; i++)
-            {
-                result.AddRange(data
-                                .Where(a => a.Usage >= ranges[i] && a.Usage <= ranges[i + 1])
+            result.AddRange(data.Where(a => GetValue(a.Usage, a.Size) >= ranges[i]
+                                            && GetValue(a.Usage, a.Size) <= ranges[i + 1])
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = a.Id,
                                     ErrorCode = errorCode,
-                                    Description = $"{a.PrefixDescription} usage {Math.Round(a.Usage, 1)}%",
+                                    Description = MakeDescription(a.PrefixDescription, a.Usage, a.Size),
                                     Context = context,
                                     SubContext = subContext,
                                     Gravity = gravity[i],
                                 }));
-            }
+        }
+    }
+
+    // private static void CheckThreshold(List<DiagnosticResult> result,
+    //                                     SettingsThreshold<double> threshold,
+    //                                     string errorCode,
+    //                                     DiagnosticResultContext context,
+    //                                     string subContext,
+    //                                     IEnumerable<(double Usage, string Id, string PrefixDescription)> data)
+    // {
+    //     if (threshold.Warning == 0 || threshold.Critical == 0) { return; }
+
+    //     var ranges = new[] { threshold.Warning, threshold.Critical, threshold.Critical * 100 };
+    //     var gravity = new[] { DiagnosticResultGravity.Warning, DiagnosticResultGravity.Critical };
+
+    //     for (int i = 0; i < 3; i++)
+    //     {
+    //         result.AddRange(data.Where(a => a.Usage >= ranges[i] && a.Usage <= ranges[i + 1])
+    //                             .Select(a => new DiagnosticResult
+    //                             {
+    //                                 Id = a.Id,
+    //                                 ErrorCode = errorCode,
+    //                                 Description = $"{a.PrefixDescription} usage {Math.Round(a.Usage, 1)}%",
+    //                                 Context = context,
+    //                                 SubContext = subContext,
+    //                                 Gravity = gravity[i],
+    //                             }));
+    //     }
+    // }
+
+    private static void CheckSnapshots(List<DiagnosticResult> result,
+                                       IEnumerable<VmSnapshot> snapshots,
+                                       DateTime execution,
+                                       string id,
+                                       DiagnosticResultContext context)
+    {
+        //autosnap
+        if (!snapshots.Any(a => a.Description == "cv4pve-autosnap"))
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "WV0003",
+                Description = "cv4pve-autosnap not configured",
+                Context = context,
+                SubContext = "AutoSnapshot",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
         }
 
-        private static void CheckSnapshots(List<DiagnosticResult> result,
-                                           IEnumerable<dynamic> snapshots,
-                                           DateTime execution,
-                                           string id,
-                                           DiagnosticResultContext context)
+        //old autosnap
+        if (snapshots.Any(a => a.Description == "eve4pve-autosnap"))
         {
-            //autosnap
-            if (snapshots.Where(a => a.description == "cv4pve-autosnap").Count() == 0)
+            result.Add(new DiagnosticResult
             {
-                result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WV0003",
-                    Description = "cv4pve-autosnap not configured",
-                    Context = context,
-                    SubContext = "AutoSnapshot",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+                Id = id,
+                ErrorCode = "WV0003",
+                Description = $"Old AutoSnap 'eve4pve-autosnap' are present. Update new version",
+                Context = context,
+                SubContext = "AutoSnapshot",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
 
-            //old autosnap
-            var oldAutoSnapCount = snapshots.Where(a => a.description == "eve4pve-autosnap").Count();
-            if (oldAutoSnapCount > 0)
+        //old month
+        var snapOldCount = snapshots.Count(a => a.Name != "current" && a.Date < execution.AddMonths(-1));
+        if (snapOldCount > 0)
+        {
+            result.Add(new DiagnosticResult
             {
-                result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WV0003",
-                    Description = $"{oldAutoSnapCount} Old AutoSnap 'eve4pve-autosnap' are present. Update new version",
-                    Context = context,
-                    SubContext = "AutoSnapshot",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-
-            //old month
-            var snapOldCount = snapshots.Where(a => a.name != "current" &&
-                            DateTimeUnixHelper.UnixTimeToDateTime(a.snaptime.Value) < execution.AddMonths(-1))
-                                        .Count();
-            if (snapOldCount > 0)
-            {
-                result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WV0003",
-                    Description = $"{snapOldCount} snapshots older than 1 month",
-                    Context = context,
-                    SubContext = "SnapshotOld",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+                Id = id,
+                ErrorCode = "WV0003",
+                Description = $"{snapOldCount} snapshots older than 1 month",
+                Context = context,
+                SubContext = "SnapshotOld",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
         }
     }
 }

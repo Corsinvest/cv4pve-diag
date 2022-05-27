@@ -68,6 +68,7 @@ this software collect data from Proxmox VE and output list of Warning/Critical/I
 * Custom settings from file --settings-file
 * Ignore issue from file --ignored-issues-file
 * Use Api token --api-token parameter
+* Execution with file parameter e.g. @FileParameter.parm
 
 ## Api token
 
@@ -143,4 +144,19 @@ The regex rule is used for match in Id,SubContext,Description.
     "Gravity": "Critical"
   }
 ]
+```
+
+## Execution with file parameter
+
+Is possible execute with file parameter
+
+```sh
+root@debian:~# cv4pve-diag @FileParameter.parm
+```
+
+File **FileParameter.parm**
+```
+--host=192.168.0.100
+--username=root@pam
+--password=fagiano
 ```

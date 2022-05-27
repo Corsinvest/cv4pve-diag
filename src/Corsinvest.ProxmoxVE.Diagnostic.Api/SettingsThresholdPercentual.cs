@@ -1,17 +1,21 @@
-namespace Corsinvest.ProxmoxVE.Diagnostic.Api
+/*
+ * SPDX-FileCopyrightText: Copyright Corsinvest Srl
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
+namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
+
+/// <summary>
+/// Settings Threshold Percentual
+/// </summary>
+public class SettingsThresholdPercentual : SettingsThreshold<double>
 {
     /// <summary>
-    /// Settings Threshold Percentual
+    /// Constructor
     /// </summary>
-    public class SettingsThresholdPercentual : SettingsThreshold<double>
+    public SettingsThresholdPercentual()
     {
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        public SettingsThresholdPercentual()
-        {
-            Warning = 70;
-            Critical = 80;
-        }
+        Warning = 70;
+        Critical = 80;
     }
 }
