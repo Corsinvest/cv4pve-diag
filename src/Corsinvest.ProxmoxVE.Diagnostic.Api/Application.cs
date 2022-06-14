@@ -1099,7 +1099,7 @@ public class Application
             string MakeDescription(string PrefixDescription, double usage, double size)
             {
                 var txt = $"{PrefixDescription} usage {GetValue(usage, size)}%";
-                if (formatByte) { txt += $" {ByteSize.FromBytes(usage)} of {ByteSize.FromBytes(size)}"; }
+                if (formatByte) { txt += $" - {ByteSize.FromBytes(usage)} of {ByteSize.FromBytes(size)}"; }
                 return txt;
             }
 
