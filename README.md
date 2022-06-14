@@ -1,6 +1,6 @@
 # cv4pve-diag
 
-[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md) [![AppVeyor branch](https://img.shields.io/appveyor/ci/franklupo/cv4pve-diag/master.svg)](https://ci.appveyor.com/project/franklupo/cv4pve-diag)
+[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md)
 
 ```text
     ______                _                      __
