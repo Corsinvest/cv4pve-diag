@@ -545,7 +545,7 @@ public class Application
                        node.Disks.List.Where(a => a.Disk.IsSsd && a.Disk.Wearout != "N/A")
                                  .Select(a =>
                                  (
-                                     100.0 - a.Disk.WearoutValue,
+                                     100.0 - Convert.ToDouble(a.Disk.Wearout),
                                      0d,
                                      id,
                                      $"SSD '{a.Disk.DevPath}'"
