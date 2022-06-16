@@ -14,23 +14,24 @@ Diagnostic for Proxmox VE         (Made in Italy)
 Usage: cv4pve-diag [options]
 
 Options:
-  -?|-h|--help           Show help information
-  --version              Show version information
-  --host                 The host name host[:port],host1[:port],host2[:port]
-  --api-token            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
-  --username             User name <username>@<realm>
-  --password             The password. Specify 'file:path_file' to store password in file.
-  --settings-file        File settings (generated from create-settings)
-  --ignored-issues-file  File ignored issues (generated from create-ignored-issues)
-  --ignored-issues-show  Show second table with ignored issue
-  -o|--output            Type output (default: text) Text,Unicode,UnicodeAlt,Markdown,Html,Json,JsonPretty
-                         Allowed values are: Text, Unicode, UnicodeAlt, Markdown, Html, Json, JsonPretty
+  --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
+  --username <username>                              User name <username>@<realm>
+  --password <password>                              The password. Specify 'file:path_file' to store password in file.
+  --host <host> (REQUIRED)                           The host name host[:port],host1[:port],host2[:port]
+  --settings-file <settings-file>                    File settings (generated from create-settings)
+  --ignored-issues-file <ignored-issues-file>        File ignored issues (generated from create-ignored-issues)
+  --ignored-issues-show                              Show second table with ignored issue
+  -o, --output <Html|Json|JsonPretty|Markdown|Text>  Type output [default: Text]
+  --version                                          Show version information
+  -?, -h, --help                                     Show help and usage information
 
 Commands:
   app-check-update       Check update application
   app-upgrade            Upgrade application
-  create-ignored-issues  Create File ignored issues (ignored-issues.json)
   create-settings        Create file settings (settings.json)
+  create-ignored-issues  Create File ignored issues (ignored-issues.json)
+  export-collect         Export collect data collect to data.json
+  execute                Execute diagnostic and print result to console
 
 Run 'cv4pve-diag [command] --help' for more information about a command.
 
