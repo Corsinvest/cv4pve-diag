@@ -57,19 +57,17 @@ public class Application
     }
 
     private static void CheckUnknown(List<DiagnosticResult> result, InfoHelper.Info info)
-    {
-        result.AddRange(info.Cluster.Resources
-                                   .Where(a => a.IsUnknown)
-                                   .Select(a => new DiagnosticResult
-                                   {
-                                       Id = a.Id,
-                                       ErrorCode = "CU0001",
-                                       Description = $"Unknown resource {a.Type}",
-                                       Context = DiagnosticResult.DecodeContext(a.Type),
-                                       SubContext = "Status",
-                                       Gravity = DiagnosticResultGravity.Critical,
-                                   }));
-    }
+        => result.AddRange(info.Cluster.Resources
+                                       .Where(a => a.IsUnknown)
+                                       .Select(a => new DiagnosticResult
+                                       {
+                                           Id = a.Id,
+                                           ErrorCode = "CU0001",
+                                           Description = $"Unknown resource {a.Type}",
+                                           Context = DiagnosticResult.DecodeContext(a.Type),
+                                           SubContext = "Status",
+                                           Gravity = DiagnosticResultGravity.Critical,
+                                       }));
 
     class NodeStorageContentComparer : IEqualityComparer<NodeStorageContent>
     {
@@ -795,7 +793,7 @@ public class Application
             #endregion
 
             #region Cdrom
-            foreach (string value in vm.Config.ExtensionData.Values)
+            foreach (var value in vm.Config.ExtensionData.Values.Select(a => a.ToString()))
             {
                 if (value.Contains("media=cdrom") && value != "none,media=cdrom")
                 {
