@@ -222,7 +222,7 @@ public class Application
             #endregion
 
             #region Subscription
-            if (node.Subscription.Status != "Active")
+            if (node.Subscription.Status.ToLower() != "active")
             {
                 result.Add(new DiagnosticResult
                 {
@@ -793,7 +793,7 @@ public class Application
             #endregion
 
             #region Cdrom
-            foreach (var value in vm.Config.ExtensionData.Values.Select(a => a.ToString()))
+            foreach (var value in vm.Config.ExtensionData.Values.Where(a => a != null).Select(a => a.ToString()))
             {
                 if (value.Contains("media=cdrom") && value != "none,media=cdrom")
                 {

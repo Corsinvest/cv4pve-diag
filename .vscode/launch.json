@@ -10,8 +10,8 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net6.0/cv4pve-diag.dll",
-            "args": [],
+            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net7.0/cv4pve-diag.dll",
+            "args": ["@Parm1.Parm"],
             "cwd": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",

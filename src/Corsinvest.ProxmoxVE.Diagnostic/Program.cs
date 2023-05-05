@@ -26,10 +26,10 @@ class Program
 
         var app = ConsoleHelper.CreateApp("cv4pve-diag", "Diagnostic for Proxmox VE");
 
-        var optSettingsFile = app.AddOption("--settings-file", "File settings (generated from create-settings)");
+        var optSettingsFile = app.AddOption<string>("--settings-file", "File settings (generated from create-settings)");
         optSettingsFile.AddValidatorExistFile();
 
-        var optIgnoredIssuesFile = app.AddOption("--ignored-issues-file", "File ignored issues (generated from create-ignored-issues)");
+        var optIgnoredIssuesFile = app.AddOption<string>("--ignored-issues-file", "File ignored issues (generated from create-ignored-issues)");
         optSettingsFile.AddValidatorExistFile();
 
         var optShowIgnoredIssues = app.AddOption<bool>("--ignored-issues-show", "Show second table with ignored issue");
@@ -64,10 +64,10 @@ class Program
         var fileExport = "data.json";
         var cmdExportCollect = app.AddCommand("export-collect", $"Export collect data collect to {fileExport}");
         cmdExportCollect.SetHandler(async () =>
-       {
-           File.WriteAllText(fileExport, JsonSerializer.Serialize(await GetInfo(), new JsonSerializerOptions { WriteIndented = true }));
-           Console.Out.WriteLine($"Exported {fileExport}!");
-       });
+        {
+            File.WriteAllText(fileExport, JsonSerializer.Serialize(await GetInfo(), new JsonSerializerOptions { WriteIndented = true }));
+            Console.Out.WriteLine($"Exported {fileExport}!");
+        });
 
         var cmdExamineCollect = app.AddCommand("examine-collect", $"Examine collect data collect from {fileExport}");
         cmdExamineCollect.IsHidden = true;

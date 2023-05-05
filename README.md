@@ -3,15 +3,20 @@
 [![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md)
 
 ```text
-    ______                _                      __
-   / ____/___  __________(_)___ _   _____  _____/ /_
-  / /   / __ \/ ___/ ___/ / __ \ | / / _ \/ ___/ __/
- / /___/ /_/ / /  (__  ) / / / / |/ /  __(__  ) /_
- \____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
+     ______                _                      __
+    / ____/___  __________(_)___ _   _____  _____/ /_
+   / /   / __ \/ ___/ ___/ / __ \ | / / _ \/ ___/ __/
+  / /___/ /_/ / /  (__  ) / / / / |/ /  __(__  ) /_
+  \____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
 
-Diagnostic for Proxmox VE         (Made in Italy)
 
-Usage: cv4pve-diag [options]
+  Diagnostic for Proxmox VE                      (Made in Italy)
+
+  cv4pve-diag is a part of suite cv4pve.
+  For more information visit https://www.corsinvest.it/cv4pve
+
+Usage:
+  cv4pve-diag [command] [options]
 
 Options:
   --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
@@ -26,17 +31,10 @@ Options:
   -?, -h, --help                                     Show help and usage information
 
 Commands:
-  app-check-update       Check update application
-  app-upgrade            Upgrade application
   create-settings        Create file settings (settings.json)
   create-ignored-issues  Create File ignored issues (ignored-issues.json)
   export-collect         Export collect data collect to data.json
   execute                Execute diagnostic and print result to console
-
-Run 'cv4pve-diag [command] --help' for more information about a command.
-
-cv4pve-diag is a part of suite cv4pve-tools.
-For more information visit https://www.cv4pve-tools.com
 ```
 
 ## Copyright and License
@@ -46,7 +44,7 @@ For licensing details please visit [LICENSE.md](LICENSE.md)
 
 ## Commercial Support
 
-This software is part of a suite of tools called cv4pve-tools. If you want commercial support, visit the [site](https://www.cv4pve-tools.com)
+This software is part of a suite of tools called cv4pve-tools. If you want commercial support, visit the [site](https://www.corsinvest.it/cv4pve)
 
 ## Tutorial
 
