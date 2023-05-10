@@ -124,6 +124,5 @@ class Program
                                             output));
     }
 
-    private static string PrintEnum(string title, Type typeEnum)
-        => $"Values for {title}: {string.Join(", ", Enum.GetNames(typeEnum))}";
+    private static string PrintEnum(string title, Type typeEnum) => $"Values for {title}: {string.Join(", ", Enum.GetNames(typeEnum))}";
 }
