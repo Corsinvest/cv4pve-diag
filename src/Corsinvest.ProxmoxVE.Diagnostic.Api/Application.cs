@@ -6,13 +6,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Corsinvest.ProxmoxVE.Api.Extension.Utils;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Humanizer.Bytes;
+using Newtonsoft.Json;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -166,8 +170,7 @@ public class Application
         #endregion
     }
 
-    private static InfoHelper.Info.NodeInfo GetNode(InfoHelper.Info info, string node)
-        => info.Nodes.FirstOrDefault(a => a.Detail.Node == node);
+    private static InfoHelper.Info.NodeInfo GetNode(InfoHelper.Info info, string node) => info.Nodes.FirstOrDefault(a => a.Detail.Node == node);
 
     private static void CheckNode(InfoHelper.Info info,
                                   List<DiagnosticResult> result,
@@ -176,6 +179,13 @@ public class Application
     {
         var nodes = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
         var hasCluster = info.Cluster.Config.Nodes.Any();
+
+        var endOfLife = new Dictionary<int, DateTime>()
+                        {
+                            {6 , new DateTime(2022,07,01)},
+                            {5 , new DateTime(2020,07,01)},
+                            {4 , new DateTime(2018,06,01)},
+                        };
 
         //node
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Node))
@@ -198,22 +208,17 @@ public class Application
             }
 
             #region End Of Life
-            var endOfLife = new Dictionary<int, DateOnly>()
-            {
-                {6 , new DateOnly(2022,07,01)},
-                {5 , new DateOnly(2020,07,01)},
-                {4 , new DateOnly(2018,06,01)},
-            };
-
             var nodeVersion = int.Parse(node.Version.Version.Split('.')[0]);
 
-            if (endOfLife.TryGetValue(nodeVersion, out var eolDate))
+            if (endOfLife.TryGetValue(nodeVersion, out var eolDate) && DateTime.Now.Date >= eolDate)
             {
+
+
                 result.Add(new DiagnosticResult
                 {
                     Id = errorId,
                     ErrorCode = "WN0001",
-                    Description = $"Version {node.Version.Version} end of life {eolDate} ",
+                    Description = $"Version {node.Version.Version} end of life {eolDate}",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "EOL",
                     Gravity = DiagnosticResultGravity.Warning,
