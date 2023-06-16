@@ -47,8 +47,7 @@ class Program
         var cmdCreateIgnoredIssues = app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})");
         cmdCreateIgnoredIssues.SetHandler(() =>
         {
-            File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
-            File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new [] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
             Console.Out.WriteLine(PrintEnum("Context", typeof(DiagnosticResultContext)));
             Console.Out.WriteLine(PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
             Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
@@ -63,7 +62,7 @@ class Program
 
         var fileExport = "data.json";
         var cmdExportCollect = app.AddCommand("export-collect", $"Export collect data collect to {fileExport}");
-        cmdExportCollect.SetHandler(async () =>
+        cmdExportCollect.SetHandler(async() =>
         {
             File.WriteAllText(fileExport, JsonSerializer.Serialize(await GetInfo(), new JsonSerializerOptions { WriteIndented = true }));
             Console.Out.WriteLine($"Exported {fileExport}!");
@@ -81,10 +80,10 @@ class Program
         }, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
 
         var cmdExecute = app.AddCommand("execute", $"Execute diagnostic and print result to console");
-        cmdExecute.SetHandler(async (string settingsFile,
-                                            string ignoredIssuesFile,
-                                            bool showIgnoredIssues,
-                                            TableGenerator.Output output) =>
+        cmdExecute.SetHandler(async(string settingsFile,
+                                    string ignoredIssuesFile,
+                                    bool showIgnoredIssues,
+                                    TableGenerator.Output output) =>
         {
             Print(await GetInfo(), settingsFile, ignoredIssuesFile, showIgnoredIssues, output);
         }, optSettingsFile, optIgnoredIssuesFile, optShowIgnoredIssues, optOutput);
@@ -99,12 +98,12 @@ class Program
                               TableGenerator.Output output)
     {
         var settings = !string.IsNullOrWhiteSpace(settingsFile)
-                            ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile))
-                            : new Settings();
+            ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile))
+            : new Settings();
 
         var ignoredIssues = !string.IsNullOrWhiteSpace(ignoredIssuesFile)
-                                ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(ignoredIssuesFile))
-                                : new List<DiagnosticResult>();
+            ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(ignoredIssuesFile))
+            : new List<DiagnosticResult>();
 
         var result = Application.Analyze(info, settings, ignoredIssues);
 
