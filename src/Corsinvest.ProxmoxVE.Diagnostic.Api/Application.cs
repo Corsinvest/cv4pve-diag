@@ -6,17 +6,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Corsinvest.ProxmoxVE.Api.Extension.Utils;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Humanizer.Bytes;
-using Newtonsoft.Json;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -479,7 +475,7 @@ public class Application
                 {
                     Id = errorId,
                     ErrorCode = "IN0001",
-                    Description = $"{updateCount} Update availble",
+                    Description = $"{updateCount} Update available",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Update",
                     Gravity = DiagnosticResultGravity.Info,
@@ -495,7 +491,7 @@ public class Application
                 {
                     Id = errorId,
                     ErrorCode = "IN0001",
-                    Description = $"{updateImportantCount} Update Important availble",
+                    Description = $"{updateImportantCount} Update Important available",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Update",
                     Gravity = DiagnosticResultGravity.Warning,
@@ -599,7 +595,7 @@ public class Application
         {
             var node = GetNode(info, item.Node);
             var vm = node.Lxc.FirstOrDefault(a => a.Detail.VmId == item.VmId);
-            CheckCommonVm(info, result, settings.Qemu, vm, DiagnosticResultContext.Lxc, node, item.VmId.ToString());
+            CheckCommonVm(info, result, settings.Lxc, vm, DiagnosticResultContext.Lxc, node, item.VmId.ToString());
         }
     }
 
@@ -833,15 +829,15 @@ public class Application
 
         #region Vm State
         result.AddRange(vm.Pending.Where(a => a.Key == "vmstate")
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WV0001",
-                                Description = $"Found vmstate '{a.Value}'",
-                                Context = DiagnosticResultContext.Qemu,
-                                SubContext = "VM State",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            }));
+                                  .Select(a => new DiagnosticResult
+                                  {
+                                      Id = id,
+                                      ErrorCode = "WV0001",
+                                      Description = $"Found vmstate '{a.Value}'",
+                                      Context = DiagnosticResultContext.Qemu,
+                                      SubContext = "VM State",
+                                      Gravity = DiagnosticResultGravity.Critical,
+                                  }));
         #endregion
 
         #region Backup
@@ -850,37 +846,36 @@ public class Application
         if (!found)
         {
             //in all backup
-            found = info.Cluster.Backups.Where(a => a.Enabled)
-                                       .SelectMany(a => a.VmId.Split(','))
-                                       .Any(a => Convert.ToInt64(a) == vmid);
+            found = info.Cluster.Backups.Where(a => a.Enabled && string.IsNullOrEmpty(a.VmId))
+                                        .SelectMany(a => a.VmId.Split(','))
+                                        .Any(a => Convert.ToInt64(a) == vmid);
 
+            //in pool
             if (!found)
             {
-                //in pool
                 foreach (var item in info.Cluster.Backups
                                                  .Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool))
                                                  .Select(a => a.Pool))
                 {
                     found = info.Pools.Where(a => a.Id == item)
-                                             .SelectMany(a => a.Detail.Members)
-                                             .Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmid);
-
+                                      .SelectMany(a => a.Detail.Members)
+                                      .Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmid);
                     if (found) { break; }
                 }
             }
-        }
 
-        if (!found)
-        {
-            result.Add(new DiagnosticResult
+            if (!found)
             {
-                Id = id,
-                ErrorCode = "CC0001",
-                Description = "vzdump backup not configured",
-                Context = context,
-                SubContext = "Backup",
-                Gravity = DiagnosticResultGravity.Warning,
-            });
+                result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "CC0001",
+                    Description = "vzdump backup not configured",
+                    Context = context,
+                    SubContext = "Backup",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
         }
 
         //check disk no backup
