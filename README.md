@@ -1,6 +1,6 @@
 # cv4pve-diag
 
-[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md)
+[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md) ![GitHub all releases](https://img.shields.io/github/downloads/corsinvest/cv4pve-diag/total)
 
 ```text
      ______                _                      __
