@@ -83,6 +83,7 @@ Download last package e.g. Debian cv4pve-diag-linux-x64.zip, on your os and inst
 
 ```sh
 root@debian:~# unzip cv4pve-diag-linux-x64.zip
+root@debian:~# chmod +x cv4pve-diag 
 ```
 
 This tool need basically no configuration.
