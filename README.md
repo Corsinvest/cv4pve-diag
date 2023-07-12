@@ -123,7 +123,7 @@ Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
                     NOTE: x.x.x is the Version Number
 
-                    Example for v1.4.8:      
+                    Example Option B for v1.4.8:      
 		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x86.zip
 
          x64 Version:
@@ -132,7 +132,7 @@ Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
                     NOTE: x.x.x is the Version Number
 
-		    Example for v1.4.8:      
+		    Example Option B for v1.4.8:      
 		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip 
        
 
