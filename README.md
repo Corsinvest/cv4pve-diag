@@ -110,7 +110,7 @@ Attention: There is a Slight Delay when using the Tool due to Processing the Inf
 
 ```
 ```sh
-Install on Windows
+Install on Windows x86 and x64
 
 Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
          cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
