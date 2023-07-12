@@ -76,6 +76,7 @@ This feature permit execute Api without using user and password.
 If using **Privilege Separation** when create api token remember specify in permission.
 
 ## Configuration
+Supports Linux, Windows, OSX and ARM
 
 Install on Linux x64
 
@@ -106,8 +107,38 @@ Example at the Root Directory:
 root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
 
 ```
+```sh
+Install on Windows
 
+Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
+         cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
+x86 Version:                                                                           Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+                    NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
+                   NOTE: x.x.x is the Version Number
+         
+         x64 Version:
+         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+         NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
+         NOTE: x.x.x is the Version Number  
+       
+
+Step 2 - Run the Diagnostic Tool:  
+         Example for x86 Version Running in PowerShell:         
+C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                            NOTE: The .\ in front of the Command cv4pve-diag is needed.
+                                  It is Recommened to Run the Tool in PowerShell
+                                  when Outputing in Text Mode for proper                                                 Displaying of the Data.  You can use CMD(DOS                                   Terminal) however there is a Limatation of Displaying correctly. 
+
+         Example for x86 Version Running in CMD(DOS Terminal):
+C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
+                            NOTE:  .\ in front of the Command cv4pve-diag is not needed.                                  
+
+Take Notice is a Slight Delay when using the Program due to Processing the Information. Please wait for Data to Display.
+```
 ```txt
+
 -------------------------------------------------------------------------------------------------------------------------------------
 | Id                             | Description                                                  | Context | SubContext   | Gravity  |
 -------------------------------------------------------------------------------------------------------------------------------------
