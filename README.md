@@ -81,7 +81,8 @@ Install on Linux x64
 
 Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:
          wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
-	 NOTE: x.x.x is the Version Number
+	 
+         NOTE: x.x.x is the Version Number
 	 Example for v1.4.8: 
 	 root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
 	 
