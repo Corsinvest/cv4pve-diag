@@ -116,17 +116,24 @@ Install on Windows x86 and x64
 
 Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
          cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
+
          x86 Version:
          Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
                     NOTE: Select under Assets and Choose Lastest Version
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
                     NOTE: x.x.x is the Version Number
-         
+
+                    Example for v1.4.8:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x86.zip
+
          x64 Version:
          Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
                     NOTE: Select under Assets and Choose Lastest Version
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
-                    NOTE: x.x.x is the Version Number  
+                    NOTE: x.x.x is the Version Number
+
+		    Example for v1.4.8:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip 
        
 
 Step 2 - Run the Diagnostic Tool:  
