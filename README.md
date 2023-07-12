@@ -96,8 +96,8 @@ Step 3 - Chmod cv4pve-diag to Add Persmissions to Execute cv4pve-diag:
 ```
 
     Step 4 - Run the Diagnostic Tool:  
-             NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag
-	         If you are at the Root Directory, use the Directory Path to cv4pve-diag 
+             NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+	               If you are at the Root Directory, use the Directory Path to cv4pve-diag 
 ```sh
 Example in the same Directory:
 root@debian:/cv4pvediag# ./cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
