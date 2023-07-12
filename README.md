@@ -111,8 +111,8 @@ root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 -
 Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
 
 ```
-```sh
 Install on Windows x86 and x64
+```sh
 
 Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
          cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
