@@ -136,7 +136,8 @@ Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
 		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip 
        
 
-Step 2 - Run the Diagnostic Tool:  
+Step 2 - Run the Diagnostic Tool:
+
          Example for x86 Version Running in PowerShell:         
 C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
                             NOTE: The .\ in front of the Command cv4pve-diag is needed.
