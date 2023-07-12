@@ -79,12 +79,12 @@ If using **Privilege Separation** when create api token remember specify in perm
 
 Install on Linux x64
 
-Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
-        wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
-	
-	 NOTE: x.x.x is the Version Number
-	 Example for v1.4.8: 
-	 root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
+    Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+             wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
+	         NOTE: x.x.x is the Version Number
+	         
+	         Example for v1.4.8: 
+	         root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
 	 
 ```sh
 Step 2 - Unzip cv4pve-diag-linux-x64.zip to a Directory of your Choice:
@@ -95,9 +95,9 @@ Step 3 - Chmod cv4pve-diag to Add Persmissions to Execute cv4pve-diag:
 	 NOTE: This Allows Owner\Group\Others to Execute cv4pve-diag
 ```
 
-Step 4 - Run the Diagnostic Tool:  
-         NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag
-	       If you are at the Root Directory, use the Directory Path to cv4pve-diag 
+    Step 4 - Run the Diagnostic Tool:  
+             NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag
+	         If you are at the Root Directory, use the Directory Path to cv4pve-diag 
 ```sh
 Example in the same Directory:
 root@debian:/cv4pvediag# ./cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
