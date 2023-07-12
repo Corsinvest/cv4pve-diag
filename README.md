@@ -141,7 +141,7 @@ C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:800
 C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
                             NOTE:  .\ in front of the Command cv4pve-diag is not needed.                                  
 
-Attention: There is a Slight Delay when using the Program due to Processing the Information. Please wait for Data to Display.
+Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
 ```
 ```txt
 						   OUTPUT OF CV4PVE-DIAG DATA
