@@ -76,23 +76,83 @@ This feature permit execute Api without using user and password.
 If using **Privilege Separation** when create api token remember specify in permission.
 
 ## Configuration
+Supports Linux, Windows, OSX and ARM
 
-E.g. install on linux 64
+Install on Linux x64
 
-Download last package e.g. Debian cv4pve-diag-linux-x64.zip, on your os and install:
-
+    Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+             wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
+	         NOTE: x.x.x is the Version Number
+	         
+	         Example for v1.4.8: 
+	         root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
+	 
 ```sh
-root@debian:~# unzip cv4pve-diag-linux-x64.zip
-root@debian:~# chmod +x cv4pve-diag 
+Step 2 - Unzip cv4pve-diag-linux-x64.zip to a Directory of your Choice:
+         root@debian:/# unzip cv4pve-diag-linux-x64.zip
+
+Step 3 - Chmod cv4pve-diag to Add Persmissions to Execute cv4pve-diag:
+         root@debian:/# chmod +x cv4pve-diag 
+	 NOTE: This Allows Owner\Group\Others to Execute cv4pve-diag
 ```
 
-This tool need basically no configuration.
-
+    Step 4 - Run the Diagnostic Tool:  
+             NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+	               If you are at the Root Directory, use the Directory Path to cv4pve-diag 
 ```sh
-root@debian:~# cv4pve-diag --host=192.168.0.100 --username=root@pam --password=fagiano
-```
+Example Running Tool within its Directory:
+root@debian:/cv4pvediag# ./cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                         NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
 
+Example Running from the Root Directory:
+root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                        NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+
+Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
+
+```
+Install on Windows x86 and x64
+```sh
+
+Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
+         cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
+
+         x86 Version:
+         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+                    NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
+                    NOTE: x.x.x is the Version Number
+
+                    Example Option B for v1.4.8:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x86.zip
+
+         x64 Version:
+         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+                    NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
+                    NOTE: x.x.x is the Version Number
+
+		    Example Option B for v1.4.8:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip 
+       
+
+Step 2 - Run the Diagnostic Tool:
+
+         Example for x86 Version Running in PowerShell:         
+C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                            NOTE: The .\ in front of the Command cv4pve-diag is needed.
+                                  It is Recommened to Run the Tool in PowerShell
+                                  when Outputing in Text Mode for proper Displaying of the Data.
+                                  You can use CMD(DOS Terminal) however there is a Limatation of Displaying correctly. 
+
+         Example for x86 Version Running in CMD(DOS Terminal):
+C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
+                            NOTE:  .\ in front of the Command cv4pve-diag is not needed.                                  
+
+Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
+```
 ```txt
+						   OUTPUT OF CV4PVE-DIAG DATA
 -------------------------------------------------------------------------------------------------------------------------------------
 | Id                             | Description                                                  | Context | SubContext   | Gravity  |
 -------------------------------------------------------------------------------------------------------------------------------------
@@ -157,7 +217,7 @@ root@debian:~# cv4pve-diag @FileParameter.parm
 File **FileParameter.parm**
 
 ```txt
---host=192.168.0.100
+--host=192.168.0.100:8006
 --username=root@pam
---password=fagiano
+--password=password
 ```
