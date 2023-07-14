@@ -15,7 +15,7 @@
   cv4pve-diag is a part of suite cv4pve.
   For more information visit https://www.corsinvest.it/cv4pve
 
-Command Syntax:
+Usage:
   cv4pve-diag [command] [options]
 
 Options:
