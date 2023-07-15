@@ -16,7 +16,7 @@
   For more information visit https://www.corsinvest.it/cv4pve
 
 Usage:
-  cv4pve-diag [command] [options]
+  cv4pve-diag [options] [command]
 
 Options:
   --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
