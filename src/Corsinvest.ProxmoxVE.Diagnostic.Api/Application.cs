@@ -204,7 +204,7 @@ public class Application
             }
 
             #region End Of Life
-            var nodeVersion = int.Parse(node.Version.Version.Split('.')[0]);
+            var nodeVersion = int.Parse(node.Version.Version.Split(".")[0]);
 
             if (endOfLife.TryGetValue(nodeVersion, out var eolDate) && DateTime.Now.Date >= eolDate)
             {
@@ -841,30 +841,29 @@ public class Application
         #endregion
 
         #region Backup
-        //configured backup get vmdId
-        var found = info.Cluster.Backups.Any(a => a.Enabled && a.All);
-        if (!found)
+        //in all backup
+        var foundBackupConfig = info.Cluster.Backups.Any(a => a.Enabled && a.All);
+        if (!foundBackupConfig)
         {
-            //in all backup
-            found = info.Cluster.Backups.Where(a => a.Enabled && string.IsNullOrEmpty(a.VmId))
-                                        .SelectMany(a => a.VmId.Split(','))
+            foundBackupConfig = info.Cluster.Backups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
+                                        .SelectMany(a => a.VmId.Split(","))
                                         .Any(a => Convert.ToInt64(a) == vmid);
 
             //in pool
-            if (!found)
+            if (!foundBackupConfig)
             {
                 foreach (var item in info.Cluster.Backups
                                                  .Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool))
                                                  .Select(a => a.Pool))
                 {
-                    found = info.Pools.Where(a => a.Id == item)
+                    foundBackupConfig = info.Pools.Where(a => a.Id == item)
                                       .SelectMany(a => a.Detail.Members)
                                       .Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmid);
-                    if (found) { break; }
+                    if (foundBackupConfig) { break; }
                 }
             }
 
-            if (!found)
+            if (!foundBackupConfig)
             {
                 result.Add(new DiagnosticResult
                 {
@@ -1148,14 +1147,17 @@ public class Application
                                        string id,
                                        DiagnosticResultContext context)
     {
+        const string autosnapAppName= "cv4pve-autosnap";
+        const string autosnapAppNameOld = "eve4pve-autosnap";
+
         //autosnap
-        if (!snapshots.Any(a => a.Description == "cv4pve-autosnap"))
+        if (!snapshots.Any(a => a.Description == autosnapAppName || a.Description == $"{autosnapAppName}\n"))
         {
             result.Add(new DiagnosticResult
             {
                 Id = id,
                 ErrorCode = "WV0003",
-                Description = "cv4pve-autosnap not configured",
+                Description = $"'{autosnapAppName}' not configured",
                 Context = context,
                 SubContext = "AutoSnapshot",
                 Gravity = DiagnosticResultGravity.Warning,
@@ -1163,13 +1165,13 @@ public class Application
         }
 
         //old autosnap
-        if (snapshots.Any(a => a.Description == "eve4pve-autosnap"))
+        if (snapshots.Any(a => a.Description == autosnapAppNameOld || a.Description == $"{autosnapAppNameOld}\n"))
         {
             result.Add(new DiagnosticResult
             {
                 Id = id,
                 ErrorCode = "WV0003",
-                Description = $"Old AutoSnap 'eve4pve-autosnap' are present. Update new version",
+                Description = $"Old AutoSnap '{autosnapAppNameOld}' are present. Update new version",
                 Context = context,
                 SubContext = "AutoSnapshot",
                 Gravity = DiagnosticResultGravity.Warning,

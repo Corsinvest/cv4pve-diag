@@ -7,9 +7,9 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
+                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln",
                 "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
             "problemMatcher": "$msCompile"
         },
@@ -19,9 +19,9 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
+                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln",
                 "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
             "problemMatcher": "$msCompile"
         },
@@ -32,9 +32,8 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "--project",
+                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln"
             ],
             "problemMatcher": "$msCompile"
         }

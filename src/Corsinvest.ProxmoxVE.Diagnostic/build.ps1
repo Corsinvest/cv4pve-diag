@@ -16,11 +16,11 @@ Write-Output "
  == Build System
  ========================================================="
 
-$pathNet = "Bin\Release\net7.0"
+$pathNet = "Bin\Release\net8.0"
 
 Remove-Item -Path ".\$pathNet"  -Recurse -Force
 
-$rids = @("linux-x64", "linux-arm", "linux-arm64", "osx-x64", "win-x86", "win-x64", "win-arm", "win-arm64")
+$rids = @("linux-x64", "linux-arm", "linux-arm64", "osx-x64","osx-arm64", "win-x86", "win-x64", "win-arm64")
 foreach ($rid in $rids) {
     dotnet publish -r $rid -c Release /p:PublishSingleFile=true --self-contained #/p:EnableCompressionInSingleFile=true
     $path = "$pathNet\$rid\publish\"
