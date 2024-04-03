@@ -69,6 +69,10 @@ this software collect data from Proxmox VE and output list of Warning/Critical/I
 * Use Api token --api-token parameter
 * Execution with file parameter e.g. @FileParameter.parm
 
+## Web GUI Version in cv4pve-admin
+
+[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)
+
 ## Api token
 
 From version 6.2 of Proxmox VE is possible to use [Api token](https://pve.proxmox.com/pve-docs/pveum-plain.html).
