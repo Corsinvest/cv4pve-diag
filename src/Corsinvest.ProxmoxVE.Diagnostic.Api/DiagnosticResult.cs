@@ -43,7 +43,7 @@ public class DiagnosticResult
     public DiagnosticResultContext Context { get; set; }
 
     /// <summary>
-    /// Subcontext
+    /// Sub context
     /// </summary>
     /// <value></value>
     public string SubContext { get; set; }
@@ -65,9 +65,9 @@ public class DiagnosticResult
     /// Decode context
     /// </summary>
     public static DiagnosticResultContext DecodeContext(string text)
-        => Enum.TryParse<DiagnosticResultContext>(text, true, out var ret) ?
-                            (DiagnosticResultContext)ret :
-                            DiagnosticResultContext.Cluster;
+        => Enum.TryParse<DiagnosticResultContext>(text, true, out var ret)
+                ? ret
+                : DiagnosticResultContext.Cluster;
 
     /// <summary>
     /// Check ignore issue

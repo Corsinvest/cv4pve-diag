@@ -22,6 +22,7 @@ Options:
   --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
   --username <username>                              User name <username>@<realm>
   --password <password>                              The password. Specify 'file:path_file' to store password in file.
+  --validate-certificate                             Validate SSL Certificate Proxmox VE node.
   --host <host> (REQUIRED)                           The host name host[:port],host1[:port],host2[:port]
   --settings-file <settings-file>                    File settings (generated from create-settings)
   --ignored-issues-file <ignored-issues-file>        File ignored issues (generated from create-ignored-issues)
@@ -68,6 +69,7 @@ this software collect data from Proxmox VE and output list of Warning/Critical/I
 * Ignore issue from file --ignored-issues-file
 * Use Api token --api-token parameter
 * Execution with file parameter e.g. @FileParameter.parm
+* Validate certificate SSL, default not validate
 
 ## Api token
 
@@ -80,25 +82,25 @@ Supports Linux, Windows, OSX and ARM
 
 Install on Linux x64
 
-    Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+    Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:
              wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
 	         NOTE: x.x.x is the Version Number
-	         
-	         Example for v1.4.8: 
+
+	         Example for v1.4.8:
 	         root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
-	 
+
 ```sh
 Step 2 - Unzip cv4pve-diag-linux-x64.zip to a Directory of your Choice:
          root@debian:/# unzip cv4pve-diag-linux-x64.zip
 
 Step 3 - Chmod cv4pve-diag to Add Persmissions to Execute cv4pve-diag:
-         root@debian:/# chmod +x cv4pve-diag 
+         root@debian:/# chmod +x cv4pve-diag
 	 NOTE: This Allows Owner\Group\Others to Execute cv4pve-diag
 ```
 
-    Step 4 - Run the Diagnostic Tool:  
+    Step 4 - Run the Diagnostic Tool:
              NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
-	               If you are at the Root Directory, use the Directory Path to cv4pve-diag 
+	               If you are at the Root Directory, use the Directory Path to cv4pve-diag
 ```sh
 Example Running Tool within its Directory:
 root@debian:/cv4pvediag# ./cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
@@ -114,7 +116,7 @@ Attention: There is a Slight Delay when using the Tool due to Processing the Inf
 Install on Windows x86 and x64
 ```sh
 
-Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or 
+Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
          cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
 
          x86 Version:
@@ -123,7 +125,7 @@ Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
                     NOTE: x.x.x is the Version Number
 
-                    Example Option B for v1.4.8:      
+                    Example Option B for v1.4.8:
 		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x86.zip
 
          x64 Version:
@@ -132,22 +134,22 @@ Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
          Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
                     NOTE: x.x.x is the Version Number
 
-		    Example Option B for v1.4.8:      
-		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip 
-       
+		    Example Option B for v1.4.8:
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip
+
 
 Step 2 - Run the Diagnostic Tool:
 
-         Example for x86 Version Running in PowerShell:         
+         Example for x86 Version Running in PowerShell:
 C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
                             NOTE: The .\ in front of the Command cv4pve-diag is needed.
                                   It is Recommened to Run the Tool in PowerShell
                                   when Outputing in Text Mode for proper Displaying of the Data.
-                                  You can use CMD(DOS Terminal) however there is a Limatation of Displaying correctly. 
+                                  You can use CMD(DOS Terminal) however there is a Limatation of Displaying correctly.
 
          Example for x86 Version Running in CMD(DOS Terminal):
-C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
-                            NOTE:  .\ in front of the Command cv4pve-diag is not needed.                                  
+C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                            NOTE:  .\ in front of the Command cv4pve-diag is not needed.
 
 Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
 ```

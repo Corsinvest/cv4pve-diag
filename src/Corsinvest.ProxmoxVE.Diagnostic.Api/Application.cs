@@ -47,9 +47,9 @@ public class Application
         //filter with ignore
         foreach (var ignoredIssue in ignoredIssues)
         {
-            foreach (var item in result)
+            foreach (var item in result.Where(a => ignoredIssue.CheckIgnoreIssue(a)))
             {
-                if (ignoredIssue.CheckIgnoreIssue(item)) { item.IsIgnoredIssue = true; }
+                item.IsIgnoredIssue = true;
             }
         }
 
@@ -87,17 +87,16 @@ public class Application
                                      Settings settings)
     {
         //storage
-        result.AddRange(resources
-                        .Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
-                        .Select(a => new DiagnosticResult
-                        {
-                            Id = a.Id,
-                            ErrorCode = "CS0001",
-                            Description = "Storage not available",
-                            Context = DiagnosticResultContext.Storage,
-                            SubContext = "Status",
-                            Gravity = DiagnosticResultGravity.Critical,
-                        }));
+        result.AddRange(resources.Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
+                                 .Select(a => new DiagnosticResult
+                                 {
+                                     Id = a.Id,
+                                     ErrorCode = "CS0001",
+                                     Description = "Storage not available",
+                                     Context = DiagnosticResultContext.Storage,
+                                     SubContext = "Status",
+                                     Gravity = DiagnosticResultGravity.Critical,
+                                 }));
 
         //storage usage
         CheckThreshold(result,
@@ -128,7 +127,7 @@ public class Application
                                        .SelectMany(a => a.Content)
                                        .Where(a => a.Content == "images");
             storagesImages.AddRange(content);
-        };
+        }
 
         storagesImages = storagesImages.Distinct(new NodeStorageContentComparer()).ToList();
 
@@ -139,7 +138,7 @@ public class Application
             {
                 VmType.Qemu => node.Qemu.First(a => a.Detail.VmId == item.VmId).Config,
                 VmType.Lxc => (VmConfig)node.Lxc.First(a => a.Detail.VmId == item.VmId).Config,
-                _ => null,
+                _ => throw new ArgumentOutOfRangeException(nameof(resources)),
             };
 
             //check disk exists
@@ -318,15 +317,15 @@ public class Application
 
             #region Network Card
             result.AddRange(node.Network.Where(a => a.Type == "eth" && !a.Active)
-                          .Select(a => new DiagnosticResult
-                          {
-                              Id = errorId,
-                              ErrorCode = "WN0002",
-                              Description = $"Network card '{a.Interface}' not active",
-                              Context = DiagnosticResultContext.Node,
-                              SubContext = "Network",
-                              Gravity = DiagnosticResultGravity.Warning,
-                          }));
+                                        .Select(a => new DiagnosticResult
+                                        {
+                                            Id = errorId,
+                                            ErrorCode = "WN0002",
+                                            Description = $"Network card '{a.Interface}' not active",
+                                            Context = DiagnosticResultContext.Node,
+                                            SubContext = "Network",
+                                            Gravity = DiagnosticResultGravity.Warning,
+                                        }));
             #endregion
 
             #region Package Versions
@@ -542,28 +541,28 @@ public class Application
                        DiagnosticResultContext.Node,
                        "SSD Wearout",
                        node.Disks.List.Where(a => a.Disk.IsSsd && a.Disk.Wearout != "N/A")
-                                 .Select(a =>
-                                 (
-                                     100.0 - Convert.ToDouble(a.Disk.Wearout),
-                                     0d,
-                                     id,
-                                     $"SSD '{a.Disk.DevPath}'"
-                                 )),
+                                      .Select(a =>
+                                      (
+                                            100.0 - Convert.ToDouble(a.Disk.Wearout),
+                                            0d,
+                                            id,
+                                            $"SSD '{a.Disk.DevPath}'"
+                                      )),
                        true,
                        false);
         #endregion
 
         #region Zfs
         result.AddRange(node.Disks.Zfs.Where(a => a.Zfs.Health != "ONLINE")
-                        .Select(a => new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "CN0003",
-                            Description = $"Zfs '{a.Zfs.Name}' health problem {a.Zfs.Health}",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Zfs",
-                            Gravity = DiagnosticResultGravity.Critical,
-                        }));
+                                      .Select(a => new DiagnosticResult
+                                      {
+                                          Id = id,
+                                          ErrorCode = "CN0003",
+                                          Description = $"Zfs '{a.Zfs.Name}' health problem {a.Zfs.Health}",
+                                          Context = DiagnosticResultContext.Node,
+                                          SubContext = "Zfs",
+                                          Gravity = DiagnosticResultGravity.Critical,
+                                      }));
         #endregion
 
         #region Zfs used
@@ -590,8 +589,8 @@ public class Application
                                  Settings settings)
     {
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                                      && a.VmType == VmType.Lxc
-                                                      && !a.IsTemplate))
+                                                    && a.VmType == VmType.Lxc
+                                                    && !a.IsTemplate))
         {
             var node = GetNode(info, item.Node);
             var vm = node.Lxc.FirstOrDefault(a => a.Detail.VmId == item.VmId);
@@ -627,20 +626,17 @@ public class Application
                     Gravity = DiagnosticResultGravity.Critical,
                 });
             }
-            else
+            else if (osNotMaintained.Contains(vm.Config.OsType))
             {
-                if (osNotMaintained.Contains(vm.Config.OsType))
+                result.Add(new DiagnosticResult
                 {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = errorId,
-                        ErrorCode = "WV0001",
-                        Description = $"OS '{vm.Config.OsTypeDecode}' not maintained from vendor!",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "OSNotMaintained",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = $"OS '{vm.Config.OsTypeDecode}' not maintained from vendor!",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "OSNotMaintained",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
             }
             #endregion
 
@@ -657,21 +653,18 @@ public class Application
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
-            else
+            else if (item.IsRunning && string.IsNullOrWhiteSpace(vm.Agent.GetHostName?.Result?.HostName))
             {
                 //agent in quest
-                if (item.IsRunning && string.IsNullOrWhiteSpace(vm.Agent.GetHostName?.Result?.HostName))
+                result.Add(new DiagnosticResult
                 {
-                    result.Add(new DiagnosticResult
-                    {
-                        Id = errorId,
-                        ErrorCode = "WV0001",
-                        Description = "Qemu Agent in guest not running",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Agent",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                    Id = errorId,
+                    ErrorCode = "WV0001",
+                    Description = "Qemu Agent in guest not running",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Agent",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
             }
             #endregion
 
@@ -879,24 +872,23 @@ public class Application
 
         //check disk no backup
         result.AddRange(vm.Config.Disks.Where(a => !a.Backup)
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WV0001",
-                                Description = $"Disk '{a.Id}' disabled for backup",
-                                Context = DiagnosticResultContext.Qemu,
-                                SubContext = "Backup",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            }));
-
+                                       .Select(a => new DiagnosticResult
+                                       {
+                                           Id = id,
+                                           ErrorCode = "WV0001",
+                                           Description = $"Disk '{a.Id}' disabled for backup",
+                                           Context = DiagnosticResultContext.Qemu,
+                                           SubContext = "Backup",
+                                           Gravity = DiagnosticResultGravity.Critical,
+                                       }));
 
         //check exists backup and recent
         var dayOld = 60;
         var foundOldBackup = node.Storages.Where(a => a.Detail.Content.Split(",").Contains("backup"))
                                           .SelectMany(a => a.Content)
                                           .Where(a => a.VmId == vmid
-                                                      && a.Content == "backup"
-                                                      && a.CreationDate.Date <= info.Date.Date.AddDays(-dayOld));
+                                                        && a.Content == "backup"
+                                                        && a.CreationDate.Date <= info.Date.Date.AddDays(-dayOld));
         if (foundOldBackup.Any())
         {
             result.Add(new DiagnosticResult
@@ -983,10 +975,10 @@ public class Application
                        "WV0002",
                        context,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100,
-                                0d,
-                                id,
-                                $"CPU (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100,
+                         0d,
+                         id,
+                         $"CPU (rrd {thresholdHost.TimeSeries} AVERAGE)")],
                        true,
                        false);
 
@@ -995,10 +987,10 @@ public class Application
                        "WV0002",
                        context,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.Memory.MemoryUsage),
-                                rrdData.Average(a => a.Memory.MemorySize),
-                                id,
-                                $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.Memory.MemoryUsage),
+                         rrdData.Average(a => a.Memory.MemorySize),
+                         id,
+                         $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") ],
                        false,
                        true);
 
@@ -1007,10 +999,10 @@ public class Application
                         "WV0002",
                         context,
                         "Usage",
-                        new[] { (rrdData.Average(a => a.NetIO.NetIn),
-                                 0d,
-                                 id,
-                                 $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                        [(rrdData.Average(a => a.NetIO.NetIn),
+                          0d,
+                          id,
+                          $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") ],
                         true,
                         false);
 
@@ -1019,10 +1011,10 @@ public class Application
                        "WV0002",
                        context,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.NetIO.NetOut),
-                                0d,
-                                id,
-                                $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.NetIO.NetOut),
+                         0d,
+                         id,
+                         $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)") ],
                        true,
                        false);
     }
@@ -1043,10 +1035,10 @@ public class Application
                        "WV0002",
                        DiagnosticResultContext.Node,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.IoWait) * 100,
-                                0d,
-                                id,
-                                $"IOWait (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.IoWait) * 100,
+                         0d,
+                         id,
+                         $"IOWait (rrd {settings.Node.TimeSeries} AVERAGE)") ],
                        true,
                        false);
 
@@ -1055,10 +1047,10 @@ public class Application
                        "WV0002",
                        DiagnosticResultContext.Node,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.RootUsage),
-                                rrdData.Average(a => a.RootSize),
-                                id,
-                                $"Root space (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.RootUsage),
+                         rrdData.Average(a => a.RootSize),
+                         id,
+                         $"Root space (rrd {settings.Node.TimeSeries} AVERAGE)") ],
                        false,
                        true);
 
@@ -1067,10 +1059,10 @@ public class Application
                        "WV0002",
                        DiagnosticResultContext.Node,
                        "Usage",
-                       new[] { (rrdData.Average(a => a.SwapUsage),
-                                rrdData.Average(a =>  a.SwapSize) ,
-                                id,
-                                $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") },
+                       [(rrdData.Average(a => a.SwapUsage),
+                         rrdData.Average(a =>  a.SwapSize) ,
+                         id,
+                         $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") ],
                        false,
                        true);
     }
@@ -1147,7 +1139,7 @@ public class Application
                                        string id,
                                        DiagnosticResultContext context)
     {
-        const string autosnapAppName= "cv4pve-autosnap";
+        const string autosnapAppName = "cv4pve-autosnap";
         const string autosnapAppNameOld = "eve4pve-autosnap";
 
         //autosnap
