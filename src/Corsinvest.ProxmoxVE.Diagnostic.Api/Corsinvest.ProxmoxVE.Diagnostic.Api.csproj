@@ -39,9 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.2.2" />
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.2.5" />
     <!-- <ProjectReference
-      Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj"
+    Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj"
     /> -->
   </ItemGroup>
 </Project>
