@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>1.5.2</Version>
+    <Version>1.5.3</Version>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>cv4pve-diag</AssemblyName>
     <Company>Corsinvest Srl</Company>
@@ -22,6 +22,7 @@
     <!-- <ProjectReference
     Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Shell\Corsinvest.ProxmoxVE.Api.Shell.csproj"
     /> -->
-    <ProjectReference Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
+    <ProjectReference
+      Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
   </ItemGroup>
 </Project>
