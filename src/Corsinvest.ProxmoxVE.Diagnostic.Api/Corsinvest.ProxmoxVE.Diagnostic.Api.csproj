@@ -3,7 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
 
-    <Version>1.6.2</Version>
+    <Version>1.7.0</Version>
     <Company>Corsinvest Srl</Company>
     <Authors>Corsinvest Srl</Authors>
     <Copyright>Corsinvest
@@ -24,6 +24,7 @@
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <!-- Include symbol files (*.pdb) in the built .nupkg -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>
       $(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
@@ -39,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.2.5" />
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.3.0" />
     <!-- <ProjectReference
     Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj"
     /> -->
