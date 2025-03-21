@@ -12,7 +12,7 @@ using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
-using Humanizer.Bytes;
+using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -157,7 +157,7 @@ public class Application
         {
             Id = a.Storage,
             ErrorCode = "WN0001",
-            Description = $"Image Orphaned {ByteSize.FromBytes(a.Size)} file {a.FileName}",
+            Description = $"Image Orphaned {FormatHelper.FromBytes(a.Size)} file {a.FileName}",
             Context = DiagnosticResultContext.Storage,
             SubContext = "Image",
             Gravity = DiagnosticResultGravity.Warning,
@@ -771,7 +771,7 @@ public class Application
                 var data = volume.Split(":");
                 var storage = node.Storages.FirstOrDefault(a => a.Detail.Storage == data[0]);
                 var size = storage != null
-                            ? ByteSize.FromBytes(storage.Content.FirstOrDefault(a => a.Volume == volume).Size).ToString()
+                            ? FormatHelper.FromBytes(storage.Content.FirstOrDefault(a => a.Volume == volume).Size).ToString()
                             : "";
 
                 result.Add(new DiagnosticResult
@@ -896,7 +896,7 @@ public class Application
                 Id = id,
                 ErrorCode = "CC0001",
                 Description = $"{foundOldBackup.Count()} backup" +
-                              $" {ByteSize.FromBytes(foundOldBackup.Sum(a => a.Size))} more {dayOld} days are found!",
+                              $" {FormatHelper.FromBytes(foundOldBackup.Sum(a => a.Size))} more {dayOld} days are found!",
                 Context = context,
                 SubContext = "Backup",
                 Gravity = DiagnosticResultGravity.Warning,
@@ -1088,7 +1088,7 @@ public class Application
             string MakeDescription(string PrefixDescription, double usage, double size)
             {
                 var txt = $"{PrefixDescription} usage {GetValue(usage, size)}%";
-                if (formatByte) { txt += $" - {ByteSize.FromBytes(usage)} of {ByteSize.FromBytes(size)}"; }
+                if (formatByte) { txt += $" - {FormatHelper.FromBytes(usage)} of {FormatHelper.FromBytes(size)}"; }
                 return txt;
             }
 
