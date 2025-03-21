@@ -107,8 +107,8 @@ public class Application
                        resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
                                 .Select(a =>
                                 (
-                                    (double)a.DiskUsage,
-                                    (double)a.DiskSize,
+                                    Convert.ToDouble(a.DiskUsage),
+                                    Convert.ToDouble(a.DiskSize),
                                     a.Storage,
                                     "Storage"
                                 )),
@@ -987,8 +987,8 @@ public class Application
                        "WV0002",
                        context,
                        "Usage",
-                       [(rrdData.Average(a => a.Memory.MemoryUsage),
-                         rrdData.Average(a => a.Memory.MemorySize),
+                       [(rrdData.Average(a => (double)a.Memory.MemoryUsage),
+                         rrdData.Average(a => (double)a.Memory.MemorySize),
                          id,
                          $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") ],
                        false,
@@ -1060,7 +1060,7 @@ public class Application
                        DiagnosticResultContext.Node,
                        "Usage",
                        [(rrdData.Average(a => a.SwapUsage),
-                         rrdData.Average(a =>  a.SwapSize) ,
+                         rrdData.Average(a =>  (double)a.SwapSize) ,
                          id,
                          $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") ],
                        false,

@@ -22,6 +22,7 @@
     <!-- <ProjectReference
     Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Shell\Corsinvest.ProxmoxVE.Api.Shell.csproj"
     /> -->
-    <ProjectReference Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
+    <ProjectReference
+      Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
   </ItemGroup>
 </Project>
