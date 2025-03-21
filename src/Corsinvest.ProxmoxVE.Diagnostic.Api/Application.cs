@@ -573,8 +573,8 @@ public class Application
                        "Zfs",
                        node.Disks.Zfs.Select(a =>
                        (
-                            (double)a.Zfs.Alloc,
-                            (double)a.Zfs.Size,
+                            Convert.ToDouble(a.Zfs.Alloc),
+                            Convert.ToDouble(a.Zfs.Size),
                             $"{id} ({a.Zfs.Name})",
                             $"Zfs '{a.Zfs.Name}'"
                        )),
@@ -987,8 +987,8 @@ public class Application
                        "WV0002",
                        context,
                        "Usage",
-                       [(rrdData.Average(a => (double)a.Memory.MemoryUsage),
-                         rrdData.Average(a => (double)a.Memory.MemorySize),
+                       [(rrdData.Average(a => Convert.ToDouble(a.Memory.MemoryUsage)),
+                         rrdData.Average(a => Convert.ToDouble(a.Memory.MemorySize)),
                          id,
                          $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)") ],
                        false,
@@ -1060,7 +1060,7 @@ public class Application
                        DiagnosticResultContext.Node,
                        "Usage",
                        [(rrdData.Average(a => a.SwapUsage),
-                         rrdData.Average(a =>  (double)a.SwapSize) ,
+                         rrdData.Average(a =>  Convert.ToDouble(a.SwapSize)) ,
                          id,
                          $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)") ],
                        false,
