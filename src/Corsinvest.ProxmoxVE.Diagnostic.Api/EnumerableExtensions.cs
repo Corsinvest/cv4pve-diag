@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 internal static class EnumerableExtensions
@@ -18,6 +14,6 @@ internal static class EnumerableExtensions
         return total;
     }
 
-    public static ulong Average<TSource>(this IEnumerable<TSource> source, Func<TSource, ulong> summer) 
+    public static ulong Average<TSource>(this IEnumerable<TSource> source, Func<TSource, ulong> summer)
         => source.Sum(summer) / Convert.ToUInt64(source.Count());
 }

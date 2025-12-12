@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-using System;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -19,21 +18,21 @@ public class DiagnosticResult
     /// Id
     /// </summary>
     /// <value></value>
-    public string Id { get; set; }
+    public string Id { get; set; } = default!;
 
     /// <summary>
     /// Tag
     /// </summary>
     /// <value></value>
     [JsonIgnore]
-    public object Tag { get; set; }
+    public object Tag { get; set; } = default!;
 
     /// <summary>
     /// Error code
     /// </summary>
     /// <value></value>
     [JsonIgnore]
-    public string ErrorCode { get; set; }
+    public string ErrorCode { get; set; } = default!;
 
     /// <summary>
     /// Context
@@ -46,13 +45,13 @@ public class DiagnosticResult
     /// Sub context
     /// </summary>
     /// <value></value>
-    public string SubContext { get; set; }
+    public string SubContext { get; set; } = default!;
 
     /// <summary>
     /// Description
     /// </summary>
     /// <value></value>
-    public string Description { get; set; }
+    public string Description { get; set; } = default!;
 
     /// <summary>
     /// Gravity

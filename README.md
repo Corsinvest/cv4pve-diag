@@ -1,204 +1,416 @@
+<div align="center">
+
 # cv4pve-diag
 
-[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg)](LICENSE.md) ![GitHub all releases](https://img.shields.io/github/downloads/corsinvest/cv4pve-diag/total)
-
-```text
+```
      ______                _                      __
     / ____/___  __________(_)___ _   _____  _____/ /_
    / /   / __ \/ ___/ ___/ / __ \ | / / _ \/ ___/ __/
   / /___/ /_/ / /  (__  ) / / / / |/ /  __(__  ) /_
   \____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
 
-
-  Diagnostic for Proxmox VE                      (Made in Italy)
-
-  cv4pve-diag is a part of suite cv4pve.
-  For more information visit https://www.corsinvest.it/cv4pve
-
-Usage:
-  cv4pve-diag [command] [options]
-
-Options:
-  --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
-  --username <username>                              User name <username>@<realm>
-  --password <password>                              The password. Specify 'file:path_file' to store password in file.
-  --validate-certificate                             Validate SSL Certificate Proxmox VE node.
-  --host <host> (REQUIRED)                           The host name host[:port],host1[:port],host2[:port]
-  --settings-file <settings-file>                    File settings (generated from create-settings)
-  --ignored-issues-file <ignored-issues-file>        File ignored issues (generated from create-ignored-issues)
-  --ignored-issues-show                              Show second table with ignored issue
-  -o, --output <Html|Json|JsonPretty|Markdown|Text>  Type output [default: Text]
-  --version                                          Show version information
-  -?, -h, --help                                     Show help and usage information
-
-Commands:
-  create-settings        Create file settings (settings.json)
-  create-ignored-issues  Create File ignored issues (ignored-issues.json)
-  export-collect         Export collect data collect to data.json
-  execute                Execute diagnostic and print result to console
+Diagnostic Tool for Proxmox VE (Made in Italy)
 ```
 
-## Copyright and License
+[![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg?style=flat-square)](LICENSE.md)
+[![Release](https://img.shields.io/github/release/Corsinvest/cv4pve-diag.svg?style=flat-square)](https://github.com/Corsinvest/cv4pve-diag/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Corsinvest/cv4pve-diag/total.svg?style=flat-square&logo=download)](https://github.com/Corsinvest/cv4pve-diag/releases)
+[![NuGet](https://img.shields.io/nuget/v/Corsinvest.ProxmoxVE.Diagnostic.Api.svg?style=flat-square&logo=nuget)](https://www.nuget.org/packages/Corsinvest.ProxmoxVE.Diagnostic.Api/)
 
-Copyright: Corsinvest Srl
-For licensing details please visit [LICENSE.md](LICENSE.md)
+</div>
 
-## Commercial Support
+---
 
-This software is part of a suite of tools called cv4pve-tools. If you want commercial support, visit the [site](https://www.corsinvest.it/cv4pve)
+## Quick Start
 
-## Tutorial
+```bash
+# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+# Download specific version (replace VERSION with actual version number)
+wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
+unzip cv4pve-diag-linux-x64.zip
 
-[![Tutorial](http://img.youtube.com/vi/hn1nw9KXlsg/0.jpg)](https://www.youtube.com/watch?v=hn1nw9KXlsg&feature=youtu.be "Tutorial")
+# Run diagnostic
+./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+```
 
-## Introduction
+---
 
-Diagnostic for Proxmox VE.
+## Table of Contents
 
-this software collect data from Proxmox VE and output list of Warning/Critical/Info message.
+<details>
+<summary><strong>Click to expand navigation</strong></summary>
 
-## Main features
+- [Features](#-features)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Usage Examples](#-usage-examples)
+- [Security & Permissions](#-security--permissions)
+- [Advanced Features](#-advanced-features)
+- [Diagnostic Checks](#-diagnostic-checks)
+- [Troubleshooting](#-troubleshooting)
+- [Resources](#-resources)
 
-* Completely written in C#
-* Use native api REST Proxmox VE (library C#)
-* Independent os (Windows, Linux, Macosx)
-* Installation unzip file extract binary
-* Not require installation in Proxmox VE
-* Execute out side Proxmox VE
-* Custom settings from file --settings-file
-* Ignore issue from file --ignored-issues-file
-* Use Api token --api-token parameter
-* Execution with file parameter e.g. @FileParameter.parm
-* Validate certificate SSL, default not validate
+</details>
 
-## Web GUI Version in cv4pve-admin
+---
 
-[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)
+## Features
 
-## Api token
+### Core Capabilities
 
-From version 6.2 of Proxmox VE is possible to use [Api token](https://pve.proxmox.com/pve-docs/pveum-plain.html).
-This feature permit execute Api without using user and password.
-If using **Privilege Separation** when create api token remember specify in permission.
+<table>
+<tr>
+<td width="50%">
+
+#### **Performance & Reliability**
+- **Native C#** implementation
+- **Cross-platform** (Windows, Linux, macOS)
+- **API-based** operation (no root access required)
+- **Cluster support** with automatic analysis
+- **High availability** with multiple host support
+
+#### **Flexible Analysis**
+- **Comprehensive checks** for VMs and Containers
+- **Storage monitoring** and capacity analysis
+- **Node health** verification
+- **Replication status** checking
+- **Backup configuration** validation
+
+</td>
+<td width="50%">
+
+#### **Advanced Reporting**
+- **Multiple output formats** (Text, HTML, JSON, Markdown)
+- **Severity levels** (Critical, Warning, Info)
+- **Customizable settings** via configuration files
+- **Issue filtering** with ignore rules
+- **Export capabilities** for automation
+
+#### **Enterprise Features**
+- **API token** support (Proxmox VE 6.2+)
+- **SSL validation** options
+- **Custom settings** management
+- **Ignored issues** tracking
+- **Comprehensive logging** and status reporting
+
+</td>
+</tr>
+</table>
+
+---
+
+## Installation
+
+<div align="center">
+  <img src="https://img.shields.io/badge/INSTALLATION-GUIDE-green?style=for-the-badge&logo=download" alt="Installation Guide">
+</div>
+
+### Linux Installation
+
+```bash
+# Check available releases and get the specific version number
+# Visit: https://github.com/Corsinvest/cv4pve-diag/releases
+
+# Download specific version (replace VERSION with actual version like v1.9.0)
+wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
+
+# Alternative: Get latest release URL programmatically
+LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-diag/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
+wget "$LATEST_URL"
+
+# Extract and make executable
+unzip cv4pve-diag-linux-x64.zip
+chmod +x cv4pve-diag
+
+# Optional: Move to system path
+sudo mv cv4pve-diag /usr/local/bin/
+```
+
+### Windows Installation
+
+```powershell
+# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+# Download specific version (replace VERSION with actual version)
+Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag.exe-win-x64.zip" -OutFile "cv4pve-diag.zip"
+
+# Extract
+Expand-Archive cv4pve-diag.zip -DestinationPath "C:\Tools\cv4pve-diag"
+
+# Add to PATH (optional)
+$env:PATH += ";C:\Tools\cv4pve-diag"
+```
+
+### macOS Installation
+
+```bash
+# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+# Download specific version (replace VERSION with actual version)
+wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-x64.zip
+unzip cv4pve-diag-osx-x64.zip
+chmod +x cv4pve-diag
+
+# Move to applications
+sudo mv cv4pve-diag /usr/local/bin/
+```
+
+---
 
 ## Configuration
-Supports Linux, Windows, OSX and ARM
 
-Install on Linux x64
+<div align="center">
+  <img src="https://img.shields.io/badge/CONFIGURATION-SETUP-blue?style=for-the-badge&logo=settings" alt="Configuration Setup">
+</div>
 
-    Step 1 - Download the Lastest Zip File cv4pve-diag-linux-x64.zip to a Directory of your Choice:
-             wget https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag-linux-x64.zip
-	         NOTE: x.x.x is the Version Number
+### Authentication Methods
 
-	         Example for v1.4.8:
-	         root@debian:/# wget https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag-linux-x64.zip
+<table>
+<tr>
+<td width="50%">
 
-```sh
-Step 2 - Unzip cv4pve-diag-linux-x64.zip to a Directory of your Choice:
-         root@debian:/# unzip cv4pve-diag-linux-x64.zip
-
-Step 3 - Chmod cv4pve-diag to Add Persmissions to Execute cv4pve-diag:
-         root@debian:/# chmod +x cv4pve-diag
-	 NOTE: This Allows Owner\Group\Others to Execute cv4pve-diag
+#### **Username/Password**
+```bash
+cv4pve-diag --host=192.168.1.100 --username=root@pam --password=your_password execute
 ```
 
-    Step 4 - Run the Diagnostic Tool:
-             NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
-	               If you are at the Root Directory, use the Directory Path to cv4pve-diag
-```sh
-Example Running Tool within its Directory:
-root@debian:/cv4pvediag# ./cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
-                         NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
-
-Example Running from the Root Directory:
-root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
-                        NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
-
-Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
-
-```
-Install on Windows x86 and x64
-```sh
-
-Step 1 - Download the Lastest Zip File cv4pve-diag.exe-win-x64.zip or
-         cv4pve-diag.exe-win-x86.zip to a Directory of your Choice:
-
-         x86 Version:
-         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
-                    NOTE: Select under Assets and Choose Lastest Version
-         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x86.zip
-                    NOTE: x.x.x is the Version Number
-
-                    Example Option B for v1.4.8:
-		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x86.zip
-
-         x64 Version:
-         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
-                    NOTE: Select under Assets and Choose Lastest Version
-         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/x.x.x/cv4pve-diag.exe-win-x64.zip
-                    NOTE: x.x.x is the Version Number
-
-		    Example Option B for v1.4.8:
-		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.4.8/cv4pve-diag.exe-win-x64.zip
-
-
-Step 2 - Run the Diagnostic Tool:
-
-         Example for x86 Version Running in PowerShell:
-C:\cv4pve-diag.exe-win-x86> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
-                            NOTE: The .\ in front of the Command cv4pve-diag is needed.
-                                  It is Recommened to Run the Tool in PowerShell
-                                  when Outputing in Text Mode for proper Displaying of the Data.
-                                  You can use CMD(DOS Terminal) however there is a Limatation of Displaying correctly.
-
-         Example for x86 Version Running in CMD(DOS Terminal):
-C:\cv4pve-diag.exe-win-x86> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
-                            NOTE:  .\ in front of the Command cv4pve-diag is not needed.
-
-Attention: There is a Slight Delay when using the Tool due to Processing the Information. Please wait for Data to Display.
-```
-```txt
-						   OUTPUT OF CV4PVE-DIAG DATA
--------------------------------------------------------------------------------------------------------------------------------------
-| Id                             | Description                                                  | Context | SubContext   | Gravity  |
--------------------------------------------------------------------------------------------------------------------------------------
-| pve2                           | 1 Replication has errors                                     | Node    | Replication  | Critical |
-| pve2                           | Zfs 'rpool' health problem                                   | Node    | Zfs          | Critical |
-| 312                            | Unknown resource qemu                                        | Qemu    | Status       | Critical |
-| pve3                           | Node not online                                              | Node    | Status       | Warning  |
-| local-zfs:vm-117-disk-1        | Image Orphaned                                               | Storage | Image        | Warning  |
-| local-zfs:vm-105-disk-3        | Image Orphaned                                               | Storage | Image        | Warning  |
-| 121                            | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
-| 101                            | OS 'XP/2003' not mantained from vendor!                      | Qemu    | Agent        | Warning  |
-| 101                            | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
-| 103                            | cv4pve-autosnap not configured                               | Qemu    | AutoSnapshot | Warning  |
-| 115                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
-| 205                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
-| 103                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
-| 313                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
-| 117                            | Unused disk0                                                 | Qemu    | Hardware     | Warning  |
-| 115                            | Cdrom mounted                                                | Qemu    | Hardware     | Warning  |
-| 121                            | 10 snapshots older than 1 month                              | Qemu    | Snapshot     | Warning  |
-| 313                            | 10 snapshots older than 1 month                              | Qemu    | Snapshot     | Warning  |
-| 500                            | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
-| 117                            | Start on boot not enabled                                    | Qemu    | StartOnBoot  | Warning  |
-| 114                            | 10 snapshots older than 1 month                              | Lxc     | Snapshot     | Warning  |
-| pve1                           | 3 Update availble                                            | Node    | Update       | Info     |
-| pve2                           | 6 Update availble                                            | Node    | Update       | Info     |
-| 109                            | For more performance switch 'scsi0' hdd to VirtIO            | Qemu    | VirtIO       | Info     |
--------------------------------------------------------------------------------------------------------------------------------------
+#### **API Token (Recommended)**
+```bash
+cv4pve-diag --host=192.168.1.100 --api-token=diagnostic@pve!token1=uuid-here execute
 ```
 
-## Settings
+</td>
+<td width="50%">
 
-For change default settings can create file using **create-settings** command.
-Edit settings.json file and execute new settings using parameter --settings-file.
+#### **Password from File**
+```bash
+# Store password in file
+cv4pve-diag --host=192.168.1.100 --username=root@pam --password=file:/etc/cv4pve/password execute
 
-## Ignore Issue
+# First run: prompts for password and saves to file
+# Subsequent runs: reads password from file automatically
+```
 
-For ignore issues create file using **create-ignored-issues** command.
-Edit ignored-issues.json file and execute using parameter --ignored-issues-file.
-The regex rule is used for match in Id,SubContext,Description.
+</td>
+</tr>
+</table>
+
+---
+
+## Usage Examples
+
+<div align="center">
+  <img src="https://img.shields.io/badge/USAGE-EXAMPLES-orange?style=for-the-badge&logo=terminal" alt="Usage Examples">
+</div>
+
+### Basic Diagnostic Operations
+
+<details>
+<summary><strong>Execute Diagnostics</strong></summary>
+
+#### Simple Execution
+```bash
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret execute
+```
+
+#### With Output Format
+```bash
+# HTML output
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret --output=Html execute
+
+# JSON output for automation
+cv4pve-diag --host=pve.domain.com --api-token=diag@pve!token=uuid --output=Json execute
+
+# Markdown format
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret --output=Markdown execute
+```
+
+</details>
+
+<details>
+<summary><strong>Settings Management</strong></summary>
+
+#### Create Settings File
+```bash
+# Generate default settings file
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret create-settings
+
+# This creates settings.json with customizable diagnostic rules
+```
+
+#### Use Custom Settings
+```bash
+# Run diagnostics with custom settings
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret --settings-file=settings.json execute
+```
+
+</details>
+
+<details>
+<summary><strong>Ignore Issues</strong></summary>
+
+#### Create Ignored Issues File
+```bash
+# Generate ignored issues template
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret create-ignored-issues
+
+# This creates ignored-issues.json
+```
+
+#### Use Ignored Issues
+```bash
+# Run diagnostics with ignored issues
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret --ignored-issues-file=ignored-issues.json execute
+
+# Show ignored issues in separate table
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret --ignored-issues-file=ignored-issues.json --ignored-issues-show execute
+```
+
+</details>
+
+<details>
+<summary><strong>Export Data</strong></summary>
+
+#### Export Collected Data
+```bash
+# Export diagnostic data to JSON file
+cv4pve-diag --host=pve.domain.com --username=root@pam --password=secret export-collect
+```
+
+</details>
+
+### Configuration Files
+
+<details>
+<summary><strong>Parameter Files for Complex Setups</strong></summary>
+
+#### Create Parameter File
+```bash
+# /etc/cv4pve/production.conf
+--host=pve-cluster.company.com
+--api-token=diagnostic@pve!production=uuid-here
+--settings-file=/etc/cv4pve/settings.json
+--ignored-issues-file=/etc/cv4pve/ignored-issues.json
+--validate-certificate
+```
+
+#### Execute with Parameter File
+```bash
+cv4pve-diag @/etc/cv4pve/production.conf execute --output=Html
+```
+
+</details>
+
+---
+
+## Security & Permissions
+
+<div align="center">
+  <img src="https://img.shields.io/badge/SECURITY-PERMISSIONS-red?style=for-the-badge&logo=shield" alt="Security & Permissions">
+</div>
+
+### Required Permissions
+
+| Permission | Purpose | Scope |
+|------------|---------|-------|
+| **VM.Audit** | Read VM/CT information | Virtual machines |
+| **Datastore.Audit** | Check storage capacity | Storage systems |
+| **Pool.Audit** | Access pool information | Resource pools |
+| **Sys.Audit** | Node system information | Cluster nodes |
+
+### API Token Setup (Recommended)
+
+<details>
+<summary><strong>Creating API Tokens</strong></summary>
+
+#### 1. Generate API Token with Proper Permissions
+```bash
+# Follow Proxmox VE documentation for:
+# - API token creation with proper privilege separation
+# - Permission assignment for required roles
+# - Required permissions: VM.Audit, Datastore.Audit, Pool.Audit, Sys.Audit
+# Refer to official Proxmox VE API documentation for detailed steps
+```
+
+#### 2. Use Token in Commands
+```bash
+cv4pve-diag --host=pve.local --api-token=diagnostic@pve!diag-token=uuid-from-creation execute
+```
+
+</details>
+
+### Security Best Practices
+
+<table>
+<tr>
+<td width="50%">
+
+#### **Do's**
+- Use API tokens instead of passwords
+- Enable privilege separation for tokens
+- Store credentials in secure files with proper permissions
+- Use dedicated user accounts for diagnostics
+- Enable SSL certificate validation in production
+
+</td>
+<td width="50%">
+
+#### **Don'ts**
+- Use root credentials for automation
+- Store passwords in plain text scripts
+- Disable SSL validation without good reason
+- Grant excessive permissions
+- Share API tokens between different applications
+
+</td>
+</tr>
+</table>
+
+---
+
+## Advanced Features
+
+<div align="center">
+  <img src="https://img.shields.io/badge/ADVANCED-FEATURES-purple?style=for-the-badge&logo=rocket" alt="Advanced Features">
+</div>
+
+### Custom Settings
+
+<details>
+<summary><strong>Customize Diagnostic Rules</strong></summary>
+
+The settings file allows you to customize thresholds and rules for diagnostics:
+
+```json
+{
+  "MinPercentageVmUsageDisk": 95,
+  "MinPercentageVmUsageMemory": 95,
+  "MaxDaysSnapshotOutdate": 30,
+  "ConsiderBackupExtension": true,
+  "BackupExtension": [
+    "vma",
+    "vma.gz",
+    "vma.lzo"
+  ]
+}
+```
+
+#### Example Usage
+```bash
+# Create default settings
+cv4pve-diag --host=pve.local --username=root@pam --password=secret create-settings
+
+# Edit settings.json with your preferences
+# Run with custom settings
+cv4pve-diag --host=pve.local --username=root@pam --password=secret --settings-file=settings.json execute
+```
+
+</details>
+
+### Ignore Specific Issues
+
+<details>
+<summary><strong>Filter Unwanted Warnings</strong></summary>
+
+Create rules to ignore specific issues using regex patterns:
 
 ```json
 [
@@ -208,22 +420,275 @@ The regex rule is used for match in Id,SubContext,Description.
     "SubContext": "Protection",
     "Description": null,
     "Gravity": "Critical"
+  },
+  {
+    "Id": ".*",
+    "Context": "Qemu",
+    "SubContext": "Agent",
+    "Description": ".*test.*",
+    "Gravity": "Warning"
   }
 ]
 ```
 
-## Execution with file parameter
+The regex patterns match against Id, SubContext, and Description fields.
 
-Is possible execute with file parameter
+</details>
 
-```sh
-root@debian:~# cv4pve-diag @FileParameter.parm
-```
+---
 
-File **FileParameter.parm**
+## Diagnostic Checks
+
+<div align="center">
+  <img src="https://img.shields.io/badge/DIAGNOSTIC-CHECKS-teal?style=for-the-badge&logo=check" alt="Diagnostic Checks">
+</div>
+
+### Check Categories
+
+<table>
+<tr>
+<td width="33%">
+
+#### **Node Checks**
+- Node online status
+- Update availability
+- Replication status
+- ZFS health
+- CPU/Memory usage
+- Storage capacity
+
+</td>
+<td width="33%">
+
+#### **VM/CT Checks**
+- VM/CT status
+- Resource usage
+- QEMU agent status
+- Backup configuration
+- Snapshot age
+- AutoSnapshot configuration
+- Protection status
+- Start on boot
+- Hardware configuration
+- VirtIO usage
+
+</td>
+<td width="33%">
+
+#### **Storage Checks**
+- Storage capacity
+- Orphaned images
+- Disk allocation
+- Replication errors
+- Backup file validation
+
+</td>
+</tr>
+</table>
+
+### Example Output
 
 ```txt
---host=192.168.0.100:8006
---username=root@pam
---password=password
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Id                             | Description                                                  | Context | SubContext   | Gravity  |
+-----------------------------------------------------------------------------------------------------------------------------------------
+| pve2                           | 1 Replication has errors                                     | Node    | Replication  | Critical |
+| pve2                           | Zfs 'rpool' health problem                                   | Node    | Zfs          | Critical |
+| 312                            | Unknown resource qemu                                        | Qemu    | Status       | Critical |
+| pve3                           | Node not online                                              | Node    | Status       | Warning  |
+| local-zfs:vm-117-disk-1        | Image Orphaned                                               | Storage | Image        | Warning  |
+| 121                            | Qemu Agent not enabled                                       | Qemu    | Agent        | Warning  |
+| 103                            | cv4pve-autosnap not configured                               | Qemu    | AutoSnapshot | Warning  |
+| 115                            | vzdump backup not configured                                 | Qemu    | Backup       | Warning  |
+| 117                            | Unused disk0                                                 | Qemu    | Hardware     | Warning  |
+| 121                            | 10 snapshots older than 1 month                              | Qemu    | Snapshot     | Warning  |
+| pve1                           | 3 Update availble                                            | Node    | Update       | Info     |
+| 109                            | For more performance switch 'scsi0' hdd to VirtIO            | Qemu    | VirtIO       | Info     |
+-----------------------------------------------------------------------------------------------------------------------------------------
 ```
+
+---
+
+## Troubleshooting
+
+<div align="center">
+  <img src="https://img.shields.io/badge/TROUBLESHOOTING-HELP-red?style=for-the-badge&logo=tools" alt="Troubleshooting">
+</div>
+
+### Common Issues & Solutions
+
+<details>
+<summary><strong>Authentication Problems</strong></summary>
+
+#### Issue: "Authentication failed"
+```bash
+# Verify credentials
+cv4pve-diag --host=pve.local --username=root@pam --password=test execute
+
+# Check API token format
+cv4pve-diag --host=pve.local --api-token=user@realm!tokenid=uuid execute
+```
+
+#### Solution: Verify permissions
+```bash
+# Check user permissions in Proxmox
+pveum user list
+pveum user permissions diagnostic@pve
+```
+
+</details>
+
+<details>
+<summary><strong>Connection Issues</strong></summary>
+
+#### Issue: "Connection timeout" or "Host unreachable"
+```bash
+# Test connectivity
+ping pve.local
+telnet pve.local 8006
+
+# Try with SSL validation disabled (testing only)
+cv4pve-diag --host=pve.local --username=root@pam --password=secret execute
+```
+
+#### Solution: Use SSL validation
+```bash
+# Enable SSL validation for production
+cv4pve-diag --host=pve.local --validate-certificate --username=root@pam --password=secret execute
+```
+
+</details>
+
+---
+
+## Resources
+
+<div align="center">
+  <img src="https://img.shields.io/badge/RESOURCES-LEARN%20MORE-teal?style=for-the-badge&logo=video" alt="Resources">
+</div>
+
+### Video Tutorials
+
+<table>
+<tr>
+<td align="center" width="50%">
+
+#### **Official Tutorial**
+
+[![cv4pve-diag Tutorial](http://img.youtube.com/vi/hn1nw9KXlsg/maxresdefault.jpg)](https://www.youtube.com/watch?v=hn1nw9KXlsg)
+
+**Complete setup and usage guide**
+
+</td>
+<td align="center" width="50%">
+
+#### **Web GUI Version**
+
+[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)
+
+**Web interface for cv4pve-diag**
+
+</td>
+</tr>
+</table>
+
+### Documentation Links
+
+| Resource | Description |
+|----------|-------------|
+| **[API Documentation](https://pve.proxmox.com/pve-docs/api-viewer/index.html)** | Proxmox VE API reference |
+| **[cv4pve-tools Suite](https://www.cv4pve-tools.com)** | Complete cv4pve tools ecosystem |
+| **[API Token Guide](https://pve.proxmox.com/pve-docs/pveum-plain.html)** | Proxmox VE API token documentation |
+
+---
+
+## Command Reference
+
+<div align="center">
+  <img src="https://img.shields.io/badge/COMMAND-REFERENCE-navy?style=for-the-badge&logo=terminal" alt="Command Reference">
+</div>
+
+### Global Options
+
+<details>
+<summary><strong>Complete Parameter List</strong></summary>
+
+```bash
+cv4pve-diag [global-options] [command]
+```
+
+#### Authentication Options
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `--host` | Proxmox host(s) | `--host=pve.local:8006` |
+| `--username` | Username@realm | `--username=diagnostic@pve` |
+| `--password` | Password or file | `--password=secret` or `--password=file:/path` |
+| `--api-token` | API token | `--api-token=user@realm!token=uuid` |
+
+#### Connection Options
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--validate-certificate` | Validate SSL certificate | `false` |
+
+#### Diagnostic Options
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `--settings-file` | Custom settings file | `--settings-file=settings.json` |
+| `--ignored-issues-file` | Ignored issues file | `--ignored-issues-file=ignored.json` |
+| `--ignored-issues-show` | Show ignored issues table | Flag |
+
+#### Output Options
+| Parameter | Description | Options |
+|-----------|-------------|---------|
+| `--output` | Output format | `Text`, `Html`, `Json`, `JsonPretty`, `Markdown` |
+
+</details>
+
+### Commands
+
+<details>
+<summary><strong>Available Commands</strong></summary>
+
+#### execute
+Execute diagnostic and display results
+
+```bash
+cv4pve-diag --host=pve.local --username=root@pam --password=secret execute
+```
+
+#### create-settings
+Create default settings file
+
+```bash
+cv4pve-diag --host=pve.local --username=root@pam --password=secret create-settings
+```
+
+#### create-ignored-issues
+Create ignored issues template
+
+```bash
+cv4pve-diag --host=pve.local --username=root@pam --password=secret create-ignored-issues
+```
+
+#### export-collect
+Export collected diagnostic data
+
+```bash
+cv4pve-diag --host=pve.local --username=root@pam --password=secret export-collect
+```
+
+</details>
+
+---
+
+## Support
+
+Professional support and consulting available through [Corsinvest](https://www.corsinvest.it/cv4pve).
+
+---
+
+<div align="center">
+  <sub>Part of <a href="https://www.corsinvest.it/cv4pve">cv4pve</a> suite | Made with ❤️ in Italy by <a href="https://www.corsinvest.it">Corsinvest</a></sub>
+  <br>
+  <sub>Copyright © Corsinvest Srl</sub>
+</div>

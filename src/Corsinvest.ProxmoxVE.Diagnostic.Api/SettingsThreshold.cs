@@ -16,12 +16,12 @@ public class SettingsThreshold<T>
     /// Warning
     /// </summary>
     [DisplayName("Warning")]
-    public T Warning { get; set; }
+    public T Warning { get; set; } = default!;
 
     /// <summary>
     /// Critical
     /// </summary>
     /// <value></value>
     [DisplayName("Critical")]
-    public T Critical { get; set; }
+    public T Critical { get; set; } = default!;
 }

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
- namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
+namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
 /// Diagnostic result gravity
