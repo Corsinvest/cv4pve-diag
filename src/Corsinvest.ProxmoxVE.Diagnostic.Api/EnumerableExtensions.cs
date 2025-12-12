@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 internal static class EnumerableExtensions
