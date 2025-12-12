@@ -1,28 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net7.0;net8.0;net9.0</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <OutputType>Library</OutputType>
 
-    <Version>1.8.0</Version>
-    <Company>Corsinvest Srl</Company>
-    <Authors>Corsinvest Srl</Authors>
-    <Copyright>Corsinvest
-      Srl</Copyright>
-    <Product>Corsinvest for Proxmox VE Diagnostic Api</Product>
-    <AssemblyTitle>Corsinvest for Proxmox VE
-      Diagnostic Api</AssemblyTitle>
-    <Description>Corsinvest for Proxmox VE Diagnostic Api</Description>
     <PackageProjectUrl>https://github.com/Corsinvest/cv4pve-diag</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>ProxmoxVE;Api,Client;Rest;Corsinvest;Diagnostic</PackageTags>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageOutputPath>..\..\..\.nupkgs\</PackageOutputPath>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <RepositoryType>Github</RepositoryType>
+    <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Corsinvest/cv4pve-diag</RepositoryUrl>
-
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
@@ -35,15 +23,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="" />
     <None Include="..\..\icon.png" Pack="true" PackagePath="" />
-    <none Include="..\..\README.md" Pack="true" PackagePath="" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" Version="8.3.3" />
-    <!-- <ProjectReference
-    Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj"
-    /> -->
+    <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" />
   </ItemGroup>
 </Project>
