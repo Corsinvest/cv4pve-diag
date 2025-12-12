@@ -59,20 +59,20 @@ cmdExamineCollect.Hidden = true;
 cmdExamineCollect.SetAction((action) =>
 {
     var info = JsonSerializer.Deserialize<InfoHelper.Info>(File.ReadAllText(fileExport))!;
-    Print(info, 
-          action.GetValue(optSettingsFile)!, 
-          action.GetValue(optIgnoredIssuesFile)!, 
-          action.GetValue(optShowIgnoredIssues), 
+    Print(info,
+          action.GetValue(optSettingsFile)!,
+          action.GetValue(optIgnoredIssuesFile)!,
+          action.GetValue(optShowIgnoredIssues),
           action.GetValue(optOutput));
 });
 
 app.AddCommand("execute", $"Execute diagnostic and print result to console")
    .SetAction(async (action) =>
    {
-       Print(await GetInfo(), 
-             action.GetValue(optSettingsFile)!, 
-             action.GetValue(optIgnoredIssuesFile)!, 
-             action.GetValue(optShowIgnoredIssues)!, 
+       Print(await GetInfo(),
+             action.GetValue(optSettingsFile)!,
+             action.GetValue(optIgnoredIssuesFile)!,
+             action.GetValue(optShowIgnoredIssues)!,
              action.GetValue(optOutput));
    });
 
