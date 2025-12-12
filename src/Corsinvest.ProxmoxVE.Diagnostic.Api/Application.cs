@@ -3,10 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Corsinvest.ProxmoxVE.Api.Extension.Utils;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
@@ -71,13 +68,19 @@ public class Application
 
     class NodeStorageContentComparer : IEqualityComparer<NodeStorageContent>
     {
-        public bool Equals(NodeStorageContent x, NodeStorageContent y) => x.Volume == y.Volume;
+        public bool Equals(NodeStorageContent? x, NodeStorageContent? y)
+        {
+            if (x is null || y is null) return x is null && y is null;
+            return x.Volume == y.Volume;
+        }
 
         public int GetHashCode([DisallowNull] NodeStorageContent obj)
         {
             if (obj == null) { return 0; }
-            var NameHashCode = obj.Volume == null ? 0 : obj.Volume.GetHashCode();
-            return obj.Volume.GetHashCode() ^ NameHashCode;
+            var NameHashCode = obj.Volume == null
+                                ? 0
+                                : obj.Volume.GetHashCode();
+            return obj.Volume!.GetHashCode() ^ NameHashCode;
         }
     }
 
@@ -165,7 +168,7 @@ public class Application
         #endregion
     }
 
-    private static InfoHelper.Info.NodeInfo GetNode(InfoHelper.Info info, string node) => info.Nodes.FirstOrDefault(a => a.Detail.Node == node);
+    private static InfoHelper.Info.NodeInfo GetNode(InfoHelper.Info info, string node) => info.Nodes.FirstOrDefault(a => a.Detail.Node == node)!;
 
     private static void CheckNode(InfoHelper.Info info,
                                   List<DiagnosticResult> result,
@@ -241,7 +244,7 @@ public class Application
             {
                 SettingsTimeSeriesType.Day => node.RrdData.Day,
                 SettingsTimeSeriesType.Week => node.RrdData.Week,
-                _ => null,
+                _ => throw new ArgumentOutOfRangeException("settings.Node.TimeSeries"),
             };
 
             CheckNodeRrd(result, settings, errorId, rrdData);
@@ -594,7 +597,10 @@ public class Application
         {
             var node = GetNode(info, item.Node);
             var vm = node.Lxc.FirstOrDefault(a => a.Detail.VmId == item.VmId);
-            CheckCommonVm(info, result, settings.Lxc, vm, DiagnosticResultContext.Lxc, node, item.VmId.ToString());
+            if (vm != null)
+            {
+                CheckCommonVm(info, result, settings.Lxc, vm, DiagnosticResultContext.Lxc, node, item.VmId.ToString());
+            }
         }
     }
 
@@ -610,7 +616,7 @@ public class Application
                                                       && !a.IsTemplate))
         {
             var node = GetNode(info, item.Node);
-            var vm = node.Qemu.FirstOrDefault(a => a.Detail.VmId == item.VmId);
+            var vm = node.Qemu.FirstOrDefault(a => a.Detail.VmId == item.VmId)!;
             var errorId = item.VmId.ToString();
 
             #region Check version OS
@@ -716,7 +722,7 @@ public class Application
             #region Check Virtio
             //controller SCSI
             if (vm.Config.ExtensionData.TryGetValue("scsihw", out var scsiHw)
-                && !scsiHw.ToString().StartsWith("virtio"))
+                && !scsiHw.ToString()!.StartsWith("virtio"))
             {
                 result.Add(new DiagnosticResult
                 {
@@ -745,7 +751,7 @@ public class Application
             for (int i = 0; i < 256; i++)
             {
                 var id = $"net{i}";
-                if (vm.Config.ExtensionData.TryGetValue(id, out object value))
+                if (vm.Config.ExtensionData.TryGetValue(id, out var value))
                 {
                     var data = value + "";
                     if (data != null && !data.StartsWith("virtio"))
@@ -767,11 +773,11 @@ public class Application
             #region Unused disk
             foreach (var unused in vm.Config.ExtensionData.Keys.Where(a => a.StartsWith("unused")))
             {
-                var volume = vm.Config.ExtensionData[unused].ToString();
+                var volume = vm.Config.ExtensionData[unused].ToString()!;
                 var data = volume.Split(":");
                 var storage = node.Storages.FirstOrDefault(a => a.Detail.Storage == data[0]);
                 var size = storage != null
-                            ? FormatHelper.FromBytes(storage.Content.FirstOrDefault(a => a.Volume == volume).Size).ToString()
+                            ? FormatHelper.FromBytes(storage.Content.FirstOrDefault(a => a.Volume == volume)!.Size).ToString()
                             : "";
 
                 result.Add(new DiagnosticResult
@@ -789,7 +795,7 @@ public class Application
             #region Cdrom
             foreach (var value in vm.Config.ExtensionData.Values.Where(a => a != null).Select(a => a.ToString()))
             {
-                if (value.Contains("media=cdrom") && value != "none,media=cdrom")
+                if (value!.Contains("media=cdrom") && value != "none,media=cdrom")
                 {
                     result.Add(new DiagnosticResult
                     {
@@ -934,7 +940,7 @@ public class Application
         {
             SettingsTimeSeriesType.Day => vm.RrdData.Day,
             SettingsTimeSeriesType.Week => vm.RrdData.Week,
-            _ => null,
+            _ => throw new NotImplementedException("thresholdHost.TimeSeries"),
         };
 
         CheckThresholdHost(result,
