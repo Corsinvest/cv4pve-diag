@@ -1,5 +1,3 @@
-<div align="center">
-
 # cv4pve-diag
 
 ```
@@ -17,7 +15,6 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 [![Downloads](https://img.shields.io/github/downloads/Corsinvest/cv4pve-diag/total.svg?style=flat-square&logo=download)](https://github.com/Corsinvest/cv4pve-diag/releases)
 [![NuGet](https://img.shields.io/nuget/v/Corsinvest.ProxmoxVE.Diagnostic.Api.svg?style=flat-square&logo=nuget)](https://www.nuget.org/packages/Corsinvest.ProxmoxVE.Diagnostic.Api/)
 
-</div>
 
 ---
 
@@ -35,32 +32,9 @@ unzip cv4pve-diag-linux-x64.zip
 
 ---
 
-## Table of Contents
-
-<details>
-<summary><strong>Click to expand navigation</strong></summary>
-
-- [Features](#-features)
-- [Installation](#-installation)
-- [Configuration](#-configuration)
-- [Usage Examples](#-usage-examples)
-- [Security & Permissions](#-security--permissions)
-- [Advanced Features](#-advanced-features)
-- [Diagnostic Checks](#-diagnostic-checks)
-- [Troubleshooting](#-troubleshooting)
-- [Resources](#-resources)
-
-</details>
-
----
-
 ## Features
 
 ### Core Capabilities
-
-<table>
-<tr>
-<td width="50%">
 
 #### **Performance & Reliability**
 - **Native C#** implementation
@@ -76,9 +50,6 @@ unzip cv4pve-diag-linux-x64.zip
 - **Replication status** checking
 - **Backup configuration** validation
 
-</td>
-<td width="50%">
-
 #### **Advanced Reporting**
 - **Multiple output formats** (Text, HTML, JSON, Markdown)
 - **Severity levels** (Critical, Warning, Info)
@@ -93,17 +64,9 @@ unzip cv4pve-diag-linux-x64.zip
 - **Ignored issues** tracking
 - **Comprehensive logging** and status reporting
 
-</td>
-</tr>
-</table>
-
 ---
 
 ## Installation
-
-<div align="center">
-  <img src="https://img.shields.io/badge/INSTALLATION-GUIDE-green?style=for-the-badge&logo=download" alt="Installation Guide">
-</div>
 
 ### Linux Installation
 
@@ -157,15 +120,7 @@ sudo mv cv4pve-diag /usr/local/bin/
 
 ## Configuration
 
-<div align="center">
-  <img src="https://img.shields.io/badge/CONFIGURATION-SETUP-blue?style=for-the-badge&logo=settings" alt="Configuration Setup">
-</div>
-
 ### Authentication Methods
-
-<table>
-<tr>
-<td width="50%">
 
 #### **Username/Password**
 ```bash
@@ -177,9 +132,6 @@ cv4pve-diag --host=192.168.1.100 --username=root@pam --password=your_password ex
 cv4pve-diag --host=192.168.1.100 --api-token=diagnostic@pve!token1=uuid-here execute
 ```
 
-</td>
-<td width="50%">
-
 #### **Password from File**
 ```bash
 # Store password in file
@@ -189,17 +141,9 @@ cv4pve-diag --host=192.168.1.100 --username=root@pam --password=file:/etc/cv4pve
 # Subsequent runs: reads password from file automatically
 ```
 
-</td>
-</tr>
-</table>
-
 ---
 
 ## Usage Examples
-
-<div align="center">
-  <img src="https://img.shields.io/badge/USAGE-EXAMPLES-orange?style=for-the-badge&logo=terminal" alt="Usage Examples">
-</div>
 
 ### Basic Diagnostic Operations
 
@@ -303,10 +247,6 @@ cv4pve-diag @/etc/cv4pve/production.conf execute --output=Html
 
 ## Security & Permissions
 
-<div align="center">
-  <img src="https://img.shields.io/badge/SECURITY-PERMISSIONS-red?style=for-the-badge&logo=shield" alt="Security & Permissions">
-</div>
-
 ### Required Permissions
 
 | Permission | Purpose | Scope |
@@ -337,41 +277,10 @@ cv4pve-diag --host=pve.local --api-token=diagnostic@pve!diag-token=uuid-from-cre
 
 </details>
 
-### Security Best Practices
-
-<table>
-<tr>
-<td width="50%">
-
-#### **Do's**
-- Use API tokens instead of passwords
-- Enable privilege separation for tokens
-- Store credentials in secure files with proper permissions
-- Use dedicated user accounts for diagnostics
-- Enable SSL certificate validation in production
-
-</td>
-<td width="50%">
-
-#### **Don'ts**
-- Use root credentials for automation
-- Store passwords in plain text scripts
-- Disable SSL validation without good reason
-- Grant excessive permissions
-- Share API tokens between different applications
-
-</td>
-</tr>
-</table>
-
 ---
 
 ## Advanced Features
-
-<div align="center">
-  <img src="https://img.shields.io/badge/ADVANCED-FEATURES-purple?style=for-the-badge&logo=rocket" alt="Advanced Features">
-</div>
-
+pippo
 ### Custom Settings
 
 <details>
@@ -439,15 +348,7 @@ The regex patterns match against Id, SubContext, and Description fields.
 
 ## Diagnostic Checks
 
-<div align="center">
-  <img src="https://img.shields.io/badge/DIAGNOSTIC-CHECKS-teal?style=for-the-badge&logo=check" alt="Diagnostic Checks">
-</div>
-
 ### Check Categories
-
-<table>
-<tr>
-<td width="33%">
 
 #### **Node Checks**
 - Node online status
@@ -456,9 +357,6 @@ The regex patterns match against Id, SubContext, and Description fields.
 - ZFS health
 - CPU/Memory usage
 - Storage capacity
-
-</td>
-<td width="33%">
 
 #### **VM/CT Checks**
 - VM/CT status
@@ -472,19 +370,12 @@ The regex patterns match against Id, SubContext, and Description fields.
 - Hardware configuration
 - VirtIO usage
 
-</td>
-<td width="33%">
-
 #### **Storage Checks**
 - Storage capacity
 - Orphaned images
 - Disk allocation
 - Replication errors
 - Backup file validation
-
-</td>
-</tr>
-</table>
 
 ### Example Output
 
@@ -510,10 +401,6 @@ The regex patterns match against Id, SubContext, and Description fields.
 ---
 
 ## Troubleshooting
-
-<div align="center">
-  <img src="https://img.shields.io/badge/TROUBLESHOOTING-HELP-red?style=for-the-badge&logo=tools" alt="Troubleshooting">
-</div>
 
 ### Common Issues & Solutions
 
@@ -563,15 +450,7 @@ cv4pve-diag --host=pve.local --validate-certificate --username=root@pam --passwo
 
 ## Resources
 
-<div align="center">
-  <img src="https://img.shields.io/badge/RESOURCES-LEARN%20MORE-teal?style=for-the-badge&logo=video" alt="Resources">
-</div>
-
 ### Video Tutorials
-
-<table>
-<tr>
-<td align="center" width="50%">
 
 #### **Official Tutorial**
 
@@ -579,34 +458,18 @@ cv4pve-diag --host=pve.local --validate-certificate --username=root@pam --passwo
 
 **Complete setup and usage guide**
 
-</td>
-<td align="center" width="50%">
-
 #### **Web GUI Version**
 
-[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)
-
-**Web interface for cv4pve-diag**
-
-</td>
-</tr>
-</table>
-
+[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)### Documentation Links
 ### Documentation Links
 
 | Resource | Description |
 |----------|-------------|
 | **[API Documentation](https://pve.proxmox.com/pve-docs/api-viewer/index.html)** | Proxmox VE API reference |
-| **[cv4pve-tools Suite](https://www.cv4pve-tools.com)** | Complete cv4pve tools ecosystem |
 | **[API Token Guide](https://pve.proxmox.com/pve-docs/pveum-plain.html)** | Proxmox VE API token documentation |
-
 ---
 
 ## Command Reference
-
-<div align="center">
-  <img src="https://img.shields.io/badge/COMMAND-REFERENCE-navy?style=for-the-badge&logo=terminal" alt="Command Reference">
-</div>
 
 ### Global Options
 
@@ -687,8 +550,6 @@ Professional support and consulting available through [Corsinvest](https://www.c
 
 ---
 
-<div align="center">
-  <sub>Part of <a href="https://www.corsinvest.it/cv4pve">cv4pve</a> suite | Made with ❤️ in Italy by <a href="https://www.corsinvest.it">Corsinvest</a></sub>
-  <br>
-  <sub>Copyright © Corsinvest Srl</sub>
-</div>
+Part of [cv4pve](https://www.corsinvest.it/cv4pve) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+
+Copyright © Corsinvest Srl
