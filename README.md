@@ -280,7 +280,7 @@ cv4pve-diag --host=pve.local --api-token=diagnostic@pve!diag-token=uuid-from-cre
 ---
 
 ## Advanced Features
-pippo
+
 ### Custom Settings
 
 <details>
@@ -290,15 +290,13 @@ The settings file allows you to customize thresholds and rules for diagnostics:
 
 ```json
 {
-  "MinPercentageVmUsageDisk": 95,
-  "MinPercentageVmUsageMemory": 95,
-  "MaxDaysSnapshotOutdate": 30,
-  "ConsiderBackupExtension": true,
-  "BackupExtension": [
-    "vma",
-    "vma.gz",
-    "vma.lzo"
-  ]
+  "Node": {
+    "Cpu": { "Warning": 70, "Critical": 80 },
+    "Memory": { "Warning": 70, "Critical": 80 }
+  },
+  "Storage": {
+    "Threshold": { "Warning": 70, "Critical": 80 }
+  }
 }
 ```
 
@@ -326,21 +324,15 @@ Create rules to ignore specific issues using regex patterns:
   {
     "Id": "105",
     "Context": "Qemu",
-    "SubContext": "Protection",
-    "Description": null,
-    "Gravity": "Critical"
-  },
-  {
-    "Id": ".*",
-    "Context": "Qemu",
-    "SubContext": "Agent",
-    "Description": ".*test.*",
-    "Gravity": "Warning"
+    "SubContext": "Protection"
   }
 ]
 ```
 
-The regex patterns match against Id, SubContext, and Description fields.
+**Pattern matching:**
+- Exact match: `"Id": "105"` - ignora solo VM 105
+- Partial match: `"Description": ".*test.*"` - ignora se descrizione contiene "test"
+- All match: `"Id": ".*"` - ignora tutti gli ID (usa con Context/SubContext specifici)
 
 </details>
 
