@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net9.0/cv4pve-diag.dll",
+            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net10.0/cv4pve-diag.dll",
             "args": [
                 "@Parm.Parm"
             ],

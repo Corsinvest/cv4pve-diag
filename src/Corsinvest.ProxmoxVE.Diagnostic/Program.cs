@@ -94,8 +94,8 @@ void Print(InfoHelper.Info info,
 
     var result = Application.Analyze(info, settings!, ignoredIssues!);
 
-    PrintResult(result.Where(a => !a.IsIgnoredIssue).ToList(), output);
-    if (showIgnoredIssues) { PrintResult(result.Where(a => a.IsIgnoredIssue).ToList(), output); }
+    PrintResult([.. result.Where(a => !a.IsIgnoredIssue)], output);
+    if (showIgnoredIssues) { PrintResult([.. result.Where(a => a.IsIgnoredIssue)], output); }
 }
 
 void PrintResult(ICollection<DiagnosticResult> data, TableGenerator.Output output)

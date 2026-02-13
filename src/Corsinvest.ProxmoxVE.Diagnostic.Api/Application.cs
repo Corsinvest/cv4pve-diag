@@ -132,7 +132,7 @@ public class Application
             storagesImages.AddRange(content);
         }
 
-        storagesImages = storagesImages.Distinct(new NodeStorageContentComparer()).ToList();
+        storagesImages = [.. storagesImages.Distinct(new NodeStorageContentComparer())];
 
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
         {
@@ -180,7 +180,8 @@ public class Application
 
         var endOfLife = new Dictionary<int, DateTime>()
                         {
-                            {6 , new DateTime(2022,07,01)},
+                            {7 , new DateTime(2024,07,01)},
+                            {6 , new DateTime(2022,09,01)},
                             {5 , new DateTime(2020,07,01)},
                             {4 , new DateTime(2018,06,01)},
                         };
@@ -210,8 +211,6 @@ public class Application
 
             if (endOfLife.TryGetValue(nodeVersion, out var eolDate) && DateTime.Now.Date >= eolDate)
             {
-
-
                 result.Add(new DiagnosticResult
                 {
                     Id = errorId,
@@ -382,7 +381,7 @@ public class Application
 
             #region Certificates
             result.AddRange(node.Certificates
-                                .Where(a => DateTimeOffset.FromUnixTimeSeconds(a.Notafter) < info.Date)
+                                .Where(a => DateTimeOffset.FromUnixTimeSeconds(a.NotAfter) < info.Date)
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = errorId,
@@ -609,7 +608,7 @@ public class Application
                                   IEnumerable<ClusterResource> resources,
                                   Settings settings)
     {
-        var osNotMaintained = new[] { "win8", "win7", "w2k8", "wxp", "w2k" };
+        var osNotMaintained = new[] { "win10", "win8", "win7", "w2k8", "wxp", "w2k" };
 
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                       && a.VmType == VmType.Qemu
