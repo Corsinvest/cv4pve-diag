@@ -8,6 +8,9 @@
   \____/\____/_/  /____/_/_/ /_/|___/\___/____/\__/
 
 Diagnostic Tool for Proxmox VE (Made in Italy)
+
+cv4pve-diag is a part of the Suite - CV4PVE
+For more information visit https://www.corsinvest.it/cv4pve
 ```
 
 [![License](https://img.shields.io/github/license/Corsinvest/cv4pve-diag.svg?style=flat-square)](LICENSE.md)
@@ -21,13 +24,54 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 ## Quick Start
 
 ```bash
+
 # Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+
 # Download specific version (replace VERSION with actual version number)
 wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
+
+# Unzip the Download
 unzip cv4pve-diag-linux-x64.zip
 
-# Run diagnostic
-./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+# Chmod to make Executable
+chmod +x cv4pve-diag
+
+# Running Diagnostic Command Tool within its Directory
+# NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+./cv4pve-diag --output=Text --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@debian:/cv4pvediag# ./cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool from the Root Directory
+# NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+/cv4pvediag/cv4pve-diag --output=Text --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+                        
+```
+## Usage
+```
+  cv4pve-diag [options] [command]
+
+Options:
+  --api-token <api-token>                            Api token format 'USER@REALM!TOKENID=UUID'. Require Proxmox VE 6.2 or later
+  --username <username>                              User name <username>@<realm>
+  --password <password>                              The password. Specify 'file:path_file' to store password in file.
+  --host <host> (REQUIRED)                           The host name host[:port],host1[:port],host2[:port]
+  --settings-file <settings-file>                    File settings (generated from create-settings)
+  --ignored-issues-file <ignored-issues-file>        File ignored issues (generated from create-ignored-issues)
+  --ignored-issues-show                              Show second table with ignored issue
+  -o, --output <Html|Json|JsonPretty|Markdown|Text>  Type output [default: Text]
+  --version                                          Show version information
+  -?, -h, --help                                     Show help and usage information
+
+Commands:
+  create-settings        Create file settings (settings.json)
+  create-ignored-issues  Create File ignored issues (ignored-issues.json)
+  export-collect         Export collect data collect to data.json
+  execute                Execute diagnostic and print result to console
 ```
 
 ---
@@ -81,12 +125,34 @@ wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-
 LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-diag/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
 wget "$LATEST_URL"
 
-# Extract and make executable
+# Unzip the Download
 unzip cv4pve-diag-linux-x64.zip
+
+# Chmod to make Executable
 chmod +x cv4pve-diag
 
-# Optional: Move to system path
-sudo mv cv4pve-diag /usr/local/bin/
+# Optional: Move to the System Path to make cv4pve-diag Global
+mv cv4pve-diag /usr/local/bin/
+
+# Running Diagnostic Command Tool Globally
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@debian:/# cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool within its Directory
+# NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@debian:/cv4pvediag# ./cv4pvediag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool from the Root Directory
+# NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+/cv4pvediag/cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
 ```
 
 ### Windows Installation
@@ -94,33 +160,236 @@ sudo mv cv4pve-diag /usr/local/bin/
 **Option 1: WinGet (Recommended)**
 ```powershell
 # Install using Windows Package Manager
+# PreInstalled in Windows 10(1809 or Later), Windows 11 and Windows 2025 Server
 winget install Corsinvest.cv4pve.diag
+
+# Optional: Add cv4pve-diag to System PATH to make cv4pve-diag Global
+1. Start Run Type: sysdm.cpl
+2. Select the Advanced Tab
+3. Select the Environment Variables Button
+4. In the System Variables Windows Scroll for: Path
+5. Edit the Path: Insert the Path to the cv4pve-diag Directory in the Variable Value Window
+C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+NOTE: You will need a SemiColon (;) after the Last Path Referenced when Adding New Paths.
+EXAMPLE: C:\Program Files\Common Files\Oracle\Java\java8path;C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+# Running Diagnostic Command Tool Globally in CMD(DOS Terminal)
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example
+C:\>cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
+                              
+Attention: There is a Slight Delay when using the Tool due to Processing the Information.
+           Please wait for Data to Display.
+           It is Recommened to Run the Tool in PowerShell when Outputing in Text Mode for
+           proper Displaying of the Data.
+           You can use CMD(DOS Terminal) however there is a Limatation of Columns Displaying.
+
+# Running Diagnostic Command Tool within its Directory in CMD(DOS Terminal)
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example
+C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
 ```
 
 **Option 2: Manual Installation**
+
+**PowerShell**
 ```powershell
 # Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
-# Download specific version (replace VERSION with actual version)
+
+# PowerShell 3.0 and Later
+# Download Specific Version (replace VERSION with actual version)
 Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag.exe-win-x64.zip" -OutFile "cv4pve-diag.zip"
 
-# Extract
+# Unzip the Download
 Expand-Archive cv4pve-diag.zip -DestinationPath "C:\Tools\cv4pve-diag"
 
-# Add to PATH (optional)
-$env:PATH += ";C:\Tools\cv4pve-diag"
+# Optional: Add cv4pve-diag to System PATH to make cv4pve-diag Global
+1. Start Run Type: sysdm.cpl
+2. Select the Advanced Tab
+3. Select the Environment Variables Button
+4. In the System Variables Windows Scroll for: Path
+5. Edit the Path: Insert the Path to the cv4pve-diag Directory in the Variable Value Window
+C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+NOTE: You will need a SemiColon (;) after the Last Path Referenced when Adding New Paths.
+EXAMPLE: C:\Program Files\Common Files\Oracle\Java\java8path;C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+# Running Diagnostic Command Tool Globally in PowerShell
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example        
+PS C:\cv4pve-diag.exe-win-x(ARCHITECTURE)>.\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+NOTE: The .\ in front of the Command cv4pve-diag is needed.
+
+# Running Diagnostic Command Tool within its Directory in PowerShell
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example
+PS C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> .\cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+```
+**Direct Download on Windows x86 and x64**
+```
+x86 Version:
+         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+                    NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/v(x.x.x)/cv4pve-diag.exe-win-x86.zip
+                    NOTE: v(x.x.x) is the Version Number
+
+                    Example Option B for v1.10.0:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.10.0/cv4pve-diag.exe-win-x86.zip
+
+x64 Version:
+         Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
+                    NOTE: Select under Assets and Choose Lastest Version
+         Option B - Direct Downlod: https://github.com/Corsinvest/cv4pve-diag/releases/download/v(x.x.x)/cv4pve-diag.exe-win-x64.zip
+                    NOTE: v(x.x.x) is the Version Number
+
+                    Example Option B for v1.10.0:      
+		    https://github.com/Corsinvest/cv4pve-diag/releases/download/v1.10.0/cv4pve-diag.exe-win-x64.zip
+
+# Optional: Add cv4pve-diag to System PATH to make cv4pve-diag Global
+1. Start Run Type: sysdm.cpl
+2. Select the Advanced Tab
+3. Select the Environment Variables Button
+4. In the System Variables Windows Scroll for: Path
+5. Edit the Path: Insert the Path to the cv4pve-diag Directory in the Variable Value Window
+C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+NOTE: You will need a SemiColon (;) after the Last Path Referenced when Adding New Paths.
+EXAMPLE: C:\Program Files\Common Files\Oracle\Java\java8path;C:\cv4pve-diag.exe-win-x(ARCHITECTURE)\
+
+# Running Diagnostic Command Tool Globally in CMD(DOS Terminal)
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example
+C:\>cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute 
+                              
+Attention: There is a Slight Delay when using the Tool due to Processing the Information.
+           Please wait for Data to Display.
+           It is Recommened to Run the Tool in PowerShell when Outputing in Text Mode for
+           proper Displaying of the Data.
+           You can use CMD(DOS Terminal) however there is a Limatation of Displaying correctly.
+
+# Running Diagnostic Command Tool within its Directory in CMD(DOS Terminal)
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+# Example
+C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
 ```
 
-### macOS Installation
+### MacOS Installation
 
 ```bash
 # Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
 # Download specific version (replace VERSION with actual version)
 wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-x64.zip
+
+# Unzip the Download
 unzip cv4pve-diag-osx-x64.zip
+
+# Chmod to make Executable
 chmod +x cv4pve-diag
 
 # Move to applications
-sudo mv cv4pve-diag /usr/local/bin/
+mv cv4pve-diag /usr/local/bin/
+
+# Running Diagnostic Command Tool Globally
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS:/$ cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool within its Directory
+# NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS:/cv4pvediag$ ./cv4pvediag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool from the Root Directory
+# NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+/cv4pvediag/cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS:/$ /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+```
+
+### MacOS ARM Installation
+
+```bash
+# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+# Download specific version (replace VERSION with actual version)
+wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-arm64.zip
+
+# Unzip the Download
+unzip cv4pve-diag-osx-arm64.zip
+
+# Chmod to make Executable
+chmod +x cv4pve-diag
+
+# Move to applications
+mv cv4pve-diag /usr/local/bin/
+
+# Running Diagnostic Command Tool Globally
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS-ARM:/$ cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool within its Directory
+# NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS-ARM:/cv4pvediag$ ./cv4pvediag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool from the Root Directory
+# NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+/cv4pvediag/cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@MacOS-ARM:/$ /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+```
+
+### ARM Installation
+
+```
+# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+# Download specific version (replace VERSION with actual version)
+wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-arm(ARCHITECTURE).zip
+
+# Unzip the Download
+unzip cv4pve-diag-linux-arm(ARCHITECTURE).zip
+
+# Chmod to make Executable
+chmod +x cv4pve-diag
+
+# Move to applications
+mv cv4pve-diag /usr/local/bin/
+
+# Running Diagnostic Command Tool Globally
+cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@ARM:/# cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool within its Directory
+# NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
+./cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@ARM:/cv4pvediag# ./cv4pvediag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
+# Running Diagnostic Command Tool from the Root Directory
+# NOTE: If you are at the Root Directory, use the Directory Path to Run cv4pve-diag
+/cv4pvediag/cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
+
+#Example
+root@ARM:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --username=root@pam --password=password execute
+
 ```
 
 ---
