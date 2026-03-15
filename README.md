@@ -25,16 +25,17 @@ For more information visit https://www.corsinvest.it/cv4pve
 
 ```bash
 
-# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+Step 1 - # Check available releases at:
+         https://github.com/Corsinvest/cv4pve-diag/releases
 
-# Download specific version (replace VERSION with actual version number)
-wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
+Step 2 - # Download specific version (replace VERSION with actual version number)
+         wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
 
-# Unzip the Download
-unzip cv4pve-diag-linux-x64.zip
+Step 3 - # Unzip the Download
+         unzip cv4pve-diag-linux-x64.zip
 
-# Chmod to make Executable
-chmod +x cv4pve-diag
+Step 4 - # Chmod to make Executable
+         chmod +x cv4pve-diag
 
 # Running Diagnostic Command Tool within its Directory
 # NOTE: Use ./ in front of the the Command cv4pve-diag if you are in the same Directory as cv4pve-diag.
@@ -115,21 +116,21 @@ Commands:
 ### Linux Installation
 
 ```bash
-# Check available releases and get the specific version number
-# Visit: https://github.com/Corsinvest/cv4pve-diag/releases
+Step 1 - # Check available releases and get the specific version number
+         https://github.com/Corsinvest/cv4pve-diag/releases
 
-# Download specific version (replace VERSION with actual version like v1.9.0)
-wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
+Step 2 - # Download specific version (replace VERSION with actual version like v1.9.0)
+         wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-x64.zip
 
-# Alternative: Get latest release URL programmatically
-LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-diag/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
-wget "$LATEST_URL"
+         # Alternative: Get latest release URL programmatically
+         LATEST_URL=$(curl -s https://api.github.com/repos/Corsinvest/cv4pve-diag/releases/latest | grep browser_download_url | grep 
+         linux-x64 | cut -d '"' -f 4) wget "$LATEST_URL"
 
-# Unzip the Download
-unzip cv4pve-diag-linux-x64.zip
+Step 3 - # Unzip the Download
+         unzip cv4pve-diag-linux-x64.zip
 
-# Chmod to make Executable
-chmod +x cv4pve-diag
+Step 4 - # Chmod to make Executable
+         chmod +x cv4pve-diag
 
 # Optional: Move to the System Path to make cv4pve-diag Global
 mv cv4pve-diag /usr/local/bin/
@@ -159,9 +160,9 @@ root@debian:/# /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 -
 
 **Option 1: WinGet (Recommended)**
 ```powershell
-# Install using Windows Package Manager
-# PreInstalled in Windows 10(1809 or Later), Windows 11 and Windows 2025 Server
-winget install Corsinvest.cv4pve.diag
+Step 1 - # Install using Windows Package Manager
+         # PreInstalled in Windows 10(1809 or Later), Windows 11 and Windows 2025 Server
+         winget install Corsinvest.cv4pve.diag
 
 # Optional: Add cv4pve-diag to System PATH to make cv4pve-diag Global
 1. Start Run Type: sysdm.cpl
@@ -197,14 +198,16 @@ C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> cv4pve-diag --output=Text --host=192.168
 
 **PowerShell**
 ```powershell
-# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
+Step 1 - # Check available releases
+         https://github.com/Corsinvest/cv4pve-diag/releases
 
-# PowerShell 3.0 and Later
-# Download Specific Version (replace VERSION with actual version)
-Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag.exe-win-x64.zip" -OutFile "cv4pve-diag.zip"
+Step 2 - # PowerShell 3.0 and Later
+         # Download Specific Version (replace VERSION with actual version)
+         Invoke-WebRequest -Uri "https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag.exe-win-x64.zip" - 
+         OutFile "cv4pve-diag.zip"
 
-# Unzip the Download
-Expand-Archive cv4pve-diag.zip -DestinationPath "C:\Tools\cv4pve-diag"
+Step 3 - # Unzip the Download
+         Expand-Archive cv4pve-diag.zip -DestinationPath "C:\Tools\cv4pve-diag"
 
 # Optional: Add cv4pve-diag to System PATH to make cv4pve-diag Global
 1. Start Run Type: sysdm.cpl
@@ -232,6 +235,8 @@ PS C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> .\cv4pve-diag --output=Text --host=19
 ```
 **Direct Download on Windows x86 and x64**
 ```
+Step 1 - # Download the Lastest Zip File cv4pve-diag.exe-win-x(ARCHITECTURE).zip to a Directory of your Choice
+
 x86 Version:
          Option A - Click On File to Download: https://github.com/Corsinvest/cv4pve-diag/releases
                     NOTE: Select under Assets and Choose Lastest Version
@@ -283,18 +288,19 @@ C:\cv4pve-diag.exe-win-x(ARCHITECTURE)> cv4pve-diag --output=Text --host=192.168
 ### MacOS Installation
 
 ```bash
-# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
-# Download specific version (replace VERSION with actual version)
-wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-x64.zip
+Step 1 - # Check available releases
+         https://github.com/Corsinvest/cv4pve-diag/releases
+Step 2 - # Download specific version (replace VERSION with actual version)
+         wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-x64.zip
 
-# Unzip the Download
-unzip cv4pve-diag-osx-x64.zip
+Step 3 - # Unzip the Download
+         unzip cv4pve-diag-osx-x64.zip
 
-# Chmod to make Executable
-chmod +x cv4pve-diag
+Step 4 - # Chmod to make Executable
+         chmod +x cv4pve-diag
 
-# Move to applications
-mv cv4pve-diag /usr/local/bin/
+Step 5 - # Move to applications
+         mv cv4pve-diag /usr/local/bin/
 
 # Running Diagnostic Command Tool Globally
 cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
@@ -320,18 +326,19 @@ root@MacOS:/$ /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:8006 --
 ### MacOS ARM Installation
 
 ```bash
-# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
-# Download specific version (replace VERSION with actual version)
-wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-arm64.zip
+Step 1 - # Check available releases
+         https://github.com/Corsinvest/cv4pve-diag/releases
+Step 2 - # Download specific version (replace VERSION with actual version)
+         wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-osx-arm64.zip
 
-# Unzip the Download
-unzip cv4pve-diag-osx-arm64.zip
+Step 3 - # Unzip the Download
+         unzip cv4pve-diag-osx-arm64.zip
 
-# Chmod to make Executable
-chmod +x cv4pve-diag
+Step 4 - # Chmod to make Executable
+         chmod +x cv4pve-diag
 
-# Move to applications
-mv cv4pve-diag /usr/local/bin/
+Step 5 - # Move to applications
+         mv cv4pve-diag /usr/local/bin/
 
 # Running Diagnostic Command Tool Globally
 cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
@@ -357,18 +364,19 @@ root@MacOS-ARM:/$ /cv4pvediag/cv4pve-diag --output=Text --host=192.168.0.100:800
 ### ARM Installation
 
 ```
-# Check available releases at: https://github.com/Corsinvest/cv4pve-diag/releases
-# Download specific version (replace VERSION with actual version)
-wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-arm(ARCHITECTURE).zip
+Step 1 - # Check available releases
+         https://github.com/Corsinvest/cv4pve-diag/releases
+Step 2 - # Download specific version (replace VERSION with actual version)
+         wget https://github.com/Corsinvest/cv4pve-diag/releases/download/VERSION/cv4pve-diag-linux-arm(ARCHITECTURE).zip
 
-# Unzip the Download
-unzip cv4pve-diag-linux-arm(ARCHITECTURE).zip
+Step 3 - # Unzip the Download
+         unzip cv4pve-diag-linux-arm(ARCHITECTURE).zip
 
-# Chmod to make Executable
-chmod +x cv4pve-diag
+Step 4 - # Chmod to make Executable
+         chmod +x cv4pve-diag
 
-# Move to applications
-mv cv4pve-diag /usr/local/bin/
+Step 5 - # Move to applications
+         mv cv4pve-diag /usr/local/bin/
 
 # Running Diagnostic Command Tool Globally
 cv4pve-diag --host=YOUR_HOST --username=root@pam --password=YOUR_PASSWORD execute
