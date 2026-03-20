@@ -16,3 +16,4 @@ jobs:
       project-path: src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj
       nuget-project-path: src/Corsinvest.ProxmoxVE.Diagnostic.Api/Corsinvest.ProxmoxVE.Diagnostic.Api.csproj
       winget-id: Corsinvest.cv4pve.diag
+      use-changelog: true

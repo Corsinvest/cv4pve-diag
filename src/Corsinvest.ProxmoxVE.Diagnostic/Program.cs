@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: MIT
  */
 
 using System.Text.Json;
@@ -55,7 +55,7 @@ app.AddCommand("execute", "Execute diagnostic and print result to console")
                                ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(action.GetValue(optIgnoredIssuesFile)!))
                                : [];
 
-       var result = await Application.AnalyzeAsync(client, settings!, ignoredIssues!);
+       var result = await new DiagnosticEngine(client, settings!).AnalyzeAsync(ignoredIssues!);
 
        PrintResult([.. result.Where(a => !a.IsIgnoredIssue)], action.GetValue(optOutput));
        if (action.GetValue(optShowIgnoredIssues)) { PrintResult([.. result.Where(a => a.IsIgnoredIssue)], action.GetValue(optOutput)); }

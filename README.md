@@ -49,6 +49,7 @@ unzip cv4pve-diag-linux-x64.zip
 - **Node health** verification
 - **Replication status** checking
 - **Backup configuration** validation
+- **Thin provisioning** overcommit detection
 
 #### **Advanced Reporting**
 - **Multiple output formats** (Text, HTML, JSON, Markdown)
@@ -275,96 +276,90 @@ cv4pve-diag --host=pve.local --api-token=diagnostic@pve!diag-token=uuid-from-cre
 
 ---
 
-## Advanced Features
-
-### Custom Settings
-
-<details>
-<summary><strong>Customize Diagnostic Rules</strong></summary>
-
-The settings file allows you to customize thresholds and rules for diagnostics:
-
-```json
-{
-  "Node": {
-    "Cpu": { "Warning": 70, "Critical": 80 },
-    "Memory": { "Warning": 70, "Critical": 80 }
-  },
-  "Storage": {
-    "Threshold": { "Warning": 70, "Critical": 80 }
-  }
-}
-```
-
-#### Example Usage
-```bash
-# Create default settings
-cv4pve-diag --host=pve.local --username=root@pam --password=secret create-settings
-
-# Edit settings.json with your preferences
-# Run with custom settings
-cv4pve-diag --host=pve.local --username=root@pam --password=secret --settings-file=settings.json execute
-```
-
-</details>
-
-### Ignore Specific Issues
-
-<details>
-<summary><strong>Filter Unwanted Warnings</strong></summary>
-
-Create rules to ignore specific issues using regex patterns:
-
-```json
-[
-  {
-    "Id": "nodes/pve01/qemu/105",
-    "Context": "Qemu",
-    "SubContext": "Protection"
-  }
-]
-```
-
-**Pattern matching (regex):**
-- Exact match: `"Id": "nodes/pve01/qemu/105"` - ignora solo VM 105 su pve01
-- Node match: `"Id": "nodes/pve01/.*"` - ignora tutti i problemi su pve01
-- Partial match: `"Description": ".*test.*"` - ignora se descrizione contiene "test"
-- All match: `"Id": ".*"` - ignora tutti gli ID (usa con Context/SubContext specifici)
-
-</details>
-
----
-
 ## Diagnostic Checks
 
-### Check Categories
+### Cluster Checks
 
-#### **Node Checks**
-- Node online status
-- Update availability
-- Replication status
-- ZFS health
-- CPU/Memory usage
-- Storage capacity
+| Check | SubContext | Gravity | Description | Ignorable |
+|-------|-----------|---------|-------------|-----------|
+| Unknown resource type | Status | Critical | Resource with unrecognized type in cluster | No |
+| Backup compression disabled | BackupCompression | Warning | Cluster-level backup has no compression set | Yes |
+| No quorum | Quorum | Critical | Cluster has no quorum | No |
+| HA groups with no resources | HAGroups | Warning | HA group defined but has no VMs/CTs assigned | Yes |
+| Pools with no VMs/CTs | Pools | Info | Resource pool exists but is empty | Yes |
+| Firewall disabled | Firewall | Warning | Cluster-level firewall is disabled | Yes |
+| Two-factor auth not enforced | TwoFactor | Warning | No two-factor authentication policy on cluster | Yes |
 
-#### **VM/CT Checks**
-- VM/CT status
-- Resource usage
-- QEMU agent status
-- Backup configuration
-- Snapshot age
-- AutoSnapshot configuration
-- Protection status
-- Start on boot
-- Hardware configuration
-- VirtIO usage
+### Node Checks
 
-#### **Storage Checks**
-- Storage capacity
-- Orphaned images
-- Disk allocation
-- Replication errors
-- Backup file validation
+| Check | SubContext | Gravity | Description | Ignorable |
+|-------|-----------|---------|-------------|-----------|
+| Node offline | Status | Critical | Node is not reachable | No |
+| Package versions differ | PackageVersions | Critical | Nodes have different package versions installed | Yes |
+| Hosts file differs | Hosts | Warning | `/etc/hosts` content differs between nodes | Yes |
+| Corosync ring errors | Corosync | Critical | Corosync reports ring errors | No |
+| Replication errors | Replication | Warning | Replication job has errors | Yes |
+| ZFS pool degraded/faulted | ZFS | Critical | ZFS pool is not in ONLINE state | No |
+| SSD wearout below threshold | SSD | Warning/Critical | SSD wearout indicator below threshold | Yes |
+| Updates available | Update | Info | Packages available for update | Yes |
+| CPU usage above threshold | Usage | Warning/Critical | CPU usage above configured threshold | Yes |
+| Memory usage above threshold | Usage | Warning/Critical | Memory usage above configured threshold | Yes |
+| Disk (storage) usage above threshold | Usage | Warning/Critical | Node storage usage above configured threshold | Yes |
+| Health score low | HealthScore | Warning/Critical | Composite health score below threshold | Yes |
+| Time series period | TimeSeries | — | Configurable: Hour, Day, Week, Month, Year | — |
+
+### Storage Checks
+
+| Check | SubContext | Gravity | Description | Ignorable |
+|-------|-----------|---------|-------------|-----------|
+| Storage unavailable | Status | Critical | Storage is not accessible | No |
+| Storage usage above threshold | Usage | Warning/Critical | Storage usage above configured threshold | Yes |
+| Orphaned disk image | Image | Warning | Disk image not attached to any VM/CT | Yes |
+| Thin provisioning overcommit | ThinOvercommit | Warning/Critical | Allocated disk space exceeds physical capacity on thin pool (lvmthin, zfspool, rbd, cephfs) | Yes |
+| Old backup files | Backup | Warning | Backup files older than configured retention | Yes |
+
+### VM (QEMU) Checks
+
+| Check | SubContext | Gravity | Description | Ignorable |
+|-------|-----------|---------|-------------|-----------|
+| VM status unknown | Status | Critical | VM is in unknown/error state | No |
+| No backup configured | Backup | Warning | VM not included in any backup job | Yes |
+| Disk excluded from backup | Backup | Critical | A disk has backup disabled | Yes |
+| No snapshot | Snapshot | Info | VM has no snapshots | Yes |
+| Too many snapshots | SnapshotCount | Warning | Snapshot count exceeds configured limit | Yes |
+| Old snapshots | SnapshotOld | Warning | Snapshots older than configured age | Yes |
+| CPU usage above threshold | Usage | Warning/Critical | CPU usage above configured threshold | Yes |
+| Memory usage above threshold | Usage | Warning/Critical | Memory usage above configured threshold | Yes |
+| Health score low | HealthScore | Warning/Critical | Composite health score below threshold | Yes |
+| QEMU agent not enabled | Agent | Warning | Guest agent not configured | Yes |
+| Start on boot not enabled | StartOnBoot | Warning | VM will not start automatically after host reboot | Yes |
+| Protection not enabled | Protection | Info | VM protection flag not set | Yes |
+| VirtIO not used | VirtIO | Info | Network interface not using VirtIO driver | Yes |
+| CD-ROM mounted | Hardware | Warning | CD-ROM drive has an image mounted | Yes |
+| Unsafe disk cache | DiskCache | Warning | Disk configured with `cache=unsafe` | Yes |
+| OS no longer maintained | OSNotMaintained | Warning | Guest OS has reached end of life | Yes |
+| AutoSnapshot not configured | AutoSnapshot | Warning | cv4pve-autosnap not configured | Yes |
+| ScsiHw not virtio-scsi-pci | Hardware | Info | SCSI controller is not the recommended type | Yes |
+
+### LXC (Container) Checks
+
+| Check | SubContext | Gravity | Description | Ignorable |
+|-------|-----------|---------|-------------|-----------|
+| CT status unknown | Status | Critical | Container is in unknown/error state | No |
+| No backup configured | Backup | Warning | CT not included in any backup job | Yes |
+| Disk excluded from backup | Backup | Critical | A disk has backup disabled | Yes |
+| No snapshot | Snapshot | Info | CT has no snapshots | Yes |
+| Too many snapshots | SnapshotCount | Warning | Snapshot count exceeds configured limit | Yes |
+| Old snapshots | SnapshotOld | Warning | Snapshots older than configured age | Yes |
+| CPU usage above threshold | Usage | Warning/Critical | CPU usage above configured threshold | Yes |
+| Memory usage above threshold | Usage | Warning/Critical | Memory usage above configured threshold | Yes |
+| Health score low | HealthScore | Warning/Critical | Composite health score below threshold | Yes |
+| Start on boot not enabled | StartOnBoot | Warning | CT will not start automatically after host reboot | Yes |
+| Protection not enabled | Protection | Info | CT protection flag not set | Yes |
+| AutoSnapshot not configured | AutoSnapshot | Warning | cv4pve-autosnap not configured | Yes |
+| Nesting enabled without keyctl | Features | Warning | `nesting=1` is set but `keyctl=1` is missing (Docker inside LXC) | Yes |
+
+> **Note:** All checks marked as *Ignorable* can be suppressed by adding matching rules to the ignored-issues file. This is useful for intentional configurations that do not represent real problems.
 
 ### Example Output
 
@@ -391,6 +386,122 @@ Create rules to ignore specific issues using regex patterns:
 | nodes/pve01/qemu/1006       | For more performance switch 'net0' network to VirtIO               | Qemu    | VirtIO          | Info     |
 +-----------------------------+--------------------------------------------------------------------+---------+-----------------+----------+
 ```
+
+---
+
+## Settings Reference
+
+Generate the default settings file with:
+
+```bash
+cv4pve-diag --host=pve.local --username=root@pam --password=secret create-settings
+```
+
+Full `settings.json` structure with all defaults:
+
+```json
+{
+  "Storage": {
+    "TimeSeries": "Day",
+    "Threshold": {
+      "Warning": 70,
+      "Critical": 80
+    }
+  },
+  "Node": {
+    "TimeSeries": "Day",
+    "Cpu": { "Warning": 70, "Critical": 80 },
+    "Memory": { "Warning": 70, "Critical": 80 },
+    "Network": { "Warning": 0, "Critical": 0 }
+  },
+  "Qemu": {
+    "TimeSeries": "Day",
+    "Cpu": { "Warning": 70, "Critical": 80 },
+    "Memory": { "Warning": 70, "Critical": 80 },
+    "Network": { "Warning": 0, "Critical": 0 }
+  },
+  "Lxc": {
+    "TimeSeries": "Day",
+    "Cpu": { "Warning": 70, "Critical": 80 },
+    "Memory": { "Warning": 70, "Critical": 80 },
+    "Network": { "Warning": 0, "Critical": 0 }
+  },
+  "SsdWearoutThreshold": {
+    "Warning": 70,
+    "Critical": 80
+  },
+  "Snapshot": {
+    "MaxCount": 10,
+    "MaxAgeDays": 30
+  },
+  "HealthScore": {
+    "WarningThreshold": 60,
+    "CriticalThreshold": 40
+  }
+}
+```
+
+### Settings Description
+
+| Section | Property | Default | Description |
+|---------|----------|---------|-------------|
+| `Storage.TimeSeries` | — | `Day` | RRD time window for storage metrics (`Hour`, `Day`, `Week`, `Month`, `Year`) |
+| `Storage.Threshold` | `Warning` / `Critical` | `70` / `80` | Storage usage percentage thresholds |
+| `Node.TimeSeries` | — | `Day` | RRD time window for node metrics |
+| `Node.Cpu` | `Warning` / `Critical` | `70` / `80` | Node CPU usage % thresholds |
+| `Node.Memory` | `Warning` / `Critical` | `70` / `80` | Node memory usage % thresholds |
+| `Node.Network` | `Warning` / `Critical` | `0` / `0` | Node network throughput thresholds (bytes/s), `0` = disabled |
+| `Qemu.TimeSeries` | — | `Day` | RRD time window for VM metrics |
+| `Qemu.Cpu` | `Warning` / `Critical` | `70` / `80` | VM CPU usage % thresholds |
+| `Qemu.Memory` | `Warning` / `Critical` | `70` / `80` | VM memory usage % thresholds |
+| `Qemu.Network` | `Warning` / `Critical` | `0` / `0` | VM network throughput thresholds (bytes/s), `0` = disabled |
+| `Lxc.TimeSeries` | — | `Day` | RRD time window for CT metrics |
+| `Lxc.Cpu` | `Warning` / `Critical` | `70` / `80` | CT CPU usage % thresholds |
+| `Lxc.Memory` | `Warning` / `Critical` | `70` / `80` | CT memory usage % thresholds |
+| `Lxc.Network` | `Warning` / `Critical` | `0` / `0` | CT network throughput thresholds (bytes/s), `0` = disabled |
+| `SsdWearoutThreshold` | `Warning` / `Critical` | `70` / `80` | SSD wearout % thresholds (below = alert) |
+| `Snapshot.MaxCount` | — | `10` | Max snapshots per VM/CT before warning; `0` = disabled |
+| `Snapshot.MaxAgeDays` | — | `30` | Max snapshot age in days before warning; `0` = disabled |
+| `HealthScore.WarningThreshold` | — | `60` | Health score below which a Warning is raised |
+| `HealthScore.CriticalThreshold` | — | `40` | Health score below which a Critical is raised |
+
+#### Health Score Formula
+
+```
+Node  score = 100 - (cpu × 0.4 + ram × 0.4 + disk × 0.2)
+VM/CT score = 100 - (cpu × 0.5 + ram × 0.5)
+```
+
+Set `WarningThreshold` and `CriticalThreshold` to `0` to disable health score checks entirely.
+
+---
+
+## Advanced Features
+
+### Ignore Specific Issues
+
+<details>
+<summary><strong>Filter Unwanted Warnings</strong></summary>
+
+Create rules to ignore specific issues using regex patterns:
+
+```json
+[
+  {
+    "Id": "nodes/pve01/qemu/105",
+    "Context": "Qemu",
+    "SubContext": "Protection"
+  }
+]
+```
+
+**Pattern matching (regex):**
+- Exact match: `"Id": "nodes/pve01/qemu/105"` — ignore only VM 105 on pve01
+- Node match: `"Id": "nodes/pve01/.*"` — ignore all issues on pve01
+- Partial match: `"Description": ".*test.*"` — ignore if description contains "test"
+- All match: `"Id": ".*"` — ignore all IDs (use with specific Context/SubContext)
+
+</details>
 
 ---
 
@@ -454,13 +565,15 @@ cv4pve-diag --host=pve.local --validate-certificate --username=root@pam --passwo
 
 #### **Web GUI Version**
 
-[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)### Documentation Links
+[![cv4pve-admin](https://raw.githubusercontent.com/Corsinvest/cv4pve-admin/main/src/Corsinvest.ProxmoxVE.Admin/wwwroot/doc/images/screenshot/modules/diagnostic/results.png)](https://github.com/Corsinvest/cv4pve-admin)
+
 ### Documentation Links
 
 | Resource | Description |
 |----------|-------------|
 | **[API Documentation](https://pve.proxmox.com/pve-docs/api-viewer/index.html)** | Proxmox VE API reference |
 | **[API Token Guide](https://pve.proxmox.com/pve-docs/pveum-plain.html)** | Proxmox VE API token documentation |
+
 ---
 
 ## Command Reference

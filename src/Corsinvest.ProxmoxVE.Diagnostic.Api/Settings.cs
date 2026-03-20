@@ -1,9 +1,7 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: MIT
  */
-
-using System.ComponentModel;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -39,6 +37,15 @@ public class Settings
     /// <summary>
     /// Threshold
     /// </summary>
-    [DisplayName("Ssd SsdWearout")]
     public SettingsThresholdPercentual SsdWearoutThreshold { get; set; } = new SettingsThresholdPercentual();
+
+    /// <summary>
+    /// Snapshot checks configuration
+    /// </summary>
+    public SettingsSnapshot Snapshot { get; set; } = new SettingsSnapshot();
+
+    /// <summary>
+    /// Health score thresholds for nodes and VMs
+    /// </summary>
+    public SettingsHealthScore HealthScore { get; set; } = new SettingsHealthScore();
 }
