@@ -431,9 +431,9 @@ public partial class DiagnosticEngine
                             ? rrdData.Average(a => a.RootUsage / a.RootSize * 100.0)
                             : 0.0;
 
-        CheckHealthScore(result, 
-                         settings.HealthScore, 
-                         DiagnosticResultContext.Node, 
+        CheckHealthScore(result,
+                         settings.HealthScore,
+                         DiagnosticResultContext.Node,
                          id,
                          nodeCpuPct * 0.4 + nodeRamPct * 0.4 + nodeDiskPct * 0.2);
     }
