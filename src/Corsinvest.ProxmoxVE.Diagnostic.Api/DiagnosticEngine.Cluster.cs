@@ -3,14 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-using System.Text.RegularExpressions;
-using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
-using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -41,19 +35,19 @@ public partial class DiagnosticEngine
     {
         // Backup jobs without compression waste storage space (zstd recommended)
         _result.AddRange(clusterBackups.Where(a => a.Enabled && string.IsNullOrWhiteSpace(a.Compress))
-                                      .Select(a => new DiagnosticResult
-                                      {
-                                          Id = $"cluster/backup/{a.Id}",
-                                          ErrorCode = "CC0001",
-                                          Description = $"Backup job '{a.Id}' has no compression configured",
-                                          Context = DiagnosticResultContext.Cluster,
-                                          SubContext = "Backup",
-                                          Gravity = DiagnosticResultGravity.Info,
-                                      }));
+                                       .Select(a => new DiagnosticResult
+                                       {
+                                           Id = $"cluster/backup/{a.Id}",
+                                           ErrorCode = "CC0001",
+                                           Description = $"Backup job '{a.Id}' has no compression configured",
+                                           Context = DiagnosticResultContext.Cluster,
+                                           SubContext = "Backup",
+                                           Gravity = DiagnosticResultGravity.Info,
+                                       }));
     }
 
     private async Task CheckClusterQuorumAndHaAsync(List<ClusterResource> resources,
-                                                     IEnumerable<ClusterStatus> clusterStatus)
+                                                    IEnumerable<ClusterStatus> clusterStatus)
     {
         // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
         var clusterInfo = clusterStatus.FirstOrDefault(a => a.Type == "cluster");

@@ -2,6 +2,18 @@
 
 ---
 
+## [2.0.1] — 2026-03-21
+
+### Improvements
+
+- Health score thresholds are now configurable separately for nodes (`Node.HealthScore`) and virtual machines/containers (`Qemu.HealthScore`, `Lxc.HealthScore`). Default thresholds: nodes `warning=70, critical=80`; VMs and containers `warning=60, critical=40`.
+
+### Fixed
+
+- Removed unused `HealthScore` top-level setting from `settings.json` (replaced by per-host-type settings above).
+
+---
+
 ## [2.0.0] — 2026-03-20
 
 ### What's new

@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-using System.ComponentModel;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -17,7 +16,6 @@ public class SettingsSnapshot
     /// Too many snapshots degrade I/O performance due to long delta chains.
     /// Set to 0 to disable the check.
     /// </summary>
-    [DisplayName("Max Count")]
     public int MaxCount { get; set; } = 10;
 
     /// <summary>
@@ -25,6 +23,5 @@ public class SettingsSnapshot
     /// Old snapshots are likely forgotten and waste storage space.
     /// Set to 0 to disable the check.
     /// </summary>
-    [DisplayName("Max Age Days")]
     public int MaxAgeDays { get; set; } = 30;
 }

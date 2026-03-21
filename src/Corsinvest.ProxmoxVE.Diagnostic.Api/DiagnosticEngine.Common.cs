@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-using System.Text.RegularExpressions;
-using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
@@ -208,7 +206,7 @@ public partial class DiagnosticEngine
 
         CheckSnapshots(_result, snapshots, settings.Snapshot, _now, id, context);
 
-        CheckThresholdHost(_result, settings, thresholdHost, context, id, rrdData.Select(a => new ThresholdRddData(a, a, a)));
+        CheckThresholdHost(_result, thresholdHost, context, id, rrdData.Select(a => new ThresholdRddData(a, a, a)));
     }
 
     private static void CheckTaskHistory(List<DiagnosticResult> result,
@@ -308,7 +306,6 @@ public partial class DiagnosticEngine
     private record ThresholdRddData(IMemory Memory, INetIO NetIO, ICpu Cpu);
 
     private static void CheckThresholdHost(List<DiagnosticResult> result,
-                                           Settings settings,
                                            SettingsThresholdHost thresholdHost,
                                            DiagnosticResultContext context,
                                            string id,
@@ -367,7 +364,7 @@ public partial class DiagnosticEngine
         var ramPct = rrdData.Any(a => Convert.ToDouble(a.Memory.MemorySize) > 0)
                         ? rrdData.Average(a => Convert.ToDouble(a.Memory.MemoryUsage) / Convert.ToDouble(a.Memory.MemorySize) * 100.0)
                         : 0.0;
-        CheckHealthScore(result, settings.HealthScore, context, id, cpuPct * 0.5 + ramPct * 0.5);
+        CheckHealthScore(result, thresholdHost.HealthScore, context, id, cpuPct * 0.5 + ramPct * 0.5);
     }
 
     private static void CheckNodeRrd(List<DiagnosticResult> result,
@@ -376,7 +373,6 @@ public partial class DiagnosticEngine
                                      IEnumerable<NodeRrdData> rrdData)
     {
         CheckThresholdHost(result,
-                           settings,
                            settings.Node,
                            DiagnosticResultContext.Node,
                            id,
@@ -432,29 +428,29 @@ public partial class DiagnosticEngine
                             : 0.0;
 
         CheckHealthScore(result,
-                         settings.HealthScore,
+                         settings.Node.HealthScore,
                          DiagnosticResultContext.Node,
                          id,
                          nodeCpuPct * 0.4 + nodeRamPct * 0.4 + nodeDiskPct * 0.2);
     }
 
     private static void CheckHealthScore(List<DiagnosticResult> result,
-                                         SettingsHealthScore healthScore,
+                                         SettingsThresholdPercentual healthScore,
                                          DiagnosticResultContext context,
                                          string id,
                                          double weightedLoad)
     {
-        if (healthScore.WarningThreshold <= 0 && healthScore.CriticalThreshold <= 0) { return; }
+        if (healthScore.Warning <= 0 && healthScore.Critical <= 0) { return; }
 
         // Score = 100 - weighted load percentage (0=idle, 100=fully saturated)
         var score = Math.Round(100.0 - weightedLoad, 1);
 
         DiagnosticResultGravity? gravity = null;
-        if (healthScore.CriticalThreshold > 0 && score < healthScore.CriticalThreshold)
+        if (healthScore.Critical > 0 && score < healthScore.Critical)
         {
             gravity = DiagnosticResultGravity.Critical;
         }
-        else if (healthScore.WarningThreshold > 0 && score < healthScore.WarningThreshold)
+        else if (healthScore.Warning > 0 && score < healthScore.Warning)
         {
             gravity = DiagnosticResultGravity.Warning;
         }
@@ -466,7 +462,7 @@ public partial class DiagnosticEngine
             {
                 Id = id,
                 ErrorCode = "HS0001",
-                Description = $"Health score is {score}/100 (threshold: warning={healthScore.WarningThreshold}, critical={healthScore.CriticalThreshold})",
+                Description = $"Health score is {score}/100 (threshold: warning={healthScore.Warning}, critical={healthScore.Critical})",
                 Context = context,
                 SubContext = "HealthScore",
                 Gravity = gravity.Value,

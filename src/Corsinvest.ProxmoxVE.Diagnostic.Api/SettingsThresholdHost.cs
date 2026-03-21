@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-using System.ComponentModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -18,7 +17,6 @@ public class SettingsThresholdHost
     /// TimeSeries
     /// </summary>
     /// <value></value>
-    [DisplayName("Time Series")]
     [JsonConverter(typeof(StringEnumConverter))]
     public SettingsTimeSeriesType TimeSeries { get; set; } = SettingsTimeSeriesType.Day;
 
@@ -26,16 +24,21 @@ public class SettingsThresholdHost
     /// Cpu
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdPercentual Cpu { get; set; } = new SettingsThresholdPercentual();
+    public SettingsThresholdPercentual Cpu { get; set; } = new();
 
     /// <summary>
     /// Memory
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdPercentual Memory { get; set; } = new SettingsThresholdPercentual();
+    public SettingsThresholdPercentual Memory { get; set; } = new();
 
     /// <summary>
     /// Network
     /// </summary>
-    public SettingsThreshold<double> Network { get; set; } = new SettingsThreshold<double>();
+    public SettingsThreshold<double> Network { get; set; } = new();
+
+    /// <summary>
+    /// Health Score
+    /// </summary>
+    public SettingsThresholdPercentual HealthScore { get; set; } = new();
 }

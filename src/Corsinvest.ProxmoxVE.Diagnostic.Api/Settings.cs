@@ -20,32 +20,41 @@ public class Settings
     /// Node
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdHost Node { get; set; } = new SettingsThresholdHost();
+    public SettingsThresholdHost Node { get; set; } = new();
 
     /// <summary>
     /// Qemu
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdHost Qemu { get; set; } = new SettingsThresholdHost();
+    public SettingsThresholdHost Qemu { get; set; } = new()
+    {
+        HealthScore = new()
+        {
+            Warning = 60,
+            Critical = 40
+        }
+    };
 
     /// <summary>
     /// Lxc
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdHost Lxc { get; set; } = new SettingsThresholdHost();
+    public SettingsThresholdHost Lxc { get; set; } = new()
+    {
+        HealthScore = new()
+        {
+            Warning = 60,
+            Critical = 40
+        }
+    };
 
     /// <summary>
     /// Threshold
     /// </summary>
-    public SettingsThresholdPercentual SsdWearoutThreshold { get; set; } = new SettingsThresholdPercentual();
+    public SettingsThresholdPercentual SsdWearoutThreshold { get; set; } = new();
 
     /// <summary>
     /// Snapshot checks configuration
     /// </summary>
-    public SettingsSnapshot Snapshot { get; set; } = new SettingsSnapshot();
-
-    /// <summary>
-    /// Health score thresholds for nodes and VMs
-    /// </summary>
-    public SettingsHealthScore HealthScore { get; set; } = new SettingsHealthScore();
+    public SettingsSnapshot Snapshot { get; set; } = new();
 }
