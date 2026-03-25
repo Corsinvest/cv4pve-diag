@@ -7,13 +7,12 @@ on:
 
 jobs:
   publish:
-    uses: Corsinvest/.github/.github/workflows/cv4pve-cli-publish.yml@main
+    uses: Corsinvest/.github/.github/workflows/cv4pve-tools-publish.yml@main
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+
     with:
       project-name: cv4pve-diag
       project-path: src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj
-      nuget-project-path: src/Corsinvest.ProxmoxVE.Diagnostic.Api/Corsinvest.ProxmoxVE.Diagnostic.Api.csproj
-      winget-id: Corsinvest.cv4pve.diag
-      use-changelog: true

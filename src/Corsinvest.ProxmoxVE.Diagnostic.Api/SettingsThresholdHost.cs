@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
@@ -14,23 +11,21 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 public class SettingsThresholdHost
 {
     /// <summary>
-    /// TimeSeries
+    /// RRD fetch settings (time frame, consolidation function and PSI pressure thresholds)
     /// </summary>
-    /// <value></value>
-    [JsonConverter(typeof(StringEnumConverter))]
-    public SettingsTimeSeriesType TimeSeries { get; set; } = SettingsTimeSeriesType.Day;
+    public SettingsRrd Rrd { get; set; } = new();
 
     /// <summary>
     /// Cpu
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdPercentual Cpu { get; set; } = new();
+    public SettingsThreshold<double> Cpu { get; set; } = new() { Warning = 70, Critical = 85 };
 
     /// <summary>
     /// Memory
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdPercentual Memory { get; set; } = new();
+    public SettingsThreshold<double> Memory { get; set; } = new() { Warning = 70, Critical = 85 };
 
     /// <summary>
     /// Network
@@ -40,5 +35,5 @@ public class SettingsThresholdHost
     /// <summary>
     /// Health Score
     /// </summary>
-    public SettingsThresholdPercentual HealthScore { get; set; } = new();
+    public SettingsThreshold<double> HealthScore { get; set; } = new() { Warning = 70, Critical = 50 };
 }

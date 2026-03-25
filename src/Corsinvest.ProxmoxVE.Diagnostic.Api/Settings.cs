@@ -20,7 +20,7 @@ public class Settings
     /// Node
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdHost Node { get; set; } = new();
+    public SettingsThresholdNode Node { get; set; } = new();
 
     /// <summary>
     /// Qemu
@@ -28,11 +28,13 @@ public class Settings
     /// <returns></returns>
     public SettingsThresholdHost Qemu { get; set; } = new()
     {
-        HealthScore = new()
+        HealthScore = new() { Warning = 60, Critical = 40 },
+        Rrd = new()
         {
-            Warning = 60,
-            Critical = 40
-        }
+            PressureCpu = new() { Warning = 50, Critical = 80 },
+            PressureIoFull = new() { Warning = 20, Critical = 50 },
+            PressureMemoryFull = new() { Warning = 10, Critical = 30 },
+        },
     };
 
     /// <summary>
@@ -41,20 +43,22 @@ public class Settings
     /// <returns></returns>
     public SettingsThresholdHost Lxc { get; set; } = new()
     {
-        HealthScore = new()
+        HealthScore = new() { Warning = 60, Critical = 40 },
+        Rrd = new()
         {
-            Warning = 60,
-            Critical = 40
-        }
+            PressureCpu = new() { Warning = 50, Critical = 80 },
+            PressureIoFull = new() { Warning = 20, Critical = 50 },
+            PressureMemoryFull = new() { Warning = 10, Critical = 30 },
+        },
     };
-
-    /// <summary>
-    /// Threshold
-    /// </summary>
-    public SettingsThresholdPercentual SsdWearoutThreshold { get; set; } = new();
 
     /// <summary>
     /// Snapshot checks configuration
     /// </summary>
     public SettingsSnapshot Snapshot { get; set; } = new();
+
+    /// <summary>
+    /// Backup checks configuration
+    /// </summary>
+    public SettingsBackup Backup { get; set; } = new();
 }

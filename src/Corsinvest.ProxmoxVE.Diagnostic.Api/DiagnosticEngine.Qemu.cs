@@ -5,7 +5,7 @@
 
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
@@ -14,7 +14,9 @@ public partial class DiagnosticEngine
 {
     private async Task CheckQemuAsync(List<ClusterResource> resources,
                                       IEnumerable<ClusterBackup> clusterBackups,
-                                      bool hasCluster)
+                                      bool hasCluster,
+                                      Dictionary<string, IEnumerable<NodeStorage>> backupStoragesByNode,
+                                      Dictionary<long, VmConfig> vmConfigs)
     {
         var osNotMaintained = new[] { "win10", "win8", "win7", "w2k8", "wxp", "w2k" };
 
@@ -25,7 +27,7 @@ public partial class DiagnosticEngine
             var nodeApi = client.Nodes[item.Node];
             var vmApi = nodeApi.Qemu[item.VmId];
             var id = item.GetWebUrl();
-            var config = await vmApi.Config.GetAsync();
+            var config = (VmConfigQemu)vmConfigs[item.VmId];
 
             #region OS
             // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly
@@ -34,7 +36,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0001",
+                    ErrorCode = "WQ0001",
                     Description = "OsType not set!",
                     Context = DiagnosticResultContext.Qemu,
                     SubContext = "OS",
@@ -46,7 +48,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0001",
+                    ErrorCode = "WQ0002",
                     Description = $"OS '{config.OsTypeDecode}' not maintained from vendor!",
                     Context = DiagnosticResultContext.Qemu,
                     SubContext = "OSNotMaintained",
@@ -62,7 +64,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0001",
+                    ErrorCode = "WQ0003",
                     Description = "Qemu Agent not enabled",
                     Context = DiagnosticResultContext.Qemu,
                     SubContext = "Agent",
@@ -80,7 +82,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WV0001",
+                            ErrorCode = "WQ0004",
                             Description = "Qemu Agent in guest not running",
                             Context = DiagnosticResultContext.Qemu,
                             SubContext = "Agent",
@@ -93,7 +95,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0001",
+                        ErrorCode = "WQ0004",
                         Description = "Qemu Agent in guest not running",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "Agent",
@@ -110,7 +112,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0001",
+                    ErrorCode = "IQ0001",
                     Description = "For more performance switch controller to VirtIO SCSI",
                     Context = DiagnosticResultContext.Qemu,
                     SubContext = "VirtIO",
@@ -120,7 +122,7 @@ public partial class DiagnosticEngine
                                              .Select(a => new DiagnosticResult
                                              {
                                                  Id = id,
-                                                 ErrorCode = "WV0001",
+                                                 ErrorCode = "IQ0002",
                                                  Description = $"For more performance switch '{a.Id}' hdd to VirtIO",
                                                  Context = DiagnosticResultContext.Qemu,
                                                  SubContext = "VirtIO",
@@ -134,7 +136,7 @@ public partial class DiagnosticEngine
                 .Select(n => new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0001",
+                    ErrorCode = "IQ0003",
                     Description = $"For more performance switch '{n.Id}' network to VirtIO",
                     Context = DiagnosticResultContext.Qemu,
                     SubContext = "VirtIO",
@@ -152,7 +154,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0002",
+                        ErrorCode = "WQ0005",
                         Description = "Cdrom mounted",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "Hardware",
@@ -174,7 +176,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0001",
+                        ErrorCode = "WQ0006",
                         Description = "CPU type 'host' prevents live migration to nodes with a different CPU model",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "CPU",
@@ -182,15 +184,16 @@ public partial class DiagnosticEngine
                     });
                 }
 
-                // "kvm64" (or unset default) is a very old baseline lacking AVX, SSE4 and other modern extensions.
+                // "kvm64" is a very old baseline lacking AVX, SSE4 and other modern extensions.
                 // x86-64-v2 is the minimum recommended for current Linux/Windows guests.
-                if (cpuType == "kvm64" || string.IsNullOrWhiteSpace(cpuType))
+                // We only flag explicit "kvm64" — if Cpu is unset, the cluster default applies and we cannot know it.
+                if (cpuType == "kvm64")
                 {
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0001",
-                        Description = $"CPU type '{(string.IsNullOrWhiteSpace(cpuType) ? "default (kvm64)" : cpuType)}' is outdated, consider x86-64-v2 or higher for better performance",
+                        ErrorCode = "IQ0004",
+                        Description = "CPU type 'kvm64' is outdated, consider x86-64-v2 or higher for better performance",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "CPU",
                         Gravity = DiagnosticResultGravity.Info,
@@ -210,7 +213,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0001",
+                        ErrorCode = "WQ0007",
                         Description = "CPU hotplug is enabled but Windows guests do not support it — disable to avoid resource waste",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "CPU",
@@ -227,7 +230,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WV0001",
+                        ErrorCode = "IQ0005",
                         Description = "Balloon driver disabled, RAM is statically allocated",
                         Context = DiagnosticResultContext.Qemu,
                         SubContext = "Balloon",
@@ -245,7 +248,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WV0001",
+                            ErrorCode = "WQ0008",
                             Description = $"Disk '{disk.Id}' uses cache=unsafe, data loss risk on host crash",
                             Context = DiagnosticResultContext.Qemu,
                             SubContext = "Hardware",
@@ -260,7 +263,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WV0001",
+                            ErrorCode = "WQ0009",
                             Description = $"Disk '{disk.Id}' has cache=writeback but backup is disabled",
                             Context = DiagnosticResultContext.Qemu,
                             SubContext = "Hardware",
@@ -280,7 +283,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WV0001",
+                            ErrorCode = "WQ0010",
                             Description = "Windows 11 requires UEFI (bios=ovmf) for SecureBoot",
                             Context = DiagnosticResultContext.Qemu,
                             SubContext = "SecureBoot",
@@ -293,7 +296,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WV0001",
+                            ErrorCode = "WQ0011",
                             Description = "Windows 11 requires TPM 2.0 (tpmstate0) for SecureBoot",
                             Context = DiagnosticResultContext.Qemu,
                             SubContext = "SecureBoot",
@@ -302,28 +305,127 @@ public partial class DiagnosticEngine
                     }
                 }
                 #endregion
+
+                #region Memory balloon overcommit
+                // Balloon very close to Memory means ballooning has no room to reclaim memory
+                if (qemuConfig.Balloon > 0 && config.Memory > 0
+                    && (double)qemuConfig.Balloon / config.Memory > 0.95)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "IQ0006",
+                        Description = $"VM memory balloon ({qemuConfig.Balloon}MB) is >95% of total memory ({config.Memory}MB) — ballooning has no room to reclaim memory",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "Balloon",
+                        Gravity = DiagnosticResultGravity.Info,
+                    });
+                }
+                #endregion
+
+                #region RNG device
+                // virtio-rng is rarely needed — may indicate misconfiguration
+                if (!string.IsNullOrWhiteSpace(qemuConfig.Rng0))
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "IQ0007",
+                        Description = "VM has a virtio-rng (RNG) device configured — verify this is intentional",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "Hardware",
+                        Gravity = DiagnosticResultGravity.Info,
+                    });
+                }
+                #endregion
+
+                #region Serial console
+                // Serial device can expose sensitive data if not intentional
+                var serialKeys = config.ExtensionData?.Keys
+                    .Where(k => k.StartsWith("serial", StringComparison.OrdinalIgnoreCase))
+                    .ToList() ?? [];
+                if (serialKeys.Count > 0)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "IQ0008",
+                        Description = $"VM has serial console configured ({string.Join(", ", serialKeys)}) — verify this is intentional",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "Hardware",
+                        Gravity = DiagnosticResultGravity.Info,
+                    });
+                }
+                #endregion
             }
             #endregion
 
+            #region Firewall and IP filter
+            CheckVmFirewall(_result, await vmApi.Firewall.Options.GetAsync(), id, DiagnosticResultContext.Qemu);
+            #endregion
 
-            var rrdData = settings.Qemu.TimeSeries switch
+            #region USB/PCI passthrough
+            // USB or PCI passthrough binds the VM to a specific node — prevents live migration and HA failover
+            var passthroughKeys = config.ExtensionData?.Keys
+                .Where(k => k.StartsWith("usb", StringComparison.OrdinalIgnoreCase)
+                         || k.StartsWith("hostpci", StringComparison.OrdinalIgnoreCase))
+                .ToList() ?? [];
+
+            if (passthroughKeys.Count > 0)
             {
-                SettingsTimeSeriesType.Day => await vmApi.Rrddata.GetAsync(RrdDataTimeFrame.Day, RrdDataConsolidation.Average),
-                SettingsTimeSeriesType.Week => await vmApi.Rrddata.GetAsync(RrdDataTimeFrame.Week, RrdDataConsolidation.Average),
-                _ => throw new NotImplementedException("settings.Qemu.TimeSeries"),
-            };
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WQ0012",
+                    Description = $"VM has USB/PCI passthrough configured ({string.Join(", ", passthroughKeys)}) — live migration and HA failover are not possible",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Hardware",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
 
             await CheckCommonVmAsync(settings,
                                      settings.Qemu,
                                      config,
                                      await vmApi.Pending.GetAsync(),
-                                     await vmApi.Snapshot.GetAsync(),
-                                     rrdData,
+                                     settings.Snapshot.Enabled 
+                                        ? await vmApi.Snapshot.GetAsync() 
+                                        : [],                                        
+                                     await vmApi.Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation),
                                      DiagnosticResultContext.Qemu,
                                      item.Node,
                                      item.VmId,
                                      id,
-                                     clusterBackups);
+                                     clusterBackups,
+                                     backupStoragesByNode.GetValueOrDefault(item.Node, []));
+        }
+
+        // Template checks — config already pre-fetched
+        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                  && a.VmType == VmType.Qemu
+                                                  && a.IsTemplate))
+        {
+            var id = item.GetWebUrl();
+            var config = (VmConfigQemu)vmConfigs[item.VmId];
+
+            #region Template with QEMU agent enabled
+            // QEMU agent on a template is useless — the template is never running.
+            // Worse: clones inherit the setting and may generate spurious "agent not running" warnings
+            // until the guest installs the agent, creating noise in diagnostics.
+            if (config.AgentEnabled)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WQ0014",
+                    Description = "Template has QEMU agent enabled — agent is unused on templates and clones will inherit this setting",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Agent",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
         }
     }
 }

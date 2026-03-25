@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Console.Helpers;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 using Corsinvest.ProxmoxVE.Diagnostic.Api;
 using Microsoft.Extensions.Logging;
@@ -29,7 +30,8 @@ app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
    .SetAction((action) =>
    {
        File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
-       Console.Out.WriteLine(PrintEnum("SeriesType", typeof(SettingsTimeSeriesType)));
+       Console.Out.WriteLine(PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
+       Console.Out.WriteLine(PrintEnum("Consolidation", typeof(RrdDataConsolidation)));
        Console.Out.WriteLine($"Create file: {settingsFileName}");
    });
 

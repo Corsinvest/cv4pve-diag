@@ -24,7 +24,8 @@ public partial class DiagnosticEngine
                                           string node,
                                           long vmId,
                                           string id,
-                                          IEnumerable<ClusterBackup> clusterBackups)
+                                          IEnumerable<ClusterBackup> clusterBackups,
+                                          IEnumerable<NodeStorage> nodeBackupStorages)
     {
         #region VM State
         // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly
@@ -32,12 +33,32 @@ public partial class DiagnosticEngine
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = id,
-                                    ErrorCode = "WV0001",
+                                    ErrorCode = "CQ0001",
                                     Description = $"Found vmstate '{a.Value}'",
                                     Context = context,
                                     SubContext = "VM State",
                                     Gravity = DiagnosticResultGravity.Critical,
                                 }));
+        #endregion
+
+        #region Pending config changes
+        // Config changes applied via the API are held in "pending" until the VM is rebooted.
+        // Calling out pending changes helps operators know a reboot is needed for changes to take effect.
+        var pendingAll = pending.ToList();
+        var pendingChanges = pendingAll.Where(a => a.Key != "vmstate"
+                                                   && (a.Pending != null || a.Delete == 1)).ToList();
+        if (pendingChanges.Count > 0)
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "IQ0010",
+                Description = $"VM has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
+                Context = context,
+                SubContext = "Status",
+                Gravity = DiagnosticResultGravity.Info,
+            });
+        }
         #endregion
 
         #region Locked
@@ -47,7 +68,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0001",
+                ErrorCode = "WQ0015",
                 Description = $"VM is locked by '{config.Lock}'",
                 Context = context,
                 SubContext = "Status",
@@ -62,7 +83,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0001",
+                ErrorCode = "WQ0016",
                 Description = "Start on boot not enabled",
                 Context = context,
                 SubContext = "StartOnBoot",
@@ -77,7 +98,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0001",
+                ErrorCode = "IQ0011",
                 Description = "For production environment is better VM Protection = enabled",
                 Context = context,
                 SubContext = "Protection",
@@ -109,7 +130,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "CC0001",
+                    ErrorCode = "WQ0017",
                     Description = "vzdump backup not configured",
                     Context = context,
                     SubContext = "Backup",
@@ -123,90 +144,139 @@ public partial class DiagnosticEngine
                                      .Select(a => new DiagnosticResult
                                      {
                                          Id = id,
-                                         ErrorCode = "WV0001",
+                                         ErrorCode = "CQ0002",
                                          Description = $"Disk '{a.Id}' disabled for backup",
                                          Context = context,
                                          SubContext = "Backup",
                                          Gravity = DiagnosticResultGravity.Critical,
                                      }));
 
-        // Check backup age via storage content
-        var nodeApi = client.Nodes[node];
-        var nodeStorages = await nodeApi.Storage.GetAsync();
-
         #region Unused disks
         // Disks detached from the VM/CT config but still present in storage — consuming space silently
-        foreach (var unusedDisk in config.Disks.Where(a => a.IsUnused))
-        {
-            var volume = $"{unusedDisk.Storage}:{unusedDisk.FileName}";
-            var ns = nodeStorages.FirstOrDefault(a => a.Storage == unusedDisk.Storage);
-            var size = string.Empty;
-            if (ns != null && ns.Active)
-            {
-                var contents = await nodeApi.Storage[ns.Storage].Content.GetAsync();
-                size = FormatHelper.FromBytes(contents.FirstOrDefault(a => a.Volume == volume)?.Size ?? 0).ToString();
-            }
-            _result.Add(new DiagnosticResult
-            {
-                Id = id,
-                ErrorCode = "IV0001",
-                Description = $"disk '{unusedDisk.Id}' {size}",
-                Context = context,
-                SubContext = "Hardware",
-                Gravity = DiagnosticResultGravity.Warning,
-            });
-        }
+        // Size is already available in VmDisk.SizeBytes parsed from config — no extra API call needed
+        _result.AddRange(config.Disks.Where(a => a.IsUnused)
+                                     .Select(a => new DiagnosticResult
+                                     {
+                                         Id = id,
+                                         ErrorCode = "WQ0018",
+                                         Description = $"disk '{a.Id}' {(a.SizeBytes > 0 
+                                                                            ? FormatHelper.FromBytes(a.SizeBytes).ToString() 
+                                                                            : string.Empty)}",
+                                         Context = context,
+                                         SubContext = "Hardware",
+                                         Gravity = DiagnosticResultGravity.Warning,
+                                     }));
         #endregion
-        var backupContents = new List<NodeStorageContent>();
-        foreach (var ns in nodeStorages.Where(a => a.Content != null && a.Content.Split(",").Contains("backup") && a.Active))
-        {
-            var contents = await nodeApi.Storage[ns.Storage].Content.GetAsync();
-            backupContents.AddRange(contents.Where(a => a.VmId == vmId && a.Content == "backup"));
-        }
 
-        // Old backups (>60 days) still present waste storage space
-        const int dayOld = 60;
-        const int dayRecent = 7;
-        var oldBackups = backupContents.Where(a => a.CreationDate.Date <= _now.Date.AddDays(-dayOld)).ToList();
-        if (oldBackups.Count > 0)
+        var nodeApi = client.Nodes[node];
+        if (settings.Backup.Enabled)
         {
-            _result.Add(new DiagnosticResult
+            var backupContents = new List<NodeStorageContent>();
+            foreach (var ns in nodeBackupStorages.Where(a => a.Active))
             {
-                Id = id,
-                ErrorCode = "CC0001",
-                Description = $"{oldBackups.Count} backup {FormatHelper.FromBytes(oldBackups.Sum(a => a.Size))} more {dayOld} days are found!",
-                Context = context,
-                SubContext = "Backup",
-                Gravity = DiagnosticResultGravity.Warning,
-            });
-        }
+                backupContents.AddRange(await nodeApi.Storage[ns.Storage].Content.GetAsync(content: "backup", vmid: (int)vmId));
+            }
 
-        // No backup found in the last 7 days — RPO violation
-        if (!backupContents.Any(a => a.CreationDate.Date >= _now.Date.AddDays(-dayRecent)))
-        {
-            _result.Add(new DiagnosticResult
+            // Old backups still present waste storage space
+            if (settings.Backup.MaxAgeDays > 0)
             {
-                Id = id,
-                ErrorCode = "CC0001",
-                Description = "No recent backups found!",
-                Context = context,
-                SubContext = "Backup",
-                Gravity = DiagnosticResultGravity.Warning,
-            });
+                var oldBackups = backupContents.Where(a => a.CreationDate.Date <= _now.Date.AddDays(-settings.Backup.MaxAgeDays)).ToList();
+                if (oldBackups.Count > 0)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "WQ0019",
+                        Description = $"{oldBackups.Count} backup {FormatHelper.FromBytes(oldBackups.Sum(a => a.Size))} more {settings.Backup.MaxAgeDays} days are found!",
+                        Context = context,
+                        SubContext = "Backup",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+            }
+
+            // No backup found within RecentDays — RPO violation
+            if (settings.Backup.RecentDays > 0
+                && !backupContents.Any(a => a.CreationDate.Date >= _now.Date.AddDays(-settings.Backup.RecentDays)))
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WQ0020",
+                    Description = "No recent backups found!",
+                    Context = context,
+                    SubContext = "Backup",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
         }
         #endregion
 
         #region Task history
-        // Failed tasks for this VM in the last 48 hours (filtered server-side with errors=true)
+        // Failed tasks for this VM in the last 48 hours — vmid filtered server-side
         var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
-        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000))
-                    .Where(a => a.StartTime >= dayTask && (a.VmId?.Equals(vmId.ToString()) ?? false));
+        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId))
+                    .Where(a => a.StartTime >= dayTask);
         CheckTaskHistory(_result, tasks, context, id);
         #endregion
 
         CheckSnapshots(_result, snapshots, settings.Snapshot, _now, id, context);
 
-        CheckThresholdHost(_result, thresholdHost, context, id, rrdData.Select(a => new ThresholdRddData(a, a, a)));
+        var rrdList = rrdData.ToList();
+        CheckThresholdHost(_result, thresholdHost, context, id, rrdList.Select(a => new ThresholdRddData(a, a, a)));
+
+        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0)
+        if (rrdList.Any(a => a.PressureCpuSome > 0))
+        {
+            CheckThreshold(_result,
+                           thresholdHost.Rrd.PressureCpu,
+                           "WQ0029",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI CPU some (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureIoFull > 0))
+        {
+            CheckThreshold(_result,
+                           thresholdHost.Rrd.PressureIoFull,
+                           "WQ0030",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI I/O full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureMemoryFull > 0))
+        {
+            CheckThreshold(_result,
+                           thresholdHost.Rrd.PressureMemoryFull,
+                           "WQ0031",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI Memory full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
+        var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
+        var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
+                        ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
+                        : 0.0;
+        CheckHealthScore(_result, thresholdHost.HealthScore, context, id, cpuPct * 0.5 + ramPct * 0.5);
     }
 
     private static void CheckTaskHistory(List<DiagnosticResult> result,
@@ -220,7 +290,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "IN0001",
+                ErrorCode = context == DiagnosticResultContext.Node ? "CN0005" : "CQ0003",
                 Description = $"{tasksCount} Task history has errors",
                 Context = context,
                 SubContext = "Tasks",
@@ -248,7 +318,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0003",
+                ErrorCode = "WQ0021",
                 Description = $"'{autosnapAppName}' not configured",
                 Context = context,
                 SubContext = "AutoSnapshot",
@@ -262,7 +332,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0003",
+                ErrorCode = "WQ0022",
                 Description = $"Old AutoSnap '{autosnapAppNameOld}' are present. Update new version",
                 Context = context,
                 SubContext = "AutoSnapshot",
@@ -279,7 +349,7 @@ public partial class DiagnosticEngine
                 result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WV0003",
+                    ErrorCode = "WQ0023",
                     Description = $"{snapOldCount} snapshots older than {snapshotSettings.MaxAgeDays} days",
                     Context = context,
                     SubContext = "SnapshotOld",
@@ -294,11 +364,47 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WV0003",
+                ErrorCode = "WQ0024",
                 Description = $"{realSnapshots.Count} snapshots exceed the maximum of {snapshotSettings.MaxCount}",
                 Context = context,
                 SubContext = "SnapshotCount",
                 Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+    }
+
+    private static void CheckVmFirewall(List<DiagnosticResult> result,
+                                        VmFirewallOptions fwOptions,
+                                        string id,
+                                        DiagnosticResultContext context)
+    {
+        var kind = context == DiagnosticResultContext.Qemu 
+                        ? "VM" 
+                        : "Container";
+
+        if (!fwOptions.Enable)
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "WQ0013",
+                Description = $"{kind} firewall is disabled — {kind.ToLower()} is exposed to all traffic on the node bridge",
+                Context = context,
+                SubContext = "Firewall",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+
+        if (fwOptions.Enable && !fwOptions.Ipfilter)
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "IQ0009",
+                Description = $"{kind} firewall IP filter is disabled — {kind.ToLower()} can spoof source IP addresses",
+                Context = context,
+                SubContext = "Firewall",
+                Gravity = DiagnosticResultGravity.Info,
             });
         }
     }
@@ -309,133 +415,65 @@ public partial class DiagnosticEngine
                                            SettingsThresholdHost thresholdHost,
                                            DiagnosticResultContext context,
                                            string id,
-                                           IEnumerable<ThresholdRddData> rrdData)
+                                           IEnumerable<ThresholdRddData> rrdData,
+                                           string cpuErrorCode = "WQ0025",
+                                           string memoryErrorCode = "WQ0026",
+                                           string netInErrorCode = "WQ0027",
+                                           string netOutErrorCode = "WQ0028")
     {
         CheckThreshold(result,
                        thresholdHost.Cpu,
-                       "WV0002",
+                       cpuErrorCode,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100,
                                                0d,
                                                id,
-                                               $"CPU (rrd {thresholdHost.TimeSeries} AVERAGE)")],
+                                               $"CPU (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
                        true,
                        false);
 
         CheckThreshold(result,
                        thresholdHost.Memory,
-                       "WV0002",
+                       memoryErrorCode,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => Convert.ToDouble(a.Memory.MemoryUsage)),
                                                rrdData.Average(a => Convert.ToDouble(a.Memory.MemorySize)),
                                                id,
-                                               $"Memory (rrd {thresholdHost.TimeSeries} AVERAGE)")],
+                                               $"Memory (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
                        false,
                        true);
 
         CheckThreshold(result,
                        thresholdHost.Network,
-                       "WV0002",
+                       netInErrorCode,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.NetIO.NetIn),
                                                0d,
                                                id,
-                                               $"NetIn (rrd {thresholdHost.TimeSeries} AVERAGE)")],
+                                               $"NetIn (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
                        true,
                        false);
 
         CheckThreshold(result,
                        thresholdHost.Network,
-                       "WV0002",
+                       netOutErrorCode,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.NetIO.NetOut),
                                                0d,
                                                id,
-                                               $"NetOut (rrd {thresholdHost.TimeSeries} AVERAGE)")],
+                                               $"NetOut (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
                        true,
                        false);
 
-        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
-        var cpuPct = rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100.0;
-        var ramPct = rrdData.Any(a => Convert.ToDouble(a.Memory.MemorySize) > 0)
-                        ? rrdData.Average(a => Convert.ToDouble(a.Memory.MemoryUsage) / Convert.ToDouble(a.Memory.MemorySize) * 100.0)
-                        : 0.0;
-        CheckHealthScore(result, thresholdHost.HealthScore, context, id, cpuPct * 0.5 + ramPct * 0.5);
     }
 
-    private static void CheckNodeRrd(List<DiagnosticResult> result,
-                                     Settings settings,
-                                     string id,
-                                     IEnumerable<NodeRrdData> rrdData)
-    {
-        CheckThresholdHost(result,
-                           settings.Node,
-                           DiagnosticResultContext.Node,
-                           id,
-                           rrdData.Select(a => new ThresholdRddData(a, a, a)));
-
-        // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck
-        CheckThreshold(result,
-                       settings.Node.Cpu,
-                       "WV0002",
-                       DiagnosticResultContext.Node,
-                       "Usage",
-                       [new ThresholdDataPoint(rrdData.Average(a => a.IoWait) * 100,
-                                               0d,
-                                               id,
-                                               $"IOWait (rrd {settings.Node.TimeSeries} AVERAGE)")],
-                       true,
-                       false);
-
-        // Root filesystem usage on the node OS disk
-        CheckThreshold(result,
-                       settings.Storage.Threshold,
-                       "WV0002",
-                       DiagnosticResultContext.Node,
-                       "Usage",
-                       [new ThresholdDataPoint(rrdData.Average(a => a.RootUsage),
-                                               rrdData.Average(a => a.RootSize),
-                                               id,
-                                               $"Root space (rrd {settings.Node.TimeSeries} AVERAGE)")],
-                       false,
-                       true);
-
-        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation
-        CheckThreshold(result,
-                       settings.Storage.Threshold,
-                       "WV0002",
-                       DiagnosticResultContext.Node,
-                       "Usage",
-                       [new ThresholdDataPoint(rrdData.Average(a => a.SwapUsage),
-                                               rrdData.Average(a => Convert.ToDouble(a.SwapSize)),
-                                               id,
-                                               $"SWAP (rrd {settings.Node.TimeSeries} AVERAGE)")],
-                       false,
-                       true);
-
-        // Health score for nodes: 100 - (cpu*0.4 + ram*0.4 + disk*0.2)
-        var nodeCpuPct = rrdData.Average(a => a.CpuUsagePercentage) * 100.0;
-        var nodeRamPct = rrdData.Any(a => a.MemorySize > 0)
-                            ? rrdData.Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
-                            : 0.0;
-
-        var nodeDiskPct = rrdData.Any(a => a.RootSize > 0)
-                            ? rrdData.Average(a => a.RootUsage / a.RootSize * 100.0)
-                            : 0.0;
-
-        CheckHealthScore(result,
-                         settings.Node.HealthScore,
-                         DiagnosticResultContext.Node,
-                         id,
-                         nodeCpuPct * 0.4 + nodeRamPct * 0.4 + nodeDiskPct * 0.2);
-    }
 
     private static void CheckHealthScore(List<DiagnosticResult> result,
-                                         SettingsThresholdPercentual healthScore,
+                                         SettingsThreshold<double> healthScore,
                                          DiagnosticResultContext context,
                                          string id,
                                          double weightedLoad)
@@ -461,7 +499,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "HS0001",
+                ErrorCode = "WQ0032",
                 Description = $"Health score is {score}/100 (threshold: warning={healthScore.Warning}, critical={healthScore.Critical})",
                 Context = context,
                 SubContext = "HealthScore",
@@ -494,7 +532,10 @@ public partial class DiagnosticEngine
 
         for (int i = 0; i < 2; i++)
         {
-            double GetValue(double usage, double size) => Math.Round(isValue ? usage : usage / size * 100.0, 1);
+            double GetValue(double usage, double size) 
+                => Math.Round(isValue 
+                                ? usage 
+                                : usage / size * 100.0, 1);
 
             string MakeDescription(string prefix, double usage, double size)
             {
@@ -516,4 +557,5 @@ public partial class DiagnosticEngine
                                 }));
         }
     }
+
 }

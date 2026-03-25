@@ -19,7 +19,7 @@ public partial class DiagnosticEngine
                                   string FileName,
                                   long Size);
 
-    private async Task CheckStorageAsync(List<ClusterResource> resources)
+    private async Task CheckStorageAsync(List<ClusterResource> resources, Dictionary<long, VmConfig> vmConfigs)
     {
         // Storage not reachable from the node — VMs on that node cannot read/write
         _result.AddRange(resources.Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
@@ -36,7 +36,7 @@ public partial class DiagnosticEngine
         // Storage usage above configured Warning/Critical thresholds
         CheckThreshold(_result,
                        settings.Storage.Threshold,
-                       "CS0001",
+                       "WS0001",
                        DiagnosticResultContext.Storage,
                        "Usage",
                        resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
@@ -47,28 +47,46 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        #region Orphaned Images
+        #region Orphaned Images and Backups
         // Disk images present in storage but not attached to any VM or LXC (wasted space)
+        var activeVmIds = resources.Where(a => a.ResourceType == ClusterResourceType.Vm)
+                                   .Select(a => a.VmId)
+                                   .ToHashSet();
         var storagesImages = new List<StorageContent>();
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Storage
+                                                  && a.IsAvailable
                                                   && a.Content != null
-                                                  && a.Content.Split(",").Contains("images")))
+                                                  && (a.Content.Split(",").Contains("images")
+                                                      || (settings.Backup.Enabled && a.Content.Split(",").Contains("backup")))))
         {
             var nodeApi = client.Nodes[item.Node];
-            var nodeStorages = await nodeApi.Storage.GetAsync();
-            foreach (var ns in nodeStorages.Where(a => a.Storage == item.Storage
-                                                       && a.Content != null
-                                                       && a.Content.Split(",").Contains("images")
-                                                       && a.Active))
+
+            if (item.Content.Split(",").Contains("images"))
             {
-                var content = await nodeApi.Storage[ns.Storage].Content.GetAsync();
-                storagesImages.AddRange([.. content.Where(a => a.Content == "images")
-                                                   .Select(a => new StorageContent(item.GetWebUrl(),
-                                                                                   a.Volume,
-                                                                                   ns.Storage,
-                                                                                   a.VmId,
-                                                                                   a.FileName,
-                                                                                   a.Size))]);
+                var content = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "images");
+                storagesImages.AddRange(content.Select(a => new StorageContent(item.GetWebUrl(),
+                                                                               a.Volume,
+                                                                               item.Storage,
+                                                                               a.VmId,
+                                                                               a.FileName,
+                                                                               a.Size)));
+            }
+
+            // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage
+            if (settings.Backup.Enabled && item.Content.Split(",").Contains("backup"))
+            {
+                var content = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "backup");
+                _result.AddRange(content.Where(a => !activeVmIds.Contains(a.VmId))
+                                        .DistinctBy(a => a.Volume)
+                                        .Select(a => new DiagnosticResult
+                                        {
+                                            Id = item.GetWebUrl(),
+                                            ErrorCode = "WS0003",
+                                            Description = $"Orphaned backup {FormatHelper.FromBytes(a.Size)} '{a.FileName}' — VMID {a.VmId} no longer exists",
+                                            Context = DiagnosticResultContext.Storage,
+                                            SubContext = "Backup",
+                                            Gravity = DiagnosticResultGravity.Warning,
+                                        }));
             }
         }
 
@@ -80,10 +98,7 @@ public partial class DiagnosticEngine
         var allocatedByStorage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
         {
-            var nodeApi = client.Nodes[item.Node];
-            VmConfig config = item.VmType == VmType.Qemu
-                                ? await nodeApi.Qemu[item.VmId].Config.GetAsync()
-                                : await nodeApi.Lxc[item.VmId].Config.GetAsync();
+            var config = vmConfigs[item.VmId];
 
             foreach (var disk in config.Disks)
             {
@@ -112,7 +127,7 @@ public partial class DiagnosticEngine
         _result.AddRange(storagesImages.Select(a => new DiagnosticResult
         {
             Id = a.Id,
-            ErrorCode = "WN0001",
+            ErrorCode = "WS0002",
             Description = $"Image Orphaned {FormatHelper.FromBytes(a.Size)} file {a.FileName}",
             Context = DiagnosticResultContext.Storage,
             SubContext = "Image",
@@ -139,7 +154,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = storage.GetWebUrl(),
-                    ErrorCode = "WS0002",
+                    ErrorCode = "WS0004",
                     Description = $"Storage '{storage.Storage}' is overcommitted: {FormatHelper.FromBytes(allocated)} allocated vs {FormatHelper.FromBytes(storage.DiskSize)} physical ({overcommitPct}%)",
                     Context = DiagnosticResultContext.Storage,
                     SubContext = "ThinOvercommit",
@@ -167,7 +182,7 @@ public partial class DiagnosticEngine
             _result.AddRange(storagesByName.Select(a => new DiagnosticResult
             {
                 Id = a.GetWebUrl(),
-                ErrorCode = "WS0001",
+                ErrorCode = "WS0005",
                 Description = $"Shared storage '{a.Storage}' (type: {a.PluginType}) is only mounted on node '{a.Node}' — other nodes cannot access it",
                 Context = DiagnosticResultContext.Storage,
                 SubContext = "Shared",

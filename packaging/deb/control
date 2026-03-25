@@ -1,0 +1,7 @@
+Package: cv4pve-diag
+Version: SKIP
+Architecture: SKIP
+Maintainer: Corsinvest Srl <corsinvest@corsinvest.it>
+Homepage: https://github.com/Corsinvest/cv4pve-diag
+Description: Diagnostic tool for Proxmox VE
+ Checks nodes, VMs, LXC containers and storage for common issues.

@@ -6,6 +6,8 @@
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -40,10 +42,30 @@ public partial class DiagnosticEngine(PveClient client, Settings settings)
 
         var (hasCluster, clusterBackups) = await CheckClusterAsync(resources);
 
-        await CheckStorageAsync(resources);
+        // Pre-fetch backup storages once per node — shared by CheckQemuAsync and CheckLxcAsync
+        var backupStoragesByNode = new Dictionary<string, IEnumerable<NodeStorage>>();
+        foreach (var node in resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+                                      .Select(a => a.Node))
+        {
+            backupStoragesByNode[node] = settings.Backup.Enabled
+                                            ? await client.Nodes[node].Storage.GetAsync(enabled: true, content: "backup")
+                                            : [];
+        }
+
+        // Pre-fetch VM configs once — shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync
+        var vmConfigs = new Dictionary<long, VmConfig>();
+        foreach (var vm in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
+        {
+            var nodeApi = client.Nodes[vm.Node];
+            vmConfigs[vm.VmId] = vm.VmType == VmType.Qemu
+                                    ? await nodeApi.Qemu[vm.VmId].Config.GetAsync()
+                                    : await nodeApi.Lxc[vm.VmId].Config.GetAsync();
+        }
+
+        await CheckStorageAsync(resources, vmConfigs);
         await CheckNodesAsync(resources, hasCluster);
-        await CheckQemuAsync(resources, clusterBackups, hasCluster);
-        await CheckLxcAsync(resources, clusterBackups);
+        await CheckQemuAsync(resources, clusterBackups, hasCluster, backupStoragesByNode, vmConfigs);
+        await CheckLxcAsync(resources, clusterBackups, backupStoragesByNode, vmConfigs);
 
         foreach (var ignoredIssue in ignoredIssues)
         {

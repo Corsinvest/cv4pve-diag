@@ -12,6 +12,11 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 public class SettingsSnapshot
 {
     /// <summary>
+    /// Enable snapshot checks. Disable to skip the API call per VM/CT.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
     /// Maximum number of snapshots per VM/LXC before raising a warning.
     /// Too many snapshots degrade I/O performance due to long delta chains.
     /// Set to 0 to disable the check.

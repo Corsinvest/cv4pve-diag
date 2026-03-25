@@ -42,15 +42,16 @@ public partial class DiagnosticEngine
         {
             var api = client.Nodes[item.Node];
             var timeRaw = (await api.Time.Time()).ToData();
-            var timezone = timeRaw.timezone as string ?? string.Empty;
-            var nodeUtcTime = timeRaw.time is long t ? t : 0L;
+
             nodeCompareData[item.Node] = new NodeCompareData(await api.Version.GetAsync(),
                                                              ((string)(await api.Hosts.GetEtcHosts()).ToData().data).Split('\n'),
                                                              await api.Dns.GetAsync(),
-                                                             timezone,
+                                                             timeRaw.timezone as string ?? string.Empty,
                                                              await api.Apt.Versions.GetAsync(),
                                                              await api.Status.GetAsync(),
-                                                             nodeUtcTime,
+                                                             timeRaw.time is long t
+                                                                ? t
+                                                                : 0L,
                                                              await api.Apt.Repositories.GetAsync(),
                                                              await api.Network.GetAsync());
         }
@@ -64,7 +65,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WN0001",
+                    ErrorCode = "WN0002",
                     Description = "Node not online",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Status",
@@ -84,7 +85,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WN0001",
+                    ErrorCode = "WN0003",
                     Description = $"Version {version.Version} end of life {eolDate}",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "EOL",
@@ -101,7 +102,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WN0001",
+                    ErrorCode = "WN0004",
                     Description = "Node not have subscription active",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Subscription",
@@ -112,14 +113,10 @@ public partial class DiagnosticEngine
 
             #region RrdData
             // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
-            var rrdData = settings.Node.TimeSeries switch
-            {
-                SettingsTimeSeriesType.Day => await nodeApi.Rrddata.GetAsync(RrdDataTimeFrame.Day, RrdDataConsolidation.Average),
-                SettingsTimeSeriesType.Week => await nodeApi.Rrddata.GetAsync(RrdDataTimeFrame.Week, RrdDataConsolidation.Average),
-                _ => throw new ArgumentOutOfRangeException("settings.Node.TimeSeries"),
-            };
-
-            CheckNodeRrd(_result, settings, id, rrdData);
+            CheckNodeRrd(_result, 
+                         settings, 
+                         id, 
+                         await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation));
             #endregion
 
             #region Cross-node comparisons
@@ -137,7 +134,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "CN0001",
                         Description = "Nodes version not equal",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "Version",
@@ -151,7 +148,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0005",
                         Description = "Nodes hosts configuration not equal",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "Hosts",
@@ -165,7 +162,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0006",
                         Description = "Nodes DNS not equal",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "DNS",
@@ -179,7 +176,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0007",
                         Description = "Nodes Timezone not equal",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "Timezone",
@@ -208,7 +205,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WN0001",
+                            ErrorCode = "WN0008",
                             Description = "Nodes APT repositories not equal — inconsistent package sources may cause upgrade problems",
                             Context = DiagnosticResultContext.Node,
                             SubContext = "AptRepositories",
@@ -239,7 +236,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WN0001",
+                            ErrorCode = "WN0009",
                             Description = $"NIC MTU mismatch with other nodes: {string.Join(", ", mtuMismatches)}",
                             Context = DiagnosticResultContext.Node,
                             SubContext = "Network",
@@ -257,7 +254,7 @@ public partial class DiagnosticEngine
                                      .Select(a => new DiagnosticResult
                                      {
                                          Id = id,
-                                         ErrorCode = "WN0002",
+                                         ErrorCode = "WN0010",
                                          Description = $"Network card '{a.Interface}' not active",
                                          Context = DiagnosticResultContext.Node,
                                          SubContext = "Network",
@@ -281,7 +278,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "WN0001",
+                            ErrorCode = "CN0002",
                             Description = "Nodes package version not equal",
                             Context = DiagnosticResultContext.Node,
                             SubContext = "PackageVersions",
@@ -306,7 +303,7 @@ public partial class DiagnosticEngine
                             .Select(a => new DiagnosticResult
                             {
                                 Id = id,
-                                ErrorCode = "WN0002",
+                                ErrorCode = "WN0011",
                                 Description = $"Service '{a.Description}' not running",
                                 Context = DiagnosticResultContext.Node,
                                 SubContext = "Service",
@@ -321,7 +318,7 @@ public partial class DiagnosticEngine
                               .Select(a => new DiagnosticResult
                               {
                                   Id = id,
-                                  ErrorCode = "WN0002",
+                                  ErrorCode = "CN0003",
                                   Description = $"Certificate '{a.FileName}' expired",
                                   Context = DiagnosticResultContext.Node,
                                   SubContext = "Certificates",
@@ -338,7 +335,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "IN0001",
+                    ErrorCode = "CN0004",
                     Description = $"{replCount} Replication has errors",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Replication",
@@ -372,7 +369,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "IN0001",
+                    ErrorCode = "WN0012",
                     Description = $"{updateImportantCount} Update Important available",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Update",
@@ -393,7 +390,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0013",
                         Description = $"Node requires reboot: running kernel '{runningKernel}' differs from installed '{nodeStatus.Kversion}'",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "Reboot",
@@ -413,7 +410,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0014",
                         Description = $"Node time offset is {ntpOffset}s — NTP may not be synchronized",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "NTP",
@@ -433,7 +430,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "IN0001",
+                    ErrorCode = "IN0002",
                     Description = "IOMMU is not enabled — PCI passthrough will not work (enable intel_iommu=on or amd_iommu=on in kernel cmdline)",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "IOMMU",
@@ -472,7 +469,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = "cluster",
-                        ErrorCode = "WN0001",
+                        ErrorCode = "WN0015",
                         Description = $"CPU level mismatch: minimum is {minLevel.Name}, maximum is {maxLevel.Name}. " +
                                       $"Nodes at minimum level: {string.Join(", ", lowerNodes)}. " +
                                       $"Use cpu type '{minLevel.Name}' for safe live migration.",
@@ -484,6 +481,168 @@ public partial class DiagnosticEngine
             }
         }
         #endregion
+    }
+
+    private static void CheckNodeRrd(List<DiagnosticResult> result,
+                                     Settings settings,
+                                     string id,
+                                     IEnumerable<NodeRrdData> rrdData)
+    {
+        var rrdList = rrdData.ToList();
+
+        CheckThresholdHost(result,
+                           settings.Node,
+                           DiagnosticResultContext.Node,
+                           id,
+                           rrdList.Select(a => new ThresholdRddData(a, a, a)),
+                           cpuErrorCode: "WN0027",
+                           memoryErrorCode: "WN0027",
+                           netInErrorCode: "WN0027",
+                           netOutErrorCode: "WN0027");
+
+        // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck
+        CheckThreshold(result,
+                       settings.Node.Cpu,
+                       "WN0028",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       [new ThresholdDataPoint(rrdList.Average(a => a.IoWait) * 100,
+                                               0d,
+                                               id,
+                                               $"IOWait (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                       true,
+                       false);
+
+        // Root filesystem usage on the node OS disk
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "WN0029",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       [new ThresholdDataPoint(rrdList.Average(a => a.RootUsage),
+                                               rrdList.Average(a => a.RootSize),
+                                               id,
+                                               $"Root space (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                       false,
+                       true);
+
+        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation
+        CheckThreshold(result,
+                       settings.Storage.Threshold,
+                       "WN0030",
+                       DiagnosticResultContext.Node,
+                       "Usage",
+                       [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
+                                               rrdList.Average(a => Convert.ToDouble(a.SwapSize)),
+                                               id,
+                                               $"SWAP (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                       false,
+                       true);
+
+        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0)
+        if (rrdList.Any(a => a.PressureCpuSome > 0))
+        {
+            CheckThreshold(result,
+                           settings.Node.Rrd.PressureCpu,
+                           "WN0031",
+                           DiagnosticResultContext.Node,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI CPU some (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureIoFull > 0))
+        {
+            CheckThreshold(result,
+                           settings.Node.Rrd.PressureIoFull,
+                           "WN0032",
+                           DiagnosticResultContext.Node,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI I/O full (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureMemoryFull > 0))
+        {
+            CheckThreshold(result,
+                           settings.Node.Rrd.PressureMemoryFull,
+                           "WN0033",
+                           DiagnosticResultContext.Node,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull) * 100,
+                                                   0d,
+                                                   id,
+                                                   $"PSI Memory full (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        // Health score for nodes: 100 - (cpu*0.4 + ram*0.4 + disk*0.2)
+        var nodeCpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
+
+        var nodeRamPct = rrdList.Any(a => a.MemorySize > 0)
+                            ? rrdList.Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
+                            : 0.0;
+
+        var nodeDiskPct = rrdList.Any(a => a.RootSize > 0)
+                            ? rrdList.Average(a => a.RootUsage / a.RootSize * 100.0)
+                            : 0.0;
+
+        var nodeWeightedLoad = nodeCpuPct * 0.4 + nodeRamPct * 0.4 + nodeDiskPct * 0.2;
+        CheckHealthScore(result,
+                         settings.Node.HealthScore,
+                         DiagnosticResultContext.Node,
+                         id,
+                         nodeWeightedLoad);
+    }
+
+    private static void CheckZfsChildren(List<DiagnosticResult> result,
+                                         string id,
+                                         string poolName,
+                                         IEnumerable<NodeDiskZfsDetail.Child> children)
+    {
+        foreach (var child in children ?? [])
+        {
+            // vdev not ONLINE = faulted, removed, unavail, degraded
+            if (!string.IsNullOrWhiteSpace(child.State)
+                && !child.State.Equals("ONLINE", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "CN0012",
+                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? string.Empty : $": {child.Msg}")}",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Zfs",
+                    Gravity = DiagnosticResultGravity.Critical,
+                });
+            }
+
+            // I/O errors on vdev
+            if (child.Read > 0 || child.Write > 0 || child.Checksum > 0)
+            {
+                result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WN0025",
+                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' has I/O errors (read:{child.Read} write:{child.Write} cksum:{child.Checksum})",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Zfs",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+
+            // Recurse into nested vdevs (mirrors, raidz groups)
+            CheckZfsChildren(result, id, poolName, child.Children);
+        }
     }
 
     private async Task CheckNodeDiskAsync(PveClient.PveNodes.PveNodeItem nodeApi,
@@ -498,7 +657,7 @@ public partial class DiagnosticEngine
                                  .Select(a => new DiagnosticResult
                                  {
                                      Id = id,
-                                     ErrorCode = "CN0003",
+                                     ErrorCode = "WN0016",
                                      Description = $"Disk '{a.DevPath}' S.M.A.R.T. status problem",
                                      Context = DiagnosticResultContext.Node,
                                      SubContext = "S.M.A.R.T.",
@@ -510,7 +669,7 @@ public partial class DiagnosticEngine
                                  .Select(a => new DiagnosticResult
                                  {
                                      Id = id,
-                                     ErrorCode = "CN0003",
+                                     ErrorCode = "WN0017",
                                      Description = $"Disk ssd '{a.DevPath}' wearout not valid.",
                                      Context = DiagnosticResultContext.Node,
                                      SubContext = "SSD Wearout",
@@ -519,14 +678,122 @@ public partial class DiagnosticEngine
 
         // SSD wearout percentage above threshold (100 - wearout = wear consumed)
         CheckThreshold(_result,
-                       settings.SsdWearoutThreshold,
-                       "CN0003",
+                       settings.Node.Smart.SsdWearout,
+                       "WN0018",
                        DiagnosticResultContext.Node,
                        "SSD Wearout",
                        disksAll.Where(a => a.IsSsd && a.Wearout != "N/A")
                                .Select(a => new ThresholdDataPoint(100.0 - Convert.ToDouble(a.Wearout), 0d, id, $"SSD '{a.DevPath}'")),
                        true,
                        false);
+
+        // Detailed S.M.A.R.T. attribute checks — one API call per disk, disabled by default
+        if (settings.Node.Smart.Enabled)
+        {
+            foreach (var disk in disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)))
+            {
+                var smart = await nodeApi.Disks.Smart.GetAsync(disk: disk.DevPath);
+                if (smart?.Attributes == null) { continue; }
+
+                foreach (var attr in smart.Attributes)
+                {
+                    switch (attr.Id)
+                    {
+                        // Temperature (ID 194) or Airflow Temperature (ID 190)
+                        case "194" or "190" when settings.Node.Smart.Temperature.Warning > 0:
+                            if (int.TryParse(attr.Raw?.Split(' ')[0], out var temp) && temp > 0)
+                            {
+                                var tempGravity = temp >= settings.Node.Smart.Temperature.Critical
+                                                    ? DiagnosticResultGravity.Critical
+                                                    : temp >= settings.Node.Smart.Temperature.Warning
+                                                        ? DiagnosticResultGravity.Warning
+                                                        : DiagnosticResultGravity.Info;
+
+                                if (tempGravity != DiagnosticResultGravity.Info)
+                                {
+                                    _result.Add(new DiagnosticResult
+                                    {
+                                        Id = id,
+                                        ErrorCode = tempGravity == DiagnosticResultGravity.Critical 
+                                                        ? "CN0007" 
+                                                        : "WN0019",
+                                        Description = $"Disk '{disk.DevPath}' temperature {temp}°C exceeds threshold",
+                                        Context = DiagnosticResultContext.Node,
+                                        SubContext = "S.M.A.R.T.",
+                                        Gravity = tempGravity,
+                                    });
+                                }
+                            }
+                            break;
+
+                        // Reallocated sectors (ID 5) — non-zero = sectors remapped due to errors
+                        case "5" when int.TryParse(attr.Raw?.Split(' ')[0], out var val5) && val5 > 0:
+                            _result.Add(new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "WN0020",
+                                Description = $"Disk '{disk.DevPath}' has {val5} reallocated sector(s) — disk may be failing",
+                                Context = DiagnosticResultContext.Node,
+                                SubContext = "S.M.A.R.T.",
+                                Gravity = DiagnosticResultGravity.Warning,
+                            });
+                            break;
+
+                        // Current pending sectors (ID 197) — unstable sectors waiting to be remapped
+                        case "197" when int.TryParse(attr.Raw?.Split(' ')[0], out var val197) && val197 > 0:
+                            _result.Add(new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "CN0008",
+                                Description = $"Disk '{disk.DevPath}' has {val197} pending sector(s) — imminent data loss risk",
+                                Context = DiagnosticResultContext.Node,
+                                SubContext = "S.M.A.R.T.",
+                                Gravity = DiagnosticResultGravity.Critical,
+                            });
+                            break;
+
+                        // Offline uncorrectable sectors (ID 198)
+                        case "198" when int.TryParse(attr.Raw?.Split(' ')[0], out var val198) && val198 > 0:
+                            _result.Add(new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "CN0009",
+                                Description = $"Disk '{disk.DevPath}' has {val198} offline uncorrectable sector(s)",
+                                Context = DiagnosticResultContext.Node,
+                                SubContext = "S.M.A.R.T.",
+                                Gravity = DiagnosticResultGravity.Critical,
+                            });
+                            break;
+
+                        // UDMA CRC errors (ID 199) — cable or controller issue
+                        case "199" when int.TryParse(attr.Raw?.Split(' ')[0], out var val199) && val199 > 0:
+                            _result.Add(new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "WN0021",
+                                Description = $"Disk '{disk.DevPath}' has {val199} UDMA CRC error(s) — check cable/controller",
+                                Context = DiagnosticResultContext.Node,
+                                SubContext = "S.M.A.R.T.",
+                                Gravity = DiagnosticResultGravity.Warning,
+                            });
+                            break;
+
+                        // Reported uncorrectable errors (ID 187)
+                        case "187" when int.TryParse(attr.Raw?.Split(' ')[0], out var val187) && val187 > 0:
+                            _result.Add(new DiagnosticResult
+                            {
+                                Id = id,
+                                ErrorCode = "WN0022",
+                                Description = $"Disk '{disk.DevPath}' has {val187} reported uncorrectable error(s)",
+                                Context = DiagnosticResultContext.Node,
+                                SubContext = "S.M.A.R.T.",
+                                Gravity = DiagnosticResultGravity.Warning,
+                            });
+                            break;
+                    }
+                }
+            }
+        }
         #endregion
 
         #region Zfs
@@ -537,7 +804,7 @@ public partial class DiagnosticEngine
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = id,
-                                    ErrorCode = "CN0003",
+                                    ErrorCode = "CN0010",
                                     Description = $"Zfs '{a.Name}' health problem {a.Health}",
                                     Context = DiagnosticResultContext.Node,
                                     SubContext = "Zfs",
@@ -547,7 +814,7 @@ public partial class DiagnosticEngine
         // ZFS pool usage above storage threshold
         CheckThreshold(_result,
                        settings.Storage.Threshold,
-                       "CS0001",
+                       "WN0023",
                        DiagnosticResultContext.Storage,
                        "Zfs",
                        zfsList.Select(a => new ThresholdDataPoint(Convert.ToDouble(a.Alloc),
@@ -556,6 +823,61 @@ public partial class DiagnosticEngine
                                                                   $"Zfs '{a.Name}'")),
                        false,
                        true);
+
+        // Detailed ZFS checks: pool errors and vdev state — one API call per pool
+        if (settings.Node.NodeStorage.ZfsDetail && zfsList.Any())
+        {
+            foreach (var zfs in zfsList)
+            {
+                var detail = await nodeApi.Disks.Zfs[zfs.Name].GetAsync();
+                if (detail == null) { continue; }
+
+                // Pool-level errors string (e.g. "1 data errors, use '-v' for a list")
+                if (!string.IsNullOrWhiteSpace(detail.Errors)
+                    && !detail.Errors.Equals("No known data errors", StringComparison.OrdinalIgnoreCase))
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "WN0024",
+                        Description = $"ZFS pool '{zfs.Name}' has errors: {detail.Errors}",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "Zfs",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+
+                // vdev state check — recurse through children
+                CheckZfsChildren(_result, id, zfs.Name, detail.Children);
+            }
+        }
+        #endregion
+
+        #region LVM-thin metadata
+        // LVM-thin metadata pool full causes silent data corruption — check before it's too late
+        if (settings.Node.NodeStorage.LvmThinMetadata)
+        {
+            var lvmThinList = await nodeApi.Disks.Lvmthin.GetAsync() ?? [];
+            foreach (var lv in lvmThinList.Where(a => a.MetadataSize > 0))
+            {
+                var metaPct = (double)lv.MetadataUsed / lv.MetadataSize * 100.0;
+                if (metaPct >= 90)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = metaPct >= 95 
+                                    ? "CN0013" 
+                                    : "WN0026",
+                                    
+                        Description = $"LVM-thin '{lv.Vg}/{lv.Lv}' metadata usage {metaPct:F1}% — metadata full causes data corruption",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "LvmThin",
+                        Gravity = metaPct >= 95 ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,
+                    });
+                }
+            }
+        }
         #endregion
     }
 }
