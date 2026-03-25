@@ -389,9 +389,9 @@ public partial class DiagnosticEngine
                                      settings.Qemu,
                                      config,
                                      await vmApi.Pending.GetAsync(),
-                                     settings.Snapshot.Enabled 
-                                        ? await vmApi.Snapshot.GetAsync() 
-                                        : [],                                        
+                                     settings.Snapshot.Enabled
+                                        ? await vmApi.Snapshot.GetAsync()
+                                        : [],
                                      await vmApi.Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation),
                                      DiagnosticResultContext.Qemu,
                                      item.Node,

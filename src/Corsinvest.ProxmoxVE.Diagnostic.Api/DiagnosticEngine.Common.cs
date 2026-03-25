@@ -159,8 +159,8 @@ public partial class DiagnosticEngine
                                      {
                                          Id = id,
                                          ErrorCode = "WQ0018",
-                                         Description = $"disk '{a.Id}' {(a.SizeBytes > 0 
-                                                                            ? FormatHelper.FromBytes(a.SizeBytes).ToString() 
+                                         Description = $"disk '{a.Id}' {(a.SizeBytes > 0
+                                                                            ? FormatHelper.FromBytes(a.SizeBytes).ToString()
                                                                             : string.Empty)}",
                                          Context = context,
                                          SubContext = "Hardware",
@@ -378,8 +378,8 @@ public partial class DiagnosticEngine
                                         string id,
                                         DiagnosticResultContext context)
     {
-        var kind = context == DiagnosticResultContext.Qemu 
-                        ? "VM" 
+        var kind = context == DiagnosticResultContext.Qemu
+                        ? "VM"
                         : "Container";
 
         if (!fwOptions.Enable)
@@ -532,9 +532,9 @@ public partial class DiagnosticEngine
 
         for (int i = 0; i < 2; i++)
         {
-            double GetValue(double usage, double size) 
-                => Math.Round(isValue 
-                                ? usage 
+            double GetValue(double usage, double size)
+                => Math.Round(isValue
+                                ? usage
                                 : usage / size * 100.0, 1);
 
             string MakeDescription(string prefix, double usage, double size)

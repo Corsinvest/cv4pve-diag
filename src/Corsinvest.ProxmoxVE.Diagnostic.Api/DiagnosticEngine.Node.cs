@@ -113,9 +113,9 @@ public partial class DiagnosticEngine
 
             #region RrdData
             // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
-            CheckNodeRrd(_result, 
-                         settings, 
-                         id, 
+            CheckNodeRrd(_result,
+                         settings,
+                         id,
                          await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation));
             #endregion
 
@@ -714,8 +714,8 @@ public partial class DiagnosticEngine
                                     _result.Add(new DiagnosticResult
                                     {
                                         Id = id,
-                                        ErrorCode = tempGravity == DiagnosticResultGravity.Critical 
-                                                        ? "CN0007" 
+                                        ErrorCode = tempGravity == DiagnosticResultGravity.Critical
+                                                        ? "CN0007"
                                                         : "WN0019",
                                         Description = $"Disk '{disk.DevPath}' temperature {temp}°C exceeds threshold",
                                         Context = DiagnosticResultContext.Node,
@@ -866,10 +866,10 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = metaPct >= 95 
-                                    ? "CN0013" 
+                        ErrorCode = metaPct >= 95
+                                    ? "CN0013"
                                     : "WN0026",
-                                    
+
                         Description = $"LVM-thin '{lv.Vg}/{lv.Lv}' metadata usage {metaPct:F1}% — metadata full causes data corruption",
                         Context = DiagnosticResultContext.Node,
                         SubContext = "LvmThin",

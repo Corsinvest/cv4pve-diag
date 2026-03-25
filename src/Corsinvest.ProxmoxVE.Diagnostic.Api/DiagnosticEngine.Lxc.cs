@@ -144,8 +144,8 @@ public partial class DiagnosticEngine
                                      settings.Lxc,
                                      lxcConfig,
                                      await vmApi.Pending.GetAsync(),
-                                     settings.Snapshot.Enabled 
-                                        ? await vmApi.Snapshot.GetAsync() 
+                                     settings.Snapshot.Enabled
+                                        ? await vmApi.Snapshot.GetAsync()
                                         : [],
                                      await vmApi.Rrddata.GetAsync(settings.Lxc.Rrd.TimeFrame, settings.Lxc.Rrd.Consolidation),
                                      DiagnosticResultContext.Lxc,
