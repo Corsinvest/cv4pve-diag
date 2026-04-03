@@ -19,6 +19,16 @@
 
 ---
 
+## Ideas / Improvements
+
+### CLI profiles (--fast / --full)
+- [ ] Add `Enabled` flag to `SettingsRrd` and agent check settings
+- [ ] Add static `Settings.Fast()`, `Settings.Standard()`, `Settings.Full()` methods (same pattern as cv4pve-report)
+- [ ] Add `--fast` / `--full` options to `execute` and `create-settings` commands in `Program.cs`
+- Fast = no RRD, no SMART, no agent check; Full = everything enabled, RRD on week timeframe
+
+---
+
 ## Ideas / Future Checks
 
 ### Node (API)
