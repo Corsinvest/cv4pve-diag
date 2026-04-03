@@ -11,3 +11,6 @@ License: MIT
 
 [Corsinvest.ProxmoxVE.Api.Console](https://github.com/Corsinvest/cv4pve-api-dotnet)
 License: MIT
+
+[ClosedXML](https://github.com/ClosedXML/ClosedXML)
+License: MIT
