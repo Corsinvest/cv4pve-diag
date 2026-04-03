@@ -33,19 +33,19 @@ var optOutputFile = app.AddOption<string>("--output-file", "Output file name");
 app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
    .SetAction((action) =>
    {
-      File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
-      Console.Out.WriteLine(OutputEngine.PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
-      Console.Out.WriteLine(OutputEngine.PrintEnum("Consolidation", typeof(RrdDataConsolidation)));
-      Console.Out.WriteLine($"Create file: {settingsFileName}");
+       File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
+       Console.Out.WriteLine(OutputEngine.PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
+       Console.Out.WriteLine(OutputEngine.PrintEnum("Consolidation", typeof(RrdDataConsolidation)));
+       Console.Out.WriteLine($"Create file: {settingsFileName}");
    });
 
 app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})")
    .SetAction((action) =>
    {
-      File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
-      Console.Out.WriteLine(OutputEngine.PrintEnum("Context", typeof(DiagnosticResultContext)));
-      Console.Out.WriteLine(OutputEngine.PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
-      Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
+       File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
+       Console.Out.WriteLine(OutputEngine.PrintEnum("Context", typeof(DiagnosticResultContext)));
+       Console.Out.WriteLine(OutputEngine.PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
+       Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
    });
 
 app.AddCommand("execute", "Execute diagnostic and print result to console")

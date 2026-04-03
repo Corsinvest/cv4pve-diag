@@ -33,9 +33,9 @@ public class SettingsThresholdNode : SettingsThresholdHost
     {
         Pressure = new()
         {
-            Cpu        = new() { Warning = 40, Critical = 70 },
-            IoFull     = new() { Warning = 10, Critical = 30 },
-            MemoryFull = new() { Warning = 5,  Critical = 15 },
+            Cpu = new() { Warning = 40, Critical = 70 },
+            IoFull = new() { Warning = 10, Critical = 30 },
+            MemoryFull = new() { Warning = 5, Critical = 15 },
         }
     };
 }

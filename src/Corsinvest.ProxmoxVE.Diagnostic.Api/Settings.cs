@@ -33,8 +33,8 @@ public class Settings
         {
             Pressure = new()
             {
-                Cpu        = new() { Warning = 50, Critical = 80 },
-                IoFull     = new() { Warning = 20, Critical = 50 },
+                Cpu = new() { Warning = 50, Critical = 80 },
+                IoFull = new() { Warning = 20, Critical = 50 },
                 MemoryFull = new() { Warning = 10, Critical = 30 },
             }
         },
@@ -51,8 +51,8 @@ public class Settings
         {
             Pressure = new()
             {
-                Cpu        = new() { Warning = 50, Critical = 80 },
-                IoFull     = new() { Warning = 20, Critical = 50 },
+                Cpu = new() { Warning = 50, Critical = 80 },
+                IoFull = new() { Warning = 20, Critical = 50 },
                 MemoryFull = new() { Warning = 10, Critical = 30 },
             }
         },
