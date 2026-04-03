@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api.Extension;
@@ -19,7 +19,9 @@ public partial class DiagnosticEngine
                                   string FileName,
                                   long Size);
 
-    private async Task CheckStorageAsync(List<ClusterResource> resources, Dictionary<long, VmConfig> vmConfigs)
+    private async Task CheckStorageAsync(List<ClusterResource> resources,
+                                          IEnumerable<ClusterBackup> clusterBackups,
+                                          Dictionary<long, VmConfig> vmConfigs)
     {
         // Storage not reachable from the node — VMs on that node cannot read/write
         _result.AddRange(resources.Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
@@ -158,6 +160,57 @@ public partial class DiagnosticEngine
                     Description = $"Storage '{storage.Storage}' is overcommitted: {FormatHelper.FromBytes(allocated)} allocated vs {FormatHelper.FromBytes(storage.DiskSize)} physical ({overcommitPct}%)",
                     Context = DiagnosticResultContext.Storage,
                     SubContext = "ThinOvercommit",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+        }
+        #endregion
+
+        #region No storage with backup content type
+        // If no storage in the cluster has 'backup' as a content type, vzdump has nowhere to save backups.
+        var hasBackupStorage = resources.Any(a => a.ResourceType == ClusterResourceType.Storage
+                                                  && a.Content != null
+                                                  && a.Content.Split(',').Contains("backup"));
+        if (!hasBackupStorage)
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster",
+                ErrorCode = "WS0006",
+                Description = "No storage has 'backup' content type configured — backups cannot be stored",
+                Context = DiagnosticResultContext.Storage,
+                SubContext = "Backup",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+        #endregion
+
+        #region Backup storage not reachable from all nodes
+        // A backup job targets a specific storage. If that storage is not mounted on the node
+        // where a VM resides, the backup will fail for that VM.
+        foreach (var job in clusterBackups.Where(b => !string.IsNullOrWhiteSpace(b.Storage)))
+        {
+            var onlineNodes = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+                                       .Select(a => a.Node)
+                                       .ToList();
+
+            // Nodes that don't have this backup storage available
+            var nodesWithoutStorage = onlineNodes
+                .Where(node => !resources.Any(r => r.ResourceType == ClusterResourceType.Storage
+                                                   && r.Node == node
+                                                   && r.Storage == job.Storage
+                                                   && r.IsAvailable))
+                .ToList();
+
+            foreach (var node in nodesWithoutStorage)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = "cluster",
+                    ErrorCode = "WS0007",
+                    Description = $"Backup job storage '{job.Storage}' is not available on node '{node}' — VMs on this node will not be backed up",
+                    Context = DiagnosticResultContext.Storage,
+                    SubContext = "Backup",
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }

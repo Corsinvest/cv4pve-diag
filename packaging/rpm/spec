@@ -2,11 +2,14 @@ Name: cv4pve-diag
 Version: SKIP
 Release: 1
 Summary: Diagnostic tool for Proxmox VE
-License: MIT
+License: GPLv3
 URL: https://github.com/Corsinvest/cv4pve-diag
 
 %description
 Checks nodes, VMs, LXC containers and storage for common issues.
+
+%define __strip /bin/true
+%define __os_install_post %{nil}
 
 %prep
 

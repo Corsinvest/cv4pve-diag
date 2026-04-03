@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api.Extension;
@@ -19,6 +19,48 @@ public partial class DiagnosticEngine
                                       Dictionary<long, VmConfig> vmConfigs)
     {
         var osNotMaintained = new[] { "win10", "win8", "win7", "w2k8", "wxp", "w2k" };
+
+        // Build storage shared map from already-loaded resources — no extra API call
+        var storageShared = resources.Where(a => a.ResourceType == ClusterResourceType.Storage)
+                                     .GroupBy(a => a.Storage)
+                                     .ToDictionary(g => g.Key, g => g.Any(s => s.Shared));
+
+        // Build set of VM IDs managed by HA from already-loaded resources
+        var haVmIds = resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                           && !string.IsNullOrWhiteSpace(a.HaState))
+                               .Select(a => a.VmId)
+                               .ToHashSet();
+
+        // vCPU overcommit check — sum of vCPUs per node vs physical CPUs
+        // CpuSize on node resource = physical CPU count; on VM resource = assigned vCPUs
+        foreach (var nodeGroup in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                       && a.VmType == VmType.Qemu
+                                                       && !a.IsTemplate)
+                                           .GroupBy(a => a.Node))
+        {
+            var nodeResource = resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
+                                                             && a.Node == nodeGroup.Key);
+            if (nodeResource == null || nodeResource.CpuSize == 0) { continue; }
+
+            var totalVCpus = nodeGroup.Sum(a => a.CpuSize);
+            var ratio = (double)totalVCpus / nodeResource.CpuSize;
+
+            if (ratio > settings.Node.MaxVCpuRatio)
+            {
+                foreach (var vm in nodeGroup)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = vm.GetWebUrl(),
+                        ErrorCode = "WQ0036",
+                        Description = $"Node '{nodeGroup.Key}' vCPU overcommit ratio is {ratio:F1}x ({totalVCpus} vCPUs / {nodeResource.CpuSize} physical) — exceeds threshold of {settings.Node.MaxVCpuRatio}x",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "CPU",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+            }
+        }
 
         foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                   && a.VmType == VmType.Qemu
@@ -182,6 +224,21 @@ public partial class DiagnosticEngine
                         SubContext = "CPU",
                         Gravity = DiagnosticResultGravity.Warning,
                     });
+
+                    // CPU type 'host' + HA enabled: HA requires live migration between nodes,
+                    // which is impossible when the CPU type is 'host' (node-specific CPU features).
+                    if (haVmIds.Contains(item.VmId))
+                    {
+                        _result.Add(new DiagnosticResult
+                        {
+                            Id = id,
+                            ErrorCode = "CQ0004",
+                            Description = "CPU type 'host' is incompatible with HA — HA requires live migration which needs a portable CPU type",
+                            Context = DiagnosticResultContext.Qemu,
+                            SubContext = "CPU",
+                            Gravity = DiagnosticResultGravity.Critical,
+                        });
+                    }
                 }
 
                 // "kvm64" is a very old baseline lacking AVX, SSE4 and other modern extensions.
@@ -360,6 +417,61 @@ public partial class DiagnosticEngine
             }
             #endregion
 
+            #region HA with local storage
+            // HA requires live migration. If any disk is on non-shared storage the migration fails.
+            if (haVmIds.Contains(item.VmId))
+            {
+                foreach (var disk in config.Disks.Where(d => !d.IsUnused
+                                                             && !string.IsNullOrWhiteSpace(d.Storage)
+                                                             && storageShared.TryGetValue(d.Storage, out var shared)
+                                                             && !shared))
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "CQ0005",
+                        Description = $"Disk '{disk.Id}' is on non-shared storage '{disk.Storage}' but VM is managed by HA — live migration will fail",
+                        Context = DiagnosticResultContext.Qemu,
+                        SubContext = "HA",
+                        Gravity = DiagnosticResultGravity.Critical,
+                    });
+                }
+            }
+            #endregion
+
+            #region Machine type
+            // An empty machine type means QEMU picks the default at startup, which may change across
+            // PVE upgrades and cause unexpected guest behaviour after an upgrade.
+            if (config is VmConfigQemu qemuMachine && string.IsNullOrWhiteSpace(qemuMachine.Machine))
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "IQ0012",
+                    Description = "Machine type not set — QEMU will use the default, which may change across PVE upgrades",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Hardware",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+            }
+            #endregion
+
+            #region No network interface
+            // A VM with no network interface is completely isolated — likely a misconfiguration
+            if (!config.Networks.Any())
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WQ0034",
+                    Description = "VM has no network interface configured — completely isolated from network",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Network",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+            #endregion
+
             #region Firewall and IP filter
             CheckVmFirewall(_result, await vmApi.Firewall.Options.GetAsync(), id, DiagnosticResultContext.Qemu);
             #endregion
@@ -399,6 +511,34 @@ public partial class DiagnosticEngine
                                      id,
                                      clusterBackups,
                                      backupStoragesByNode.GetValueOrDefault(item.Node, []));
+        }
+
+        // Duplicate MAC check — collect all MACs across all VMs and flag duplicates
+        var allMacs = resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                           && a.VmType == VmType.Qemu
+                                           && !a.IsTemplate)
+                               .SelectMany(a => vmConfigs[a.VmId].Networks
+                                   .Where(n => !string.IsNullOrWhiteSpace(n.MacAddress))
+                                   .Select(n => new { VmId = a.VmId, Url = a.GetWebUrl(), Mac = n.MacAddress.ToUpperInvariant() }))
+                               .ToList();
+
+        var duplicateMacs = allMacs.GroupBy(x => x.Mac)
+                                   .Where(g => g.Count() > 1);
+
+        foreach (var group in duplicateMacs)
+        {
+            foreach (var entry in group)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = entry.Url,
+                    ErrorCode = "WQ0033",
+                    Description = $"Duplicate MAC address {group.Key} shared with VM(s) {string.Join(", ", group.Where(x => x.VmId != entry.VmId).Select(x => x.VmId))} — causes network conflicts",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Network",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
         }
 
         // Template checks — config already pre-fetched

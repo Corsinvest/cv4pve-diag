@@ -2,6 +2,39 @@
 
 ---
 
+## [2.0.3] — 2026-04-03
+
+### License change
+
+- License changed from **MIT** to **GPL-3.0-only**.
+
+### New checks
+
+**VM (QEMU):**
+- **CPU type 'host' with HA enabled** (`CQ0004`) — critical when a VM uses CPU type `host` and is managed by HA. HA requires live migration, which is impossible with `host` CPU type.
+- **Disk on local storage with HA enabled** (`CQ0005`) — critical when a VM disk is on non-shared storage but the VM is managed by HA. Live migration will fail.
+- **vCPU overcommit** (`WQ0036`) — warns when the total vCPU count on a node exceeds the configured ratio vs physical CPUs (default 4.0x, configurable via `Node.MaxVCpuRatio`).
+- **Machine type not set** (`IQ0012`) — info when a VM has no machine type configured. QEMU will use the default, which may change across PVE upgrades and cause unexpected guest behavior.
+- **No network interface** (`WQ0034`) — warns when a VM has no network interface configured (completely isolated from the network).
+- **Duplicate MAC address** (`WQ0033`) — warns when two or more VMs share the same MAC address, which causes network conflicts.
+- **Snapshot with RAM state** (`WQ0035`) — warns when a snapshot includes the full guest RAM state, wasting disk space and blocking storage migration.
+
+**LXC:**
+- **No memory limit** (`WL0022`) — warns when a container has `Memory=0` (unbounded), which allows it to consume all host RAM and starve other guests.
+
+**Storage:**
+- **No backup storage configured** (`WS0006`) — warns when no storage in the cluster has the `backup` content type, meaning vzdump has nowhere to save backups.
+- **Backup storage unreachable from node** (`WS0007`) — warns when a backup job targets a storage that is not available on a node where VMs reside. Those VMs will not be backed up.
+
+### Improvements
+
+- **Excel export** (`--output=Excel`) — new output format that generates an `.xlsx` report with a summary header (generated date, duration, nodes, version) and a filtered table with all diagnostic results. File name defaults to `cv4pve-diagnostic-<timestamp>.xlsx` if `--output-file` is not specified.
+- **`--output-file`** — new option to save any output format to a file instead of stdout.
+- **`Node.MaxVCpuRatio`** — new configurable setting (default `4.0`) for the vCPU overcommit check.
+- **`SettingsPressure`** — PSI pressure thresholds extracted into a dedicated class (`Pressure.Cpu`, `Pressure.IoFull`, `Pressure.MemoryFull`) for cleaner settings structure.
+
+---
+
 ## [2.0.2] — 2026-03-25
 
 ### New checks

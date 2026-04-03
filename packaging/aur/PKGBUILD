@@ -1,5 +1,4 @@
 # Maintainer: Corsinvest Srl <corsinvest@corsinvest.it>
-# Contributor: franklupo <franklupog@gmail.com>
 # Project : https://github.com/Corsinvest/cv4pve-diag
 # Part of : CV4PVE Suite - https://www.corsinvest.it/cv4pve
 
@@ -9,7 +8,7 @@ pkgrel=1
 pkgdesc="Diagnostic tool for Proxmox VE — checks nodes, VMs, LXC containers and storage for common issues"
 arch=('x86_64' 'aarch64' 'armv7h')
 url="https://github.com/Corsinvest/cv4pve-diag"
-license=('MIT')
+license=('GPLv3')
 depends=()
 provides=('cv4pve-diag')
 conflicts=('cv4pve-diag')

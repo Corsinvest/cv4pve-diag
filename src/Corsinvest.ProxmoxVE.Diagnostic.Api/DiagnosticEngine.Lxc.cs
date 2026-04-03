@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api.Extension;
@@ -86,6 +86,22 @@ public partial class DiagnosticEngine
                             Gravity = DiagnosticResultGravity.Critical,
                         });
                     }
+                }
+                #endregion
+
+                #region No memory limit
+                // Memory=0 means unbounded RAM — the container can consume all host memory and starve other VMs/CTs
+                if (lxc.Memory == 0)
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = id,
+                        ErrorCode = "WL0022",
+                        Description = "Container has no memory limit (Memory=0) — can consume all host RAM and starve other guests",
+                        Context = DiagnosticResultContext.Lxc,
+                        SubContext = "Memory",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
                 }
                 #endregion
 
