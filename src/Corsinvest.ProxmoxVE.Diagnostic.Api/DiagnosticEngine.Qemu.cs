@@ -19,7 +19,7 @@ public partial class DiagnosticEngine
     private const string DiskCacheWriteback = "writeback";
     private const string OsTypeWin11 = "win11";
     private static readonly string[] _cpuSecurityFlags = ["+spec-ctrl", "+ssbd", "+pcid", "+md-clear"];
-    
+
     // PVE ostype values whose vendor support has fully ended.
     // win10 covers Win10/2016/2019 — Server 2016/2019 still supported, so excluded.
     // win8  covers Win8/2012/2012R2 — all EOL (Oct 2023).
