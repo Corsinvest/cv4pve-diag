@@ -57,4 +57,4 @@ app.AddCommand("execute", "Execute diagnostic and print result to console")
                                         action.GetValue(optShowIgnoredIssues),
                                         action.GetValue(optOutputFile)));
 
-return await app.ExecuteAppAsync(args, loggerFactory.CreateLogger(typeof(Program)));
+return await app.ExecuteAppAsync(args, loggerFactory.CreateLogger<Program>());

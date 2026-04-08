@@ -18,7 +18,21 @@ public partial class DiagnosticEngine(PveClient client, Settings settings)
 {
     private readonly List<DiagnosticResult> _result = [];
     private readonly DateTime _now = DateTime.Now;
+    private List<ClusterResource> _resources = [];
+    private IEnumerable<ClusterBackup> _clusterBackups = [];
+    private Dictionary<long, VmConfig> _vmConfigs = [];
+    private Dictionary<string, IEnumerable<NodeStorage>> _backupStoragesByNode = [];
 
+    // One entry per unique storage: shared storages appear once (deduped by name),
+    // non-shared appear once per node. Used everywhere instead of filtering _resources.
+    private List<ClusterResource> _storageResources = [];
+
+    // Backup content keyed by storage name — loaded once in CheckStorageAsync, reused in CheckCommonAsync.
+    // Shared storages are fetched only once regardless of how many nodes mount them.
+    private readonly Dictionary<string, List<NodeStorageContent>> _backupContentByStorage = [];
+
+    // Storage names that are shared — used in CheckCommonAsync to build the correct lookup key.
+    private readonly HashSet<string> _sharedStorageNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Analyze cluster by querying PVE API directly
@@ -26,7 +40,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings)
     public async Task<ICollection<DiagnosticResult>> AnalyzeAsync(List<DiagnosticResult> ignoredIssues)
     {
         var allResources = await client.Cluster.Resources.GetAsync();
-        var resources = allResources.Where(a => !a.IsUnknown).ToList();
+        _resources = [.. allResources.Where(a => !a.IsUnknown)];
 
         // Resources with unknown type are always a problem — report them all as Critical
         _result.AddRange(allResources.Where(a => a.IsUnknown)
@@ -40,32 +54,37 @@ public partial class DiagnosticEngine(PveClient client, Settings settings)
                                          Gravity = DiagnosticResultGravity.Critical,
                                      }));
 
-        var (hasCluster, clusterBackups) = await CheckClusterAsync(resources);
+        // Deduplicated storage list: shared → one record per storage name, non-shared → one per node
+        _storageResources = [.. _resources.Where(a => a.ResourceType == ClusterResourceType.Storage)
+                                      .GroupBy(a => a.Shared ? a.Storage : $"{a.Node}/{a.Storage}")
+                                      .Select(g => g.First())];
+
+        var hasCluster = await CheckClusterAsync();
 
         // Pre-fetch backup storages once per node — shared by CheckQemuAsync and CheckLxcAsync
-        var backupStoragesByNode = new Dictionary<string, IEnumerable<NodeStorage>>();
-        foreach (var node in resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
-                                      .Select(a => a.Node))
+        _backupStoragesByNode = [];
+        foreach (var node in _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+                                       .Select(a => a.Node))
         {
-            backupStoragesByNode[node] = settings.Backup.Enabled
-                                            ? await client.Nodes[node].Storage.GetAsync(enabled: true, content: "backup")
+            _backupStoragesByNode[node] = settings.Backup.Enabled
+                                            ? await client.Nodes[node].Storage.GetAsync(content: "backup", enabled: true)
                                             : [];
         }
 
         // Pre-fetch VM configs once — shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync
-        var vmConfigs = new Dictionary<long, VmConfig>();
-        foreach (var vm in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
+        _vmConfigs = [];
+        foreach (var vm in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
         {
             var nodeApi = client.Nodes[vm.Node];
-            vmConfigs[vm.VmId] = vm.VmType == VmType.Qemu
+            _vmConfigs[vm.VmId] = vm.VmType == VmType.Qemu
                                     ? await nodeApi.Qemu[vm.VmId].Config.GetAsync()
                                     : await nodeApi.Lxc[vm.VmId].Config.GetAsync();
         }
 
-        await CheckStorageAsync(resources, clusterBackups, vmConfigs);
-        await CheckNodesAsync(resources, hasCluster);
-        await CheckQemuAsync(resources, clusterBackups, hasCluster, backupStoragesByNode, vmConfigs);
-        await CheckLxcAsync(resources, clusterBackups, backupStoragesByNode, vmConfigs);
+        await CheckStorageAsync();
+        await CheckNodesAsync(hasCluster);
+        await CheckQemuAsync(hasCluster);
+        await CheckLxcAsync();
 
         foreach (var ignoredIssue in ignoredIssues)
         {

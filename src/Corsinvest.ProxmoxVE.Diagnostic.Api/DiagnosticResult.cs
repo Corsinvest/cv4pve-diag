@@ -31,7 +31,6 @@ public class DiagnosticResult
     /// Error code
     /// </summary>
     /// <value></value>
-    [JsonIgnore]
     public string ErrorCode { get; set; } = default!;
 
     /// <summary>
@@ -74,11 +73,12 @@ public class DiagnosticResult
     /// <param name="result"></param>
     /// <returns></returns>
     public bool CheckIgnoreIssue(DiagnosticResult result)
-        => CheckString(result.Id, Id) &&
-           CheckString(result.SubContext, SubContext) &&
-           CheckString(result.Description, Description) &&
-           result.Context == Context &&
-           result.Gravity == Gravity;
+        => CheckString(result.ErrorCode, ErrorCode)
+            && CheckString(result.Id, Id)
+            && CheckString(result.SubContext, SubContext)
+            && CheckString(result.Description, Description)
+            && (Context == default || result.Context == Context)
+            && (Gravity == default || result.Gravity == Gravity);
 
     private static bool CheckString(string text, string pattern) => pattern == null || Regex.IsMatch(text, pattern);
 

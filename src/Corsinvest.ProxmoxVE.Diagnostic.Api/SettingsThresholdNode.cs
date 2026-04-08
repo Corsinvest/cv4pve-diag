@@ -17,6 +17,16 @@ public class SettingsThresholdNode : SettingsThresholdHost
     public double MaxVCpuRatio { get; set; } = 4.0;
 
     /// <summary>
+    /// CPU utilization threshold (%) below which a node is considered underutilized for consolidation.
+    /// </summary>
+    public double ConsolidationCpuThreshold { get; set; } = 10.0;
+
+    /// <summary>
+    /// Memory utilization threshold (%) below which a node is considered underutilized for consolidation.
+    /// </summary>
+    public double ConsolidationMemThreshold { get; set; } = 20.0;
+
+    /// <summary>
     /// S.M.A.R.T. disk checks configuration
     /// </summary>
     public SettingsSmartDisk Smart { get; set; } = new();

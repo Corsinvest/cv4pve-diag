@@ -5,13 +5,18 @@
 
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
+    private static readonly HashSet<string> _thinProvisioningTypes = new(StringComparer.OrdinalIgnoreCase)
+        { "lvmthin", "zfspool", "rbd", "cephfs" };
+
+    private static readonly HashSet<string> _sharedStorageTypes = new(StringComparer.OrdinalIgnoreCase)
+        { "nfs", "cifs", "cephfs", "rbd", "iscsi", "iscsidirect", "glusterfs" };
+
     private record StorageContent(string Id,
                                   string Volume,
                                   string Storage,
@@ -19,21 +24,19 @@ public partial class DiagnosticEngine
                                   string FileName,
                                   long Size);
 
-    private async Task CheckStorageAsync(List<ClusterResource> resources,
-                                          IEnumerable<ClusterBackup> clusterBackups,
-                                          Dictionary<long, VmConfig> vmConfigs)
+    private async Task CheckStorageAsync()
     {
         // Storage not reachable from the node — VMs on that node cannot read/write
-        _result.AddRange(resources.Where(a => a.ResourceType == ClusterResourceType.Storage && !a.IsAvailable)
-                                 .Select(a => new DiagnosticResult
-                                 {
-                                     Id = a.GetWebUrl(),
-                                     ErrorCode = "CS0001",
-                                     Description = "Storage not available",
-                                     Context = DiagnosticResultContext.Storage,
-                                     SubContext = "Status",
-                                     Gravity = DiagnosticResultGravity.Critical,
-                                 }));
+        _result.AddRange(_storageResources.Where(a => !a.IsAvailable)
+                                          .Select(a => new DiagnosticResult
+                                          {
+                                              Id = a.GetWebUrl(),
+                                              ErrorCode = "CS0001",
+                                              Description = "Storage not available",
+                                              Context = DiagnosticResultContext.Storage,
+                                              SubContext = "Status",
+                                              Gravity = DiagnosticResultGravity.Critical,
+                                          }));
 
         // Storage usage above configured Warning/Critical thresholds
         CheckThreshold(_result,
@@ -41,25 +44,27 @@ public partial class DiagnosticEngine
                        "WS0001",
                        DiagnosticResultContext.Storage,
                        "Usage",
-                       resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
-                                .Select(a => new ThresholdDataPoint(Convert.ToDouble(a.DiskUsage),
-                                                                    Convert.ToDouble(a.DiskSize),
-                                                                    a.GetWebUrl(),
-                                                                    "Storage")),
+                       _storageResources.Where(a => a.IsAvailable)
+                                        .Select(a => new ThresholdDataPoint(Convert.ToDouble(a.DiskUsage),
+                                                                            Convert.ToDouble(a.DiskSize),
+                                                                            a.GetWebUrl(),
+                                                                            "Storage")),
                        false,
                        true);
 
         #region Orphaned Images and Backups
         // Disk images present in storage but not attached to any VM or LXC (wasted space)
-        var activeVmIds = resources.Where(a => a.ResourceType == ClusterResourceType.Vm)
-                                   .Select(a => a.VmId)
-                                   .ToHashSet();
+        var activeVmIds = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm)
+                                    .Select(a => a.VmId)
+                                    .ToHashSet();
+
+        // _storageResources is already deduplicated: shared appears once, non-shared once per node.
+        // No need for DistinctBy or skip logic — just iterate directly.
         var storagesImages = new List<StorageContent>();
-        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Storage
-                                                  && a.IsAvailable
-                                                  && a.Content != null
-                                                  && (a.Content.Split(",").Contains("images")
-                                                      || (settings.Backup.Enabled && a.Content.Split(",").Contains("backup")))))
+        foreach (var item in _storageResources.Where(a => a.IsAvailable
+                                                           && a.Content != null
+                                                           && (a.Content.Split(",").Contains("images")
+                                                               || (settings.Backup.Enabled && a.Content.Split(",").Contains("backup")))))
         {
             var nodeApi = client.Nodes[item.Node];
 
@@ -77,30 +82,30 @@ public partial class DiagnosticEngine
             // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage
             if (settings.Backup.Enabled && item.Content.Split(",").Contains("backup"))
             {
-                var content = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "backup");
-                _result.AddRange(content.Where(a => !activeVmIds.Contains(a.VmId))
-                                        .DistinctBy(a => a.Volume)
-                                        .Select(a => new DiagnosticResult
-                                        {
-                                            Id = item.GetWebUrl(),
-                                            ErrorCode = "WS0003",
-                                            Description = $"Orphaned backup {FormatHelper.FromBytes(a.Size)} '{a.FileName}' — VMID {a.VmId} no longer exists",
-                                            Context = DiagnosticResultContext.Storage,
-                                            SubContext = "Backup",
-                                            Gravity = DiagnosticResultGravity.Warning,
-                                        }));
+                // Populate _sharedStorageNames for use in BackupStorageKey (CheckCommonAsync)
+                if (item.Shared) { _sharedStorageNames.Add(item.Storage); }
+                var storageKey = BackupStorageKey(item.Node, item.Storage);
+                _backupContentByStorage[storageKey] = [.. await nodeApi.Storage[item.Storage].Content.GetAsync(content: "backup")];
+                _result.AddRange(_backupContentByStorage[storageKey]
+                                    .Where(a => !activeVmIds.Contains(a.VmId))
+                                    .Select(a => new DiagnosticResult
+                                    {
+                                        Id = item.GetWebUrl(),
+                                        ErrorCode = "WS0003",
+                                        Description = $"Orphaned backup {FormatHelper.FromBytes(a.Size)} '{a.FileName}' — VMID {a.VmId} no longer exists",
+                                        Context = DiagnosticResultContext.Storage,
+                                        SubContext = "Backup",
+                                        Gravity = DiagnosticResultGravity.Warning,
+                                    }));
             }
         }
-
-        // Deduplicate volumes seen from multiple nodes (shared storage)
-        storagesImages = [.. storagesImages.DistinctBy(a => a.Volume)];
 
         // Remove volumes that are actually attached to a VM/LXC disk
         // At the same time accumulate allocated disk size per storage for thin provisioning check
         var allocatedByStorage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
+        foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
         {
-            var config = vmConfigs[item.VmId];
+            var config = _vmConfigs[item.VmId];
 
             foreach (var disk in config.Disks)
             {
@@ -141,13 +146,9 @@ public partial class DiagnosticEngine
         // Thin-provisioned storage (LVM-thin, ZFS, Ceph RBD) allows allocating more disk space to VMs
         // than physically available. If the sum of all VM disk sizes exceeds the storage capacity
         // the storage will silently fill up and VMs will crash or freeze.
-        var thinTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { "lvmthin", "zfspool", "rbd", "cephfs" };
-
-        foreach (var storage in resources.Where(a => a.ResourceType == ClusterResourceType.Storage
-                                                     && a.IsAvailable
-                                                     && thinTypes.Contains(a.PluginType ?? string.Empty)
-                                                     && a.DiskSize > 0))
+        foreach (var storage in _storageResources.Where(a => a.IsAvailable
+                                                              && _thinProvisioningTypes.Contains(a.PluginType ?? string.Empty)
+                                                              && a.DiskSize > 0))
         {
             if (!allocatedByStorage.TryGetValue(storage.Storage, out var allocated)) { continue; }
             if (allocated > (long)storage.DiskSize)
@@ -168,9 +169,7 @@ public partial class DiagnosticEngine
 
         #region No storage with backup content type
         // If no storage in the cluster has 'backup' as a content type, vzdump has nowhere to save backups.
-        var hasBackupStorage = resources.Any(a => a.ResourceType == ClusterResourceType.Storage
-                                                  && a.Content != null
-                                                  && a.Content.Split(',').Contains("backup"));
+        var hasBackupStorage = _storageResources.Any(a => a.Content?.Split(',').Contains("backup") == true);
         if (!hasBackupStorage)
         {
             _result.Add(new DiagnosticResult
@@ -188,18 +187,19 @@ public partial class DiagnosticEngine
         #region Backup storage not reachable from all nodes
         // A backup job targets a specific storage. If that storage is not mounted on the node
         // where a VM resides, the backup will fail for that VM.
-        foreach (var job in clusterBackups.Where(b => !string.IsNullOrWhiteSpace(b.Storage)))
+        foreach (var job in _clusterBackups.Where(b => !string.IsNullOrWhiteSpace(b.Storage)))
         {
-            var onlineNodes = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
-                                       .Select(a => a.Node)
-                                       .ToList();
+            var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+                                        .Select(a => a.Node)
+                                        .ToList();
 
             // Nodes that don't have this backup storage available
+            // Use full _resources here (not _storageResources) to check per-node availability
             var nodesWithoutStorage = onlineNodes
-                .Where(node => !resources.Any(r => r.ResourceType == ClusterResourceType.Storage
-                                                   && r.Node == node
-                                                   && r.Storage == job.Storage
-                                                   && r.IsAvailable))
+                .Where(node => !_resources.Any(r => r.ResourceType == ClusterResourceType.Storage
+                                                    && r.Node == node
+                                                    && r.Storage == job.Storage
+                                                    && r.IsAvailable))
                 .ToList();
 
             foreach (var node in nodesWithoutStorage)
@@ -221,16 +221,14 @@ public partial class DiagnosticEngine
         // Shared storage types (NFS, iSCSI, Ceph, etc.) are meant to be accessible from multiple nodes.
         // If a shared storage appears on only one node it may indicate a misconfiguration or a mount failure
         // on the other nodes, defeating the purpose of the shared storage.
-        var totalOnlineNodes = resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
+        var totalOnlineNodes = _resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
         if (totalOnlineNodes > 1)
         {
-            var sharedStorageTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "nfs", "cifs", "cephfs", "rbd", "iscsi", "iscsidirect", "glusterfs" };
-
-            var storagesByName = resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
-                                          .GroupBy(a => a.Storage)
-                                          .Where(g => sharedStorageTypes.Contains(g.First().PluginType ?? string.Empty) && g.Count() == 1)
-                                          .Select(g => g.First());
+            // Use full _resources to count how many nodes mount each storage
+            var storagesByName = _resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
+                                           .GroupBy(a => a.Storage)
+                                           .Where(g => _sharedStorageTypes.Contains(g.First().PluginType ?? string.Empty) && g.Count() == 1)
+                                           .Select(g => g.First());
 
             _result.AddRange(storagesByName.Select(a => new DiagnosticResult
             {

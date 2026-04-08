@@ -26,7 +26,7 @@ public class Settings
     /// Qemu
     /// </summary>
     /// <returns></returns>
-    public SettingsThresholdHost Qemu { get; set; } = new()
+    public SettingsThresholdQemu Qemu { get; set; } = new()
     {
         HealthScore = new() { Warning = 60, Critical = 40 },
         Rrd = new()
@@ -67,4 +67,5 @@ public class Settings
     /// Backup checks configuration
     /// </summary>
     public SettingsBackup Backup { get; set; } = new();
+
 }

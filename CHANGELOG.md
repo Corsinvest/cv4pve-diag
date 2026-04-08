@@ -2,6 +2,42 @@
 
 ---
 
+## [2.1.0] — 2026-04-08
+
+### New checks
+
+**Node:**
+- **Memory overcommit** (`WN0036`) — the total RAM allocated to VMs and containers on a node exceeds the node's physical memory. This can cause system instability or unexpected VM crashes.
+- **Bridge not VLAN-aware** (`WN0037`) — a VM or container uses a VLAN tag on a network bridge that does not support VLANs. The tag is silently ignored and network traffic may not be isolated as expected.
+- **VM consolidation candidate** (`IN0003`) — a node has very low CPU and RAM usage. Consider migrating its VMs to other nodes to free up hardware.
+- **Firewall rule allows all traffic** (`WC0008`) — a cluster firewall rule uses `0.0.0.0/0` as source or destination, allowing traffic from or to any address. This is overly permissive and increases the attack surface.
+
+**LXC containers (new checks):**
+- **Nesting without keyctl** (`WG0038`) — the container has Docker nesting enabled but is missing the `keyctl` option. Without it, nested containers may leak cryptographic keys between each other.
+- **Privileged container** (`WG0039`) — the container runs as privileged, meaning the root user inside has the same permissions as root on the host. Use unprivileged containers where possible.
+- **Privileged without AppArmor** (`CG0006`) — a privileged container also has AppArmor protection disabled. There is no kernel-level confinement: a compromised container can affect the entire host.
+- **No memory limit** (`WG0040`) — the container has no RAM limit configured. It can consume all available host memory and starve other VMs and containers.
+- **Swap disabled** (`IG0013`) — the container has no swap space. Under heavy memory pressure, the OS will kill processes instead of using swap.
+- **No hostname** (`IG0014`) — the container has no hostname set, making it harder to identify in logs and monitoring tools.
+- **Raw LXC config entries** (`WG0041`) — the container has low-level LXC configuration entries that bypass Proxmox VE management. These can cause unexpected behavior after upgrades.
+
+### Error code unification
+
+VM and container checks previously used separate code prefixes (`WQ*`/`IQ*`/`CQ*` for QEMU, `WL*`/`IL*`/`CL*` for LXC). All guest codes are now unified under `WG*`, `IG*`, `CG*`. Checks that apply to both VMs and containers share the same code.
+
+> If you use ignore rules based on error codes, update any `WQ*`, `IQ*`, `CQ*`, `WL*`, `IL*`, or `CL*` codes to their `*G*` equivalents.
+
+### Performance
+
+Analysis is significantly faster on large clusters. Backup content, VM configs, and storage lists are now fetched once and reused across all checks — instead of being fetched repeatedly for each VM or container. On a typical cluster this reduces the number of API calls by ~18% and total analysis time by ~32%.
+
+### Fixes
+
+- Memory, network-in, and network-out threshold breaches on nodes now report distinct error codes (`WN0038`, `WN0039`, `WN0040`) instead of all sharing the CPU code `WN0027`.
+- Minor code quality improvements with no user-visible impact.
+
+---
+
 ## [2.0.3] — 2026-04-03
 
 ### License change

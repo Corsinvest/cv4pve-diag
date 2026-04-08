@@ -10,31 +10,31 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
-    private async Task<(bool HasCluster, IEnumerable<ClusterBackup> ClusterBackups)> CheckClusterAsync(List<ClusterResource> resources)
+    private async Task<bool> CheckClusterAsync()
     {
         var clusterConfigNodes = await client.Cluster.Config.Nodes.GetAsync();
         var hasCluster = clusterConfigNodes.Any();
-        var clusterBackups = await client.Cluster.Backup.GetAsync();
+        _clusterBackups = await client.Cluster.Backup.GetAsync();
 
-        CheckClusterBackupCompression(clusterBackups);
+        CheckClusterBackupCompression();
 
         if (hasCluster)
         {
             var clusterStatus = await client.Cluster.Status.GetAsync();
-            await CheckClusterQuorumAndHaAsync(resources, clusterStatus);
+            await CheckClusterQuorumAndHaAsync(clusterStatus);
             await CheckClusterHaAndReplicationAsync();
         }
 
-        await CheckClusterPoolsAsync(resources);
-        await CheckClusterFirewallAsync(resources);
+        await CheckClusterPoolsAsync();
+        await CheckClusterFirewallAsync();
         await CheckClusterAccessAsync();
 
-        return (hasCluster, clusterBackups);
+        return hasCluster;
     }
 
-    private void CheckClusterBackupCompression(IEnumerable<ClusterBackup> clusterBackups)
+    private void CheckClusterBackupCompression()
     {
-        var backupList = clusterBackups.ToList();
+        var backupList = _clusterBackups.ToList();
 
         // No backup jobs defined at all — entire cluster has no automated backup
         if (backupList.Count == 0)
@@ -65,8 +65,8 @@ public partial class DiagnosticEngine
 
         // Backup jobs without retention policy — storage will fill up indefinitely
         _result.AddRange(backupList.Where(a => a.Enabled
-                                               && !(a.ExtensionData?.ContainsKey("maxfiles") == true)
-                                               && !(a.ExtensionData?.ContainsKey("prune-backups") == true))
+                                               && a.ExtensionData?.ContainsKey("maxfiles") != true
+                                               && a.ExtensionData?.ContainsKey("prune-backups") != true)
                                    .Select(a => new DiagnosticResult
                                    {
                                        Id = $"cluster/backup/{a.Id}",
@@ -111,12 +111,11 @@ public partial class DiagnosticEngine
         }
     }
 
-    private async Task CheckClusterQuorumAndHaAsync(List<ClusterResource> resources,
-                                                    IEnumerable<ClusterStatus> clusterStatus)
+    private async Task CheckClusterQuorumAndHaAsync(IEnumerable<ClusterStatus> clusterStatus)
     {
         // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
         var clusterInfo = clusterStatus.FirstOrDefault(a => a.Type == "cluster");
-        if (clusterInfo != null && clusterInfo.Quorate == 0)
+        if (clusterInfo?.Quorate == 0)
         {
             _result.Add(new DiagnosticResult
             {
@@ -134,7 +133,7 @@ public partial class DiagnosticEngine
         // which can prevent quorum even when all remaining nodes are online.
         if (clusterInfo != null)
         {
-            var onlineCount = resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
+            var onlineCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
             if (clusterInfo.ExpectedVotes.HasValue
                 && clusterInfo.ExpectedVotes.Value != onlineCount)
             {
@@ -151,7 +150,7 @@ public partial class DiagnosticEngine
         }
 
         // HA groups referencing nodes that are currently offline — failover may not work
-        var onlineNodeNames = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+        var onlineNodeNames = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
                                        .Select(a => a.Node)
                                        .ToHashSet();
         foreach (var haGroup in await client.Cluster.Ha.Groups.GetAsync())
@@ -175,9 +174,9 @@ public partial class DiagnosticEngine
     }
 
     // Pools with no VMs and no storage assigned serve no purpose
-    private async Task CheckClusterPoolsAsync(List<ClusterResource> resources)
+    private async Task CheckClusterPoolsAsync()
     => _result.AddRange((await client.Pools.GetAsync())
-                            .Where(a => !resources.Any(r => r.Pool == a.Id))
+                            .Where(a => !_resources.Any(r => r.Pool == a.Id))
                             .Select(a => new DiagnosticResult
                             {
                                 Id = $"cluster/pool/{a.Id}",
@@ -188,7 +187,7 @@ public partial class DiagnosticEngine
                                 Gravity = DiagnosticResultGravity.Info,
                             }));
 
-    private async Task CheckClusterFirewallAsync(List<ClusterResource> resources)
+    private async Task CheckClusterFirewallAsync()
     {
         var clusterFwOptions = await client.Cluster.Firewall.Options.GetAsync();
 
@@ -228,7 +227,7 @@ public partial class DiagnosticEngine
         }
 
         // Firewall enabled at cluster level but disabled on individual nodes — inconsistent protection
-        foreach (var node in resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline))
+        foreach (var node in _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline))
         {
             var nodeFwOptions = await client.Nodes[node.Node].Firewall.Options.GetAsync();
             if (!nodeFwOptions.Enable)
@@ -244,6 +243,20 @@ public partial class DiagnosticEngine
                 });
             }
         }
+
+        // Cluster firewall rules with source or dest 0.0.0.0/0 — overly permissive
+        var clusterRules = await client.Cluster.Firewall.Rules.GetAsync();
+        _result.AddRange(clusterRules.Where(r => r.Enable
+                                                 && (r.Source == "0.0.0.0/0" || r.Dest == "0.0.0.0/0"))
+                                     .Select(r => new DiagnosticResult
+                                     {
+                                         Id = "cluster/firewall/rules",
+                                         ErrorCode = "WC0008",
+                                         Description = $"Firewall rule #{r.Positon} allows traffic from/to 0.0.0.0/0 — overly permissive",
+                                         Context = DiagnosticResultContext.Cluster,
+                                         SubContext = "Firewall",
+                                         Gravity = DiagnosticResultGravity.Warning,
+                                     }));
     }
 
     private async Task CheckClusterAccessAsync()
@@ -282,7 +295,7 @@ public partial class DiagnosticEngine
         _result.AddRange(acls.Where(a => a.Roleid == "Administrator" && a.Path == "/" && a.Type == "user")
                              .Select(a => new DiagnosticResult
                              {
-                                 Id = $"access/acl",
+                                 Id = "access/acl",
                                  ErrorCode = "WC0005",
                                  Description = $"User '{a.UsersGroupid}' has Administrator role at root path '/' — prefer pool/node-scoped permissions",
                                  Context = DiagnosticResultContext.Cluster,

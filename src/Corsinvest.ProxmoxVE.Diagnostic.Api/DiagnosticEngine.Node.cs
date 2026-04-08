@@ -13,6 +13,15 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
+    private static readonly Dictionary<int, DateTime> _pveEndOfLife = new()
+    {
+        { 8, new DateTime(2026, 08, 31) },
+        { 7, new DateTime(2024, 07, 31) },
+        { 6, new DateTime(2022, 09, 30) },
+        { 5, new DateTime(2020, 07, 31) },
+        { 4, new DateTime(2018, 06, 30) },
+    };
+
     private record NodeCompareData(NodeVersion Version,
                                    string[] Hosts,
                                    NodeDns Dns,
@@ -23,17 +32,9 @@ public partial class DiagnosticEngine
                                    NodeAptRepositories? AptRepositories,
                                    IEnumerable<NodeNetwork> Networks);
 
-    private async Task CheckNodesAsync(List<ClusterResource> resources, bool hasCluster)
+    private async Task CheckNodesAsync(bool hasCluster)
     {
-        var endOfLife = new Dictionary<int, DateTime>
-        {
-            { 7, new DateTime(2024, 07, 01) },
-            { 6, new DateTime(2022, 09, 01) },
-            { 5, new DateTime(2020, 07, 01) },
-            { 4, new DateTime(2018, 06, 01) },
-        };
-
-        var onlineNodes = resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
+        var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
 
         // Pre-fetch lightweight per-node data once to avoid redundant API calls during cross-node comparisons
         var nodeCompareData = new Dictionary<string, NodeCompareData>();
@@ -55,7 +56,7 @@ public partial class DiagnosticEngine
                                                              await api.Network.GetAsync());
         }
 
-        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Node))
+        foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Node))
         {
             var id = item.GetWebUrl();
 
@@ -79,7 +80,7 @@ public partial class DiagnosticEngine
 
             #region End Of Life
             // PVE versions with a known EOL date that has already passed
-            if (endOfLife.TryGetValue(nodeVersion, out var eolDate) && _now.Date >= eolDate)
+            if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate) && _now.Date >= eolDate)
             {
                 _result.Add(new DiagnosticResult
                 {
@@ -142,7 +143,7 @@ public partial class DiagnosticEngine
                     checkInNodes[0] = false;
                 }
 
-                if (checkInNodes[1] && string.Join("", hosts) != string.Join("", otherHosts))
+                if (checkInNodes[1] && string.Concat(hosts) != string.Concat(otherHosts))
                 {
                     _result.Add(new DiagnosticResult
                     {
@@ -188,16 +189,15 @@ public partial class DiagnosticEngine
                 // Compare the enabled URIs from all repository files — order-insensitive.
                 if (checkInNodes[4])
                 {
-                    var getUris = (NodeAptRepositories? repos) =>
-                        (repos?.Files ?? [])
+                    static List<string> GetUris(NodeAptRepositories? repos)
+                        => [.. (repos?.Files ?? [])
                              .SelectMany(f => f.Repositories ?? [])
                              .Where(r => r.Enabled)
                              .SelectMany(r => r.URIs ?? [])
-                             .OrderBy(u => u)
-                             .ToList();
+                             .Order()];
 
-                    var uris = getUris(aptRepositories);
-                    var otherUris = getUris(otherAptRepositories);
+                    var uris = GetUris(aptRepositories);
+                    var otherUris = GetUris(otherAptRepositories);
 
                     if (!uris.SequenceEqual(otherUris))
                     {
@@ -328,7 +328,7 @@ public partial class DiagnosticEngine
             #region Replication
             // Replication jobs with errors mean the secondary copy is out of date
             var replCount = (await nodeApi.Replication.GetAsync())
-                                .Count(a => a.ExtensionData != null && a.ExtensionData.ContainsKey("errors"));
+                                .Count(a => a.ExtensionData?.ContainsKey("errors") == true);
             if (replCount > 0)
             {
                 _result.Add(new DiagnosticResult
@@ -504,6 +504,109 @@ public partial class DiagnosticEngine
             //}
         }
 
+        #region Bridge VLAN awareness
+        // If a VM uses a VLAN tag on a bridge that is not VLAN-aware, the tag is silently ignored
+        foreach (var nodeItem in onlineNodes)
+        {
+            if (!nodeCompareData.TryGetValue(nodeItem.Node, out var nodeData)) { continue; }
+
+            // Build set of non-VLAN-aware bridge names on this node
+            var nonVlanBridges = nodeData.Networks
+                                         .Where(n => n.Type == "bridge" && n.BridgeVlanAware != true)
+                                         .Select(n => n.Interface)
+                                         .ToHashSet();
+
+            if (nonVlanBridges.Count == 0) { continue; }
+
+            foreach (var vm in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                    && a.Node == nodeItem.Node
+                                                    && !a.IsTemplate
+                                                    && _vmConfigs.ContainsKey(a.VmId)))
+            {
+                foreach (var net in _vmConfigs[vm.VmId].Networks
+                                                        .Where(n => n.Tag.HasValue
+                                                                    && !string.IsNullOrWhiteSpace(n.Bridge)
+                                                                    && nonVlanBridges.Contains(n.Bridge)))
+                {
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = vm.GetWebUrl(),
+                        ErrorCode = "WN0037",
+                        Description = $"VM {vm.VmId} interface '{net.Id}' uses VLAN tag {net.Tag} on bridge '{net.Bridge}' which is not VLAN-aware — tag will be silently ignored",
+                        Context = DiagnosticResultContext.Node,
+                        SubContext = "Network",
+                        Gravity = DiagnosticResultGravity.Warning,
+                    });
+                }
+            }
+        }
+        #endregion
+
+        #region Memory overcommit
+        // Sum of VM/CT allocated RAM on a node exceeds physical node RAM — risk of OOM
+        foreach (var nodeItem in onlineNodes)
+        {
+            var nodeResource = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
+                                                             && a.Node == nodeItem.Node);
+            if (nodeResource == null || nodeResource.MemorySize == 0) { continue; }
+
+            var allocatedMem = _resources.Where(a => (a.ResourceType == ClusterResourceType.Vm)
+                                                    && a.Node == nodeItem.Node)
+                                        .Aggregate(0UL, (acc, a) => acc + a.MemorySize);
+
+            if (allocatedMem > nodeResource.MemorySize)
+            {
+                var overcommitPct = Math.Round((allocatedMem / (double)nodeResource.MemorySize * 100) - 100, 1);
+                _result.Add(new DiagnosticResult
+                {
+                    Id = nodeItem.GetWebUrl(),
+                    ErrorCode = "WN0036",
+                    Description = $"Node '{nodeItem.Node}' memory overcommitted by {overcommitPct}% " +
+                                  $"(allocated: {allocatedMem / 1024 / 1024 / 1024} GB, physical: {nodeResource.MemorySize / 1024 / 1024 / 1024} GB)",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Memory",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+        }
+        #endregion
+
+        #region VM consolidation
+        // Nodes with very low CPU and RAM utilization — VMs could be moved to free the node
+        foreach (var nodeItem in onlineNodes)
+        {
+            if (!nodeCompareData.TryGetValue(nodeItem.Node, out var data)) { continue; }
+            var nodeResource = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
+                                                             && a.Node == nodeItem.Node);
+            if (nodeResource == null) { continue; }
+
+            var vmCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Vm
+                                               && a.Node == nodeItem.Node
+                                               && !a.IsTemplate);
+            if (vmCount == 0) { continue; }
+
+            // CpuUsagePercentage is 0..1 on ClusterResource for nodes
+            var cpuPct = nodeResource.CpuUsagePercentage * 100.0;
+            var memPct = nodeResource.MemorySize > 0
+                            ? nodeResource.MemoryUsagePercentage * 100.0
+                            : 0;
+
+            if (cpuPct < settings.Node.ConsolidationCpuThreshold
+                && memPct < settings.Node.ConsolidationMemThreshold)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = nodeItem.GetWebUrl(),
+                    ErrorCode = "IN0003",
+                    Description = $"Node '{nodeItem.Node}' has low utilization (CPU: {cpuPct:F1}%, RAM: {memPct:F1}%) — consider consolidating {vmCount} VM(s) to free the node",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "Consolidation",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+            }
+        }
+        #endregion
+
         #region CPU Compatibility Mode
         // Calculate the minimum common x86-64 feature level across all online nodes.
         // The level determines the safest CPU type to assign to VMs for live migration.
@@ -553,9 +656,9 @@ public partial class DiagnosticEngine
                            id,
                            rrdList.Select(a => new ThresholdRddData(a, a, a)),
                            cpuErrorCode: "WN0027",
-                           memoryErrorCode: "WN0027",
-                           netInErrorCode: "WN0027",
-                           netOutErrorCode: "WN0027");
+                           memoryErrorCode: "WN0038",
+                           netInErrorCode: "WN0039",
+                           netOutErrorCode: "WN0040");
 
         // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck
         CheckThreshold(result,
@@ -653,7 +756,7 @@ public partial class DiagnosticEngine
                             ? rrdList.Average(a => a.RootUsage / a.RootSize * 100.0)
                             : 0.0;
 
-        var nodeWeightedLoad = nodeCpuPct * 0.4 + nodeRamPct * 0.4 + nodeDiskPct * 0.2;
+        var nodeWeightedLoad = (nodeCpuPct * 0.4) + (nodeRamPct * 0.4) + (nodeDiskPct * 0.2);
         CheckHealthScore(result,
                          settings.Node.HealthScore,
                          DiagnosticResultContext.Node,

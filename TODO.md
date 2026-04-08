@@ -7,15 +7,15 @@
 
 ### VM (QEMU)
 - [ ] **VM with outdated machine type** — `machine=` value is older than the latest available on the node (e.g. `pc-i440fx-6.2` when `pc-i440fx-8.2` is available); check via `nodes/{node}/capabilities/qemu/machines`
-- [ ] **QEMU guest agent version** — read agent version via `agent/info` on running VMs; idea: flag VMs with significantly older agent versions compared to others (requires knowing latest version per OS/distro — complex)
-- [ ] **VM CPU flags** — check if CPU flags relevant to security (e.g. `+spec-ctrl`, `+ssbd`) are explicitly set or missing for VMs exposed to untrusted workloads
-- [ ] **VM consolidation needed** — identify nodes with low overall CPU/RAM utilization where VMs could be consolidated to free up nodes
 
 ### Network
-- [ ] **Bridge with no VLAN awareness** — `vlan-aware=0` on a bridge used by VMs with VLAN tags
 
-### Security
-- [ ] **Firewall rules with source `0.0.0.0/0`** — overly permissive inbound rules
+---
+
+## Ideas / Optimizations
+
+### Backup content memory usage
+- [ ] **Limit `_backupContentByStorage` retention** — on large clusters with long backup history the in-memory content can grow to 10k-50k entries. Filter entries older than `Max(MaxAgeDays, RecentDays)` days when loading, since orphaned backup check only needs recent entries and old ones are irrelevant for all checks.
 
 ---
 
@@ -32,7 +32,6 @@
 ## Ideas / Future Checks
 
 ### Node (API)
-- [ ] **Node memory overcommit** — sum of all VM/CT allocated RAM exceeds physical node RAM (`nodes/{node}/status` + VM configs)
 - [ ] **Corosync ring with packet loss** — corosync stats show retransmits/errors on a ring (`cluster/log`)
 
 ### Node (API)

@@ -24,7 +24,6 @@ public partial class DiagnosticEngine
                                           string node,
                                           long vmId,
                                           string id,
-                                          IEnumerable<ClusterBackup> clusterBackups,
                                           IEnumerable<NodeStorage> nodeBackupStorages)
     {
         #region VM State
@@ -33,7 +32,7 @@ public partial class DiagnosticEngine
                                 .Select(a => new DiagnosticResult
                                 {
                                     Id = id,
-                                    ErrorCode = "CQ0001",
+                                    ErrorCode = "CG0001",
                                     Description = $"Found vmstate '{a.Value}'",
                                     Context = context,
                                     SubContext = "VM State",
@@ -52,7 +51,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "IQ0010",
+                ErrorCode = "IG0010",
                 Description = $"VM has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
                 Context = context,
                 SubContext = "Status",
@@ -68,7 +67,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0015",
+                ErrorCode = "WG0015",
                 Description = $"VM is locked by '{config.Lock}'",
                 Context = context,
                 SubContext = "Status",
@@ -83,7 +82,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0016",
+                ErrorCode = "WG0016",
                 Description = "Start on boot not enabled",
                 Context = context,
                 SubContext = "StartOnBoot",
@@ -98,7 +97,7 @@ public partial class DiagnosticEngine
             _result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "IQ0011",
+                ErrorCode = "IG0011",
                 Description = "For production environment is better VM Protection = enabled",
                 Context = context,
                 SubContext = "Protection",
@@ -109,15 +108,15 @@ public partial class DiagnosticEngine
 
         #region Backup config
         // Check if this VM is covered by at least one enabled backup job (all, by vmid, or by pool)
-        var foundBackupConfig = clusterBackups.Any(a => a.Enabled && a.All);
+        var foundBackupConfig = _clusterBackups.Any(a => a.Enabled && a.All);
         if (!foundBackupConfig)
         {
-            foundBackupConfig = clusterBackups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
+            foundBackupConfig = _clusterBackups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
                                               .SelectMany(a => a.VmId.Split(","))
                                               .Any(a => long.TryParse(a.Trim(), out var id) && id == vmId);
             if (!foundBackupConfig)
             {
-                foreach (var poolId in clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
+                foreach (var poolId in _clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
                 {
                     var poolDetail = await client.Pools[poolId].GetAsync();
                     foundBackupConfig = poolDetail.Members.Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmId);
@@ -130,7 +129,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WQ0017",
+                    ErrorCode = "WG0017",
                     Description = "vzdump backup not configured",
                     Context = context,
                     SubContext = "Backup",
@@ -144,7 +143,7 @@ public partial class DiagnosticEngine
                                      .Select(a => new DiagnosticResult
                                      {
                                          Id = id,
-                                         ErrorCode = "CQ0002",
+                                         ErrorCode = "CG0002",
                                          Description = $"Disk '{a.Id}' disabled for backup",
                                          Context = context,
                                          SubContext = "Backup",
@@ -158,9 +157,9 @@ public partial class DiagnosticEngine
                                      .Select(a => new DiagnosticResult
                                      {
                                          Id = id,
-                                         ErrorCode = "WQ0018",
+                                         ErrorCode = "WG0018",
                                          Description = $"disk '{a.Id}' {(a.SizeBytes > 0
-                                                                            ? FormatHelper.FromBytes(a.SizeBytes).ToString()
+                                                                            ? FormatHelper.FromBytes(a.SizeBytes)
                                                                             : string.Empty)}",
                                          Context = context,
                                          SubContext = "Hardware",
@@ -171,11 +170,13 @@ public partial class DiagnosticEngine
         var nodeApi = client.Nodes[node];
         if (settings.Backup.Enabled)
         {
-            var backupContents = new List<NodeStorageContent>();
-            foreach (var ns in nodeBackupStorages.Where(a => a.Active))
-            {
-                backupContents.AddRange(await nodeApi.Storage[ns.Storage].Content.GetAsync(content: "backup", vmid: (int)vmId));
-            }
+            // Reuse already-fetched backup content — filter by vmId in memory, no extra API call.
+            // Key is storage name for shared storage, node/storage for non-shared.
+            var backupContents = nodeBackupStorages.Where(a => a.Active)
+                                                   .SelectMany(a => _backupContentByStorage.TryGetValue(BackupStorageKey(node, a.Storage), out var list)
+                                                                       ? list.Where(c => c.VmId == vmId)
+                                                                       : [])
+                                                   .ToList();
 
             // Old backups still present waste storage space
             if (settings.Backup.MaxAgeDays > 0)
@@ -186,8 +187,8 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WQ0019",
-                        Description = $"{oldBackups.Count} backup {FormatHelper.FromBytes(oldBackups.Sum(a => a.Size))} more {settings.Backup.MaxAgeDays} days are found!",
+                        ErrorCode = "WG0019",
+                        Description = $"{oldBackups.Count} {(oldBackups.Count == 1 ? "backup" : "backups")} older than {settings.Backup.MaxAgeDays} days ({FormatHelper.FromBytes(oldBackups.Sum(a => a.Size))})",
                         Context = context,
                         SubContext = "Backup",
                         Gravity = DiagnosticResultGravity.Warning,
@@ -202,7 +203,7 @@ public partial class DiagnosticEngine
                 _result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WQ0020",
+                    ErrorCode = "WG0020",
                     Description = "No recent backups found!",
                     Context = context,
                     SubContext = "Backup",
@@ -223,14 +224,18 @@ public partial class DiagnosticEngine
         CheckSnapshots(_result, snapshots, settings.Snapshot, _now, id, context);
 
         var rrdList = rrdData.ToList();
-        CheckThresholdHost(_result, thresholdHost, context, id, rrdList.Select(a => new ThresholdRddData(a, a, a)));
+        CheckThresholdHost(_result, thresholdHost, context, id, rrdList.Select(a => new ThresholdRddData(a, a, a)),
+                           cpuErrorCode: "WG0025",
+                           memoryErrorCode: "WG0026",
+                           netInErrorCode: "WG0027",
+                           netOutErrorCode: "WG0028");
 
         // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0)
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(_result,
                            thresholdHost.Rrd.Pressure.Cpu,
-                           "WQ0029",
+                           "WG0029",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome) * 100,
@@ -245,7 +250,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(_result,
                            thresholdHost.Rrd.Pressure.IoFull,
-                           "WQ0030",
+                           "WG0030",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull) * 100,
@@ -260,7 +265,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(_result,
                            thresholdHost.Rrd.Pressure.MemoryFull,
-                           "WQ0031",
+                           "WG0031",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull) * 100,
@@ -276,7 +281,7 @@ public partial class DiagnosticEngine
         var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
                         ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
                         : 0.0;
-        CheckHealthScore(_result, thresholdHost.HealthScore, context, id, cpuPct * 0.5 + ramPct * 0.5);
+        CheckHealthScore(_result, thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
     }
 
     private static void CheckTaskHistory(List<DiagnosticResult> result,
@@ -290,7 +295,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = context == DiagnosticResultContext.Node ? "CN0005" : "CQ0003",
+                ErrorCode = context == DiagnosticResultContext.Node ? "CN0005" : "CG0003",
                 Description = $"{tasksCount} Task history has errors",
                 Context = context,
                 SubContext = "Tasks",
@@ -318,7 +323,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0021",
+                ErrorCode = "WG0021",
                 Description = $"'{autosnapAppName}' not configured",
                 Context = context,
                 SubContext = "AutoSnapshot",
@@ -332,7 +337,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0022",
+                ErrorCode = "WG0022",
                 Description = $"Old AutoSnap '{autosnapAppNameOld}' are present. Update new version",
                 Context = context,
                 SubContext = "AutoSnapshot",
@@ -349,8 +354,8 @@ public partial class DiagnosticEngine
                 result.Add(new DiagnosticResult
                 {
                     Id = id,
-                    ErrorCode = "WQ0023",
-                    Description = $"{snapOldCount} snapshots older than {snapshotSettings.MaxAgeDays} days",
+                    ErrorCode = "WG0023",
+                    Description = $"{snapOldCount} {(snapOldCount == 1 ? "snapshot" : "snapshots")} older than {snapshotSettings.MaxAgeDays} days",
                     Context = context,
                     SubContext = "SnapshotOld",
                     Gravity = DiagnosticResultGravity.Warning,
@@ -365,7 +370,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0035",
+                ErrorCode = "WG0035",
                 Description = $"Snapshot '{snap.Name}' includes RAM state — wastes disk space and blocks storage migration",
                 Context = context,
                 SubContext = "Snapshot",
@@ -379,7 +384,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0024",
+                ErrorCode = "WG0024",
                 Description = $"{realSnapshots.Count} snapshots exceed the maximum of {snapshotSettings.MaxCount}",
                 Context = context,
                 SubContext = "SnapshotCount",
@@ -402,7 +407,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0013",
+                ErrorCode = "WG0013",
                 Description = $"{kind} firewall is disabled — {kind.ToLower()} is exposed to all traffic on the node bridge",
                 Context = context,
                 SubContext = "Firewall",
@@ -415,7 +420,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "IQ0009",
+                ErrorCode = "IG0009",
                 Description = $"{kind} firewall IP filter is disabled — {kind.ToLower()} can spoof source IP addresses",
                 Context = context,
                 SubContext = "Firewall",
@@ -424,6 +429,11 @@ public partial class DiagnosticEngine
         }
     }
 
+    private string BackupStorageKey(string node, string storage)
+        => _sharedStorageNames.Contains(storage)
+            ? storage
+            : $"{node}/{storage}";
+
     private record ThresholdRddData(IMemory Memory, INetIO NetIO, ICpu Cpu);
 
     private static void CheckThresholdHost(List<DiagnosticResult> result,
@@ -431,10 +441,10 @@ public partial class DiagnosticEngine
                                            DiagnosticResultContext context,
                                            string id,
                                            IEnumerable<ThresholdRddData> rrdData,
-                                           string cpuErrorCode = "WQ0025",
-                                           string memoryErrorCode = "WQ0026",
-                                           string netInErrorCode = "WQ0027",
-                                           string netOutErrorCode = "WQ0028")
+                                           string cpuErrorCode,
+                                           string memoryErrorCode,
+                                           string netInErrorCode,
+                                           string netOutErrorCode)
     {
         CheckThreshold(result,
                        thresholdHost.Cpu,
@@ -514,7 +524,7 @@ public partial class DiagnosticEngine
             result.Add(new DiagnosticResult
             {
                 Id = id,
-                ErrorCode = "WQ0032",
+                ErrorCode = "WG0032",
                 Description = $"Health score is {score}/100 (threshold: warning={healthScore.Warning}, critical={healthScore.Critical})",
                 Context = context,
                 SubContext = "HealthScore",

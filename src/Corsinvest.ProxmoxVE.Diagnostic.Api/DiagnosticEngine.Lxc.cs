@@ -5,25 +5,21 @@
 
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
-    private async Task CheckLxcAsync(List<ClusterResource> resources,
-                                     IEnumerable<ClusterBackup> clusterBackups,
-                                     Dictionary<string, IEnumerable<NodeStorage>> backupStoragesByNode,
-                                     Dictionary<long, VmConfig> vmConfigs)
+    private async Task CheckLxcAsync()
     {
-        foreach (var item in resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+        foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                   && a.VmType == VmType.Lxc
                                                   && !a.IsTemplate))
         {
             var vmApi = client.Nodes[item.Node].Lxc[item.VmId];
             var id = item.GetWebUrl();
-            var lxcConfig = (VmConfigLxc)vmConfigs[item.VmId];
+            var lxcConfig = (VmConfigLxc)_vmConfigs[item.VmId];
 
             #region Firewall and IP filter
             CheckVmFirewall(_result, await vmApi.Firewall.Options.GetAsync(), id, DiagnosticResultContext.Lxc);
@@ -41,7 +37,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WL0019",
+                        ErrorCode = "WG0038",
                         Description = "Container has nesting=1 but keyctl=1 is not enabled — kernel keyring isolation may be incomplete",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Features",
@@ -57,7 +53,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WL0020",
+                        ErrorCode = "WG0039",
                         Description = "Container is privileged (Unprivileged=false) — root inside the container has host-level access",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Security",
@@ -79,7 +75,7 @@ public partial class DiagnosticEngine
                         _result.Add(new DiagnosticResult
                         {
                             Id = id,
-                            ErrorCode = "CL0004",
+                            ErrorCode = "CG0006",
                             Description = "Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access",
                             Context = DiagnosticResultContext.Lxc,
                             SubContext = "Security",
@@ -96,7 +92,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WL0022",
+                        ErrorCode = "WG0040",
                         Description = "Container has no memory limit (Memory=0) — can consume all host RAM and starve other guests",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Memory",
@@ -112,7 +108,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "IL0003",
+                        ErrorCode = "IG0013",
                         Description = "Container has swap=0 — OOM killer may terminate processes under memory pressure",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Memory",
@@ -127,7 +123,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "IL0004",
+                        ErrorCode = "IG0014",
                         Description = "Container has no hostname configured — difficult to identify in logs",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Config",
@@ -146,7 +142,7 @@ public partial class DiagnosticEngine
                     _result.Add(new DiagnosticResult
                     {
                         Id = id,
-                        ErrorCode = "WL0021",
+                        ErrorCode = "WG0041",
                         Description = $"Container has raw LXC config entries ({string.Join(", ", rawLxcKeys)}) — bypasses PVE abstractions",
                         Context = DiagnosticResultContext.Lxc,
                         SubContext = "Config",
@@ -168,8 +164,7 @@ public partial class DiagnosticEngine
                                      item.Node,
                                      item.VmId,
                                      id,
-                                     clusterBackups,
-                                     backupStoragesByNode.GetValueOrDefault(item.Node, []));
+                                     _backupStoragesByNode.GetValueOrDefault(item.Node, []));
         }
     }
 }
