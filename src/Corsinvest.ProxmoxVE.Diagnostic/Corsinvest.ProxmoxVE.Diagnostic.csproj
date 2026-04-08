@@ -16,5 +16,7 @@
     <PackageReference Include="Corsinvest.ProxmoxVE.Api.Console" />
     <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Console\Corsinvest.ProxmoxVE.Api.Console.csproj" /> -->
     <ProjectReference Include="..\Corsinvest.ProxmoxVE.Diagnostic.Api\Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
+
+    <PackageReference Include="ClosedXML" />
   </ItemGroup>
 </Project>

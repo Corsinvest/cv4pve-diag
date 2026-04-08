@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
@@ -31,9 +31,12 @@ public class Settings
         HealthScore = new() { Warning = 60, Critical = 40 },
         Rrd = new()
         {
-            PressureCpu = new() { Warning = 50, Critical = 80 },
-            PressureIoFull = new() { Warning = 20, Critical = 50 },
-            PressureMemoryFull = new() { Warning = 10, Critical = 30 },
+            Pressure = new()
+            {
+                Cpu = new() { Warning = 50, Critical = 80 },
+                IoFull = new() { Warning = 20, Critical = 50 },
+                MemoryFull = new() { Warning = 10, Critical = 30 },
+            }
         },
     };
 
@@ -46,9 +49,12 @@ public class Settings
         HealthScore = new() { Warning = 60, Critical = 40 },
         Rrd = new()
         {
-            PressureCpu = new() { Warning = 50, Critical = 80 },
-            PressureIoFull = new() { Warning = 20, Critical = 50 },
-            PressureMemoryFull = new() { Warning = 10, Critical = 30 },
+            Pressure = new()
+            {
+                Cpu = new() { Warning = 50, Critical = 80 },
+                IoFull = new() { Warning = 20, Critical = 50 },
+                MemoryFull = new() { Warning = 10, Critical = 30 },
+            }
         },
     };
 

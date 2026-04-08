@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api.Extension;
@@ -229,7 +229,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(_result,
-                           thresholdHost.Rrd.PressureCpu,
+                           thresholdHost.Rrd.Pressure.Cpu,
                            "WQ0029",
                            context,
                            "Pressure",
@@ -244,7 +244,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureIoFull > 0))
         {
             CheckThreshold(_result,
-                           thresholdHost.Rrd.PressureIoFull,
+                           thresholdHost.Rrd.Pressure.IoFull,
                            "WQ0030",
                            context,
                            "Pressure",
@@ -259,7 +259,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureMemoryFull > 0))
         {
             CheckThreshold(_result,
-                           thresholdHost.Rrd.PressureMemoryFull,
+                           thresholdHost.Rrd.Pressure.MemoryFull,
                            "WQ0031",
                            context,
                            "Pressure",
@@ -356,6 +356,21 @@ public partial class DiagnosticEngine
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
+        }
+
+        // Snapshots with RAM state (vmstate=1) save the full guest memory to disk.
+        // This wastes significant storage and blocks certain operations (e.g. storage migration).
+        foreach (var snap in realSnapshots.Where(s => s.VmStatus))
+        {
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = "WQ0035",
+                Description = $"Snapshot '{snap.Name}' includes RAM state — wastes disk space and blocks storage migration",
+                Context = context,
+                SubContext = "Snapshot",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
         }
 
         // Too many snapshots cause long delta chains and degrade disk I/O on every read/write

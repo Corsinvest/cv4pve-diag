@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
@@ -27,29 +27,7 @@ public class SettingsRrd
     public RrdDataConsolidation Consolidation { get; set; } = RrdDataConsolidation.Average;
 
     /// <summary>
-    /// PSI CPU pressure (some) — % of time at least one task stalled on CPU. PVE 9.0+ only.
+    /// PSI pressure thresholds (CPU, I/O, Memory). PVE 9.0+ only.
     /// </summary>
-    public SettingsThreshold<double> PressureCpu { get; set; } = new()
-    {
-        Warning = 40,
-        Critical = 70
-    };
-
-    /// <summary>
-    /// PSI I/O pressure (full) — % of time ALL tasks stalled on I/O. PVE 9.0+ only.
-    /// </summary>
-    public SettingsThreshold<double> PressureIoFull { get; set; } = new()
-    {
-        Warning = 10,
-        Critical = 30
-    };
-
-    /// <summary>
-    /// PSI memory pressure (full) — % of time ALL tasks stalled on memory. PVE 9.0+ only.
-    /// </summary>
-    public SettingsThreshold<double> PressureMemoryFull { get; set; } = new()
-    {
-        Warning = 5,
-        Critical = 15
-    };
+    public SettingsPressure Pressure { get; set; } = new();
 }

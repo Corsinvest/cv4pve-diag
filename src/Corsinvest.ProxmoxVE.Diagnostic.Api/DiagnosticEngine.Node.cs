@@ -1,12 +1,11 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
-using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 
@@ -445,6 +444,64 @@ public partial class DiagnosticEngine
             var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000)).Where(a => a.StartTime >= dayTask);
             CheckTaskHistory(_result, tasks, DiagnosticResultContext.Node, id);
             #endregion
+
+            // TODO: backup history anomaly check — uncomment when BackupHelper.ParseVzdumpLog is available via NuGet.
+            // Reads vzdump task logs for the last N days, computes per-VM average duration and size,
+            // and warns when the latest backup deviates significantly.
+            // Requires: using Corsinvest.ProxmoxVE.Api.Shared.Utils;
+            //
+            //if (settings.BackupHistory.Enabled)
+            //{
+            //    var since = new DateTimeOffset(_now.AddDays(-settings.BackupHistory.Days)).ToUnixTimeSeconds();
+            //    var vzdumpTasks = (await nodeApi.Tasks.GetAsync(typefilter: "vzdump", limit: 1000))
+            //                         .Where(a => a.StartTime >= since && a.EndTime > 0);
+            //
+            //    var allJobs = new List<(string VmId, TimeSpan Duration, long Size)>();
+            //
+            //    foreach (var t in vzdumpTasks)
+            //    {
+            //        var logLines = await nodeApi.Tasks[t.UniqueTaskId].Log.GetAsync(limit: 10000);
+            //        var log = string.Join(Environment.NewLine, logLines);
+            //        var jobs = BackupHelper.ParseVzdumpLog(log);
+            //        allJobs.AddRange(jobs.Select(j => (j.VmId, j.Duration ?? TimeSpan.Zero, j.Size)));
+            //    }
+            //
+            //    foreach (var vmGroup in allJobs.GroupBy(j => j.VmId))
+            //    {
+            //        var ordered = vmGroup.OrderBy(j => j.Duration).ToList();
+            //        if (ordered.Count < 2) { continue; }
+            //
+            //        var avgDuration = TimeSpan.FromSeconds(ordered.SkipLast(1).Average(j => j.Duration.TotalSeconds));
+            //        var avgSize     = ordered.SkipLast(1).Average(j => j.Size);
+            //        var last        = ordered.Last();
+            //
+            //        if (avgDuration.TotalSeconds > 0 && last.Duration.TotalSeconds > avgDuration.TotalSeconds * settings.BackupHistory.MaxDurationMultiplier)
+            //        {
+            //            _result.Add(new DiagnosticResult
+            //            {
+            //                Id          = $"{id}/backup-duration/{vmGroup.Key}",
+            //                ErrorCode   = "WN0034",
+            //                Context     = DiagnosticResultContext.Node,
+            //                SubContext  = "Backup",
+            //                Gravity     = DiagnosticResultGravity.Warning,
+            //                Description = $"VM {vmGroup.Key} backup duration {last.Duration:hh\\:mm\\:ss} is {last.Duration.TotalSeconds / avgDuration.TotalSeconds:F1}x the average — possible issue",
+            //            });
+            //        }
+            //
+            //        if (avgSize > 0 && last.Size < avgSize * (1 - settings.BackupHistory.MinSizeRatioPercent / 100.0))
+            //        {
+            //            _result.Add(new DiagnosticResult
+            //            {
+            //                Id          = $"{id}/backup-size/{vmGroup.Key}",
+            //                ErrorCode   = "WN0035",
+            //                Context     = DiagnosticResultContext.Node,
+            //                SubContext  = "Backup",
+            //                Gravity     = DiagnosticResultGravity.Warning,
+            //                Description = $"VM {vmGroup.Key} backup size {FormatHelper.FromBytes(last.Size)} dropped significantly vs average {FormatHelper.FromBytes((long)avgSize)}",
+            //            });
+            //        }
+            //    }
+            //}
         }
 
         #region CPU Compatibility Mode
@@ -543,7 +600,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(result,
-                           settings.Node.Rrd.PressureCpu,
+                           settings.Node.Rrd.Pressure.Cpu,
                            "WN0031",
                            DiagnosticResultContext.Node,
                            "Pressure",
@@ -558,7 +615,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureIoFull > 0))
         {
             CheckThreshold(result,
-                           settings.Node.Rrd.PressureIoFull,
+                           settings.Node.Rrd.Pressure.IoFull,
                            "WN0032",
                            DiagnosticResultContext.Node,
                            "Pressure",
@@ -573,7 +630,7 @@ public partial class DiagnosticEngine
         if (rrdList.Any(a => a.PressureMemoryFull > 0))
         {
             CheckThreshold(result,
-                           settings.Node.Rrd.PressureMemoryFull,
+                           settings.Node.Rrd.Pressure.MemoryFull,
                            "WN0033",
                            DiagnosticResultContext.Node,
                            "Pressure",

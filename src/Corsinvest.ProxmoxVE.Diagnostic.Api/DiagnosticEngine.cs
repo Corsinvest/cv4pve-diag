@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: Copyright Corsinvest Srl
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 using Corsinvest.ProxmoxVE.Api;
@@ -62,7 +62,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings)
                                     : await nodeApi.Lxc[vm.VmId].Config.GetAsync();
         }
 
-        await CheckStorageAsync(resources, vmConfigs);
+        await CheckStorageAsync(resources, clusterBackups, vmConfigs);
         await CheckNodesAsync(resources, hasCluster);
         await CheckQemuAsync(resources, clusterBackups, hasCluster, backupStoragesByNode, vmConfigs);
         await CheckLxcAsync(resources, clusterBackups, backupStoragesByNode, vmConfigs);
