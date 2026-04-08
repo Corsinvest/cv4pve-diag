@@ -46,15 +46,15 @@ unzip cv4pve-diag-linux-x64.zip
 
 ## Installation
 
-| Platform | Command |
-|----------|---------|
-| **Linux** | `wget .../cv4pve-diag-linux-x64.zip && unzip cv4pve-diag-linux-x64.zip && chmod +x cv4pve-diag` |
-| **Windows WinGet** | `winget install Corsinvest.cv4pve.diag` |
-| **Windows manual** | Download `cv4pve-diag-win-x64.zip` from [Releases](https://github.com/Corsinvest/cv4pve-diag/releases) |
-| **Arch Linux** | `yay -S cv4pve-diag` |
-| **Debian/Ubuntu** | `sudo dpkg -i cv4pve-diag-VERSION-ARCH.deb` |
-| **RHEL/Fedora** | `sudo rpm -i cv4pve-diag-VERSION-ARCH.rpm` |
-| **macOS** | `wget .../cv4pve-diag-osx-x64.zip && unzip cv4pve-diag-osx-x64.zip && chmod +x cv4pve-diag` |
+| Platform | Command                                                                                                                                                                         |
+|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Linux** | `wget .../cv4pve-diag-linux-x64.zip && unzip cv4pve-diag-linux-x64.zip && chmod +x cv4pve-diag`                                                                                 |
+| **Windows WinGet** | `winget install Corsinvest.cv4pve.diag`                                                                                                                                         |
+| **Windows manual** | Download `cv4pve-diag-win-x64.zip` from [Releases](https://github.com/Corsinvest/cv4pve-diag/releases)                                                                          |
+| **Arch Linux** | `yay -S cv4pve-diag`                                                                                                                                                            |
+| **Debian/Ubuntu** | `sudo dpkg -i cv4pve-diag-VERSION-ARCH.deb`                                                                                                                                     |
+| **RHEL/Fedora** | `sudo rpm -i cv4pve-diag-VERSION-ARCH.rpm`                                                                                                                                      |
+| **macOS** | Homebrew<br/>`brew tap Corsinvest/tap`<br/>`brew install cv4pe-diag`<br/>Manual<br/>`wget .../cv4pve-diag-osx-x64.zip && unzip cv4pve-diag-osx-x64.zip && chmod +x cv4pve-diag` |
 
 All binaries on the [Releases page](https://github.com/Corsinvest/cv4pve-diag/releases).
 
