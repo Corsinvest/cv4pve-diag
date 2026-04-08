@@ -158,9 +158,7 @@ public partial class DiagnosticEngine
                                      {
                                          Id = id,
                                          ErrorCode = "WG0018",
-                                         Description = $"disk '{a.Id}' {(a.SizeBytes > 0
-                                                                            ? FormatHelper.FromBytes(a.SizeBytes)
-                                                                            : string.Empty)}",
+                                         Description = $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : string.Empty)} — detached from VM but still in storage",
                                          Context = context,
                                          SubContext = "Hardware",
                                          Gravity = DiagnosticResultGravity.Warning,

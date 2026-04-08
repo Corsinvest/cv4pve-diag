@@ -111,7 +111,7 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 +-----------------------------+--------+--------------------------------------------------------------------+---------+-----------------+----------+
 | Id                          | Code   | Description                                                        | Context | SubContext      | Gravity  |
 +-----------------------------+--------+--------------------------------------------------------------------+---------+-----------------+----------+
-| nodes/pve02                 | CN0001 | Nodes package version not equal                                    | Node    | PackageVersions | Critical |
+| nodes/pve02                 | CN0002 | Nodes package version not equal                                    | Node    | PackageVersions | Critical |
 | nodes/pve02/qemu/203        | CG0002 | Disk 'scsi0' disabled for backup                                   | Qemu    | Backup          | Critical |
 | nodes/pve01/lxc/100         | CG0002 | Disk 'rootfs' disabled for backup                                  | Lxc     | Backup          | Critical |
 | nodes/pve01/qemu/1030       | WG0026 | Memory (rrd Day AVERAGE) usage 92.9% - 5.99 GB of 6.44 GB         | Qemu    | Usage           | Critical |
