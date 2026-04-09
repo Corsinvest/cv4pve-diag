@@ -334,3 +334,4 @@ ASALocalRun/
 artifacts_nupkg/
 
 .claude
+.vscode

@@ -1,0 +1,8 @@
+type=cli
+description=Diagnostic tool for Proxmox VE — checks nodes, VMs, LXC containers and storage for common issues
+long-description=Checks nodes, VMs, LXC containers and storage for common issues.
+license=GPL-3.0-only
+winget-id=Corsinvest.cv4pve.diag
+pkg-identifier=it.corsinvest.cv4pve-diag
+nuget-project-path=src/Corsinvest.ProxmoxVE.Diagnostic.Api/Corsinvest.ProxmoxVE.Diagnostic.Api.csproj
+homebrew-formula-class=Cv4pveDiag
