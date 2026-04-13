@@ -66,7 +66,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             // Detect PVE major version from first online node — used to pick the correct Debian release for CVE filtering
             var firstOnlineNode = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
-            var pveMajorVersion  = 8; // default to bookworm
+            var pveMajorVersion = 8; // default to bookworm
             if (firstOnlineNode != null)
             {
                 var ver = await client.Nodes[firstOnlineNode.Node].Version.GetAsync();

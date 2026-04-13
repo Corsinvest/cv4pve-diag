@@ -209,10 +209,10 @@ public partial class DiagnosticEngine
                 {
                     var gravity = entry.Urgency switch
                     {
-                        "high"             => DiagnosticResultGravity.Critical,
-                        "medium"           => DiagnosticResultGravity.Warning,
+                        "high" => DiagnosticResultGravity.Critical,
+                        "medium" => DiagnosticResultGravity.Warning,
                         "not yet assigned" => DiagnosticResultGravity.Warning, // open CVE, fix not yet available
-                        _                  => DiagnosticResultGravity.Info,
+                        _ => DiagnosticResultGravity.Info,
                     };
 
                     _result.Add(new DiagnosticResult
