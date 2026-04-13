@@ -2,6 +2,42 @@
 
 ---
 
+## [2.2.0] — 2026-04-13
+
+### New checks
+
+**Node — CVE scanning (opt-in):**
+- **Open CVEs on installed packages** (`CN0014` / `WN0041`) — checks every installed package against the Debian security advisory feed for the detected PVE release. Packages with known open vulnerabilities are reported as Critical (high severity) or Warning (medium / unrated).
+- **Proxmox-specific CVEs** (`CN0015` / `WN0042`) — checks the NVD database for CVEs affecting Proxmox VE. Only CVEs that apply to the installed version are reported. Severity ≥ 9.0 → Critical; ≥ 7.0 → Warning.
+
+Both checks are **disabled by default**. Enable them via the new `Cve` settings section.
+
+### Settings
+
+New `Cve` section:
+
+```json
+{
+  "Cve": {
+    "DebianTrackerEnabled": false,
+    "NvdEnabled": false,
+    "MinCvssScore": 7.0
+  }
+}
+```
+
+- `DebianTrackerEnabled` — check installed packages against Debian security advisories.
+- `NvdEnabled` — check for CVEs specific to Proxmox VE.
+- `MinCvssScore` — ignore CVEs below this severity score (default: 7.0).
+
+The correct Debian release is detected automatically from the PVE version — no manual configuration needed.
+
+### Performance
+
+Analysis is faster on large clusters. All per-node API calls (subscription, services, certificates, replication, APT, disks, ZFS, tasks, etc.) are now fetched in parallel instead of sequentially. Cluster-level calls (HA, firewall, backup, users) are also parallelised. On a typical cluster this further reduces analysis time compared to v2.1.0.
+
+---
+
 ## [2.1.0] — 2026-04-08
 
 ### New checks

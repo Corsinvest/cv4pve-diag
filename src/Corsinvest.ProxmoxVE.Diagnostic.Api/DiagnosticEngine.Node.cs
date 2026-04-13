@@ -32,29 +32,84 @@ public partial class DiagnosticEngine
                                    NodeAptRepositories? AptRepositories,
                                    IEnumerable<NodeNetwork> Networks);
 
+    private record NodeFetchData(ClusterResource Item,
+                                 NodeSubscription Subscription,
+                                 IEnumerable<NodeService> Services,
+                                 IEnumerable<NodeCertificate> Certificates,
+                                 IEnumerable<NodeReplication> Replication,
+                                 IEnumerable<NodeAptUpdate> AptUpdate,
+                                 IEnumerable<NodeHardwarePci> PciDevices,
+                                 IEnumerable<NodeTask> Tasks,
+                                 IEnumerable<NodeDiskList> Disks,
+                                 IEnumerable<NodeDiskZfs> ZfsList,
+                                 IEnumerable<NodeDiskLvmThin> LvmThinList);
+
+    private async Task<NodeFetchData> FetchNodeDataAsync(ClusterResource item)
+    {
+        var api = client.Nodes[item.Node];
+        var subscriptionTask = api.Subscription.GetAsync();
+        var servicesTask = api.Services.GetAsync();
+        var certificatesTask = api.Certificates.Info.GetAsync();
+        var replicationTask = api.Replication.GetAsync();
+        var aptUpdateTask = api.Apt.Update.GetAsync();
+        var pciTask = api.Hardware.Pci.GetAsync();
+        var tasksTask = api.Tasks.GetAsync(errors: true, limit: 1000);
+        var disksListTask = api.Disks.List.GetAsync(include_partitions: false);
+        var zfsListTask = api.Disks.Zfs.GetAsync();
+        var lvmThinListTask = settings.Node.NodeStorage.LvmThinMetadata
+                                    ? api.Disks.Lvmthin.GetAsync()
+                                    : Task.FromResult<IEnumerable<NodeDiskLvmThin>>([]);
+        await Task.WhenAll(subscriptionTask, servicesTask, certificatesTask, replicationTask,
+                           aptUpdateTask, pciTask, tasksTask, disksListTask, zfsListTask, lvmThinListTask);
+
+        return new NodeFetchData(item,
+                                 subscriptionTask.Result,
+                                 servicesTask.Result,
+                                 certificatesTask.Result,
+                                 replicationTask.Result,
+                                 aptUpdateTask.Result,
+                                 pciTask.Result,
+                                 tasksTask.Result,
+                                 disksListTask.Result,
+                                 zfsListTask.Result ?? [],
+                                 lvmThinListTask.Result ?? []);
+    }
+
     private async Task CheckNodesAsync(bool hasCluster)
     {
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
 
-        // Pre-fetch lightweight per-node data once to avoid redundant API calls during cross-node comparisons
-        var nodeCompareData = new Dictionary<string, NodeCompareData>();
-        foreach (var item in onlineNodes)
+        // Pre-fetch lightweight per-node data — nodes in parallel, 8 calls per node in parallel
+        var nodeCompareResults = await RunParallelAsync(onlineNodes, async item =>
         {
             var api = client.Nodes[item.Node];
-            var timeRaw = (await api.Time.Time()).ToData();
+            var versionTask = api.Version.GetAsync();
+            var hostsTask = api.Hosts.GetEtcHosts();
+            var dnsTask = api.Dns.GetAsync();
+            var aptVersionsTask = api.Apt.Versions.GetAsync();
+            var statusTask = api.Status.GetAsync();
+            var aptRepositoriesTask = api.Apt.Repositories.GetAsync();
+            var networksTask = api.Network.GetAsync();
+            var timeTask = api.Time.Time();
+            await Task.WhenAll(versionTask, hostsTask, dnsTask, aptVersionsTask,
+                               statusTask, aptRepositoriesTask, networksTask, timeTask);
 
-            nodeCompareData[item.Node] = new NodeCompareData(await api.Version.GetAsync(),
-                                                             ((string)(await api.Hosts.GetEtcHosts()).ToData().data).Split('\n'),
-                                                             await api.Dns.GetAsync(),
-                                                             timeRaw.timezone as string ?? string.Empty,
-                                                             await api.Apt.Versions.GetAsync(),
-                                                             await api.Status.GetAsync(),
-                                                             timeRaw.time is long t
-                                                                ? t
-                                                                : 0L,
-                                                             await api.Apt.Repositories.GetAsync(),
-                                                             await api.Network.GetAsync());
-        }
+            var timeRaw = timeTask.Result.ToData();
+            return (item.Node, Data: new NodeCompareData(versionTask.Result,
+                                                         ((string)hostsTask.Result.ToData().data).Split('\n'),
+                                                         dnsTask.Result,
+                                                         timeRaw.timezone as string ?? "",
+                                                         aptVersionsTask.Result,
+                                                         statusTask.Result,
+                                                         timeRaw.time is long t ? t : 0L,
+                                                         aptRepositoriesTask.Result,
+                                                         networksTask.Result));
+        });
+        var nodeCompareData = nodeCompareResults.ToDictionary(r => r.Node, r => r.Data);
+
+        // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
+        var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);
+        var nodeFetchData = nodeFetchResults.ToDictionary(r => r.Item.Node, r => r);
 
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Node))
         {
@@ -94,10 +149,11 @@ public partial class DiagnosticEngine
             }
             #endregion
 
+            var fetch = nodeFetchData[item.Node];
+
             #region Subscription
             // Without an active subscription the node uses the community repo and has no enterprise support
-            var subscription = await nodeApi.Subscription.GetAsync();
-            if (!subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase))
+            if (!fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase))
             {
                 _result.Add(new DiagnosticResult
                 {
@@ -297,7 +353,7 @@ public partial class DiagnosticEngine
                                     ? "systemd-timesyncd"
                                     : "chrony");
 
-            _result.AddRange((await nodeApi.Services.GetAsync())
+            _result.AddRange(fetch.Services
                             .Where(a => !a.IsRunning && !serviceExcluded.Contains(a.Name))
                             .Select(a => new DiagnosticResult
                             {
@@ -312,7 +368,7 @@ public partial class DiagnosticEngine
 
             #region Certificates
             // Expired TLS certificates break the web UI and API access
-            _result.AddRange((await nodeApi.Certificates.Info.GetAsync())
+            _result.AddRange(fetch.Certificates
                               .Where(a => DateTimeOffset.FromUnixTimeSeconds(a.NotAfter) < _now)
                               .Select(a => new DiagnosticResult
                               {
@@ -327,8 +383,7 @@ public partial class DiagnosticEngine
 
             #region Replication
             // Replication jobs with errors mean the secondary copy is out of date
-            var replCount = (await nodeApi.Replication.GetAsync())
-                                .Count(a => a.ExtensionData?.ContainsKey("errors") == true);
+            var replCount = fetch.Replication.Count(a => a.ExtensionData?.ContainsKey("errors") is true);
             if (replCount > 0)
             {
                 _result.Add(new DiagnosticResult
@@ -343,11 +398,11 @@ public partial class DiagnosticEngine
             }
             #endregion
 
-            await CheckNodeDiskAsync(nodeApi, settings, id);
+            await CheckNodeDiskAsync(nodeApi, settings, id, fetch);
 
             #region APT Updates
             // Any pending update is informational; "important" priority updates (security) are Warning
-            var aptUpdate = await nodeApi.Apt.Update.GetAsync();
+            var aptUpdate = fetch.AptUpdate;
             var updateCount = aptUpdate.Count();
             if (updateCount > 0)
             {
@@ -383,7 +438,7 @@ public partial class DiagnosticEngine
             {
                 // Kversion contains the full uname string; CurrentKernel.Release is the running kernel
                 // Compare the running kernel release against the installed kversion string
-                var runningKernel = nodeStatus.CurrentKernel?.Release ?? string.Empty;
+                var runningKernel = nodeStatus.CurrentKernel?.Release ?? "";
                 if (!string.IsNullOrWhiteSpace(runningKernel) && !nodeStatus.Kversion.Contains(runningKernel))
                 {
                     _result.Add(new DiagnosticResult
@@ -423,7 +478,7 @@ public partial class DiagnosticEngine
             // IOMMU is required for PCI passthrough (GPU, NIC, etc.).
             // If all detected PCI devices report IommuGroup == -1 the kernel/firmware has IOMMU disabled.
             // Note: a node with no PCI devices at all is not flagged.
-            var pciDevices = await nodeApi.Hardware.Pci.GetAsync();
+            var pciDevices = fetch.PciDevices;
             if (pciDevices.Any() && pciDevices.All(a => a.IommuGroup == -1))
             {
                 _result.Add(new DiagnosticResult
@@ -441,8 +496,13 @@ public partial class DiagnosticEngine
             #region Task history
             // Failed tasks in the last 48 hours (errors=true filters server-side for efficiency)
             var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
-            var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000)).Where(a => a.StartTime >= dayTask);
-            CheckTaskHistory(_result, tasks, DiagnosticResultContext.Node, id);
+            CheckTaskHistory(_result,
+                             fetch.Tasks.Where(a => a.StartTime >= dayTask),
+                             DiagnosticResultContext.Node, id);
+            #endregion
+
+            #region CVE
+            CheckNodeCve(id, aptVersions);
             #endregion
 
             // TODO: backup history anomaly check — uncomment when BackupHelper.ParseVzdumpLog is available via NuGet.
@@ -512,7 +572,7 @@ public partial class DiagnosticEngine
 
             // Build set of non-VLAN-aware bridge names on this node
             var nonVlanBridges = nodeData.Networks
-                                         .Where(n => n.Type == "bridge" && n.BridgeVlanAware != true)
+                                         .Where(n => n.Type == "bridge" && n.BridgeVlanAware is not true)
                                          .Select(n => n.Interface)
                                          .ToHashSet();
 
@@ -779,7 +839,7 @@ public partial class DiagnosticEngine
                 {
                     Id = id,
                     ErrorCode = "CN0012",
-                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? string.Empty : $": {child.Msg}")}",
+                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? "" : $": {child.Msg}")}",
                     Context = DiagnosticResultContext.Node,
                     SubContext = "Zfs",
                     Gravity = DiagnosticResultGravity.Critical,
@@ -807,11 +867,12 @@ public partial class DiagnosticEngine
 
     private async Task CheckNodeDiskAsync(PveClient.PveNodes.PveNodeItem nodeApi,
                                           Settings settings,
-                                          string id)
+                                          string id,
+                                          NodeFetchData fetch)
     {
         #region Disks
         // S.M.A.R.T. status: anything other than PASSED/OK indicates a failing or failed disk
-        var disksAll = await nodeApi.Disks.List.GetAsync(include_partitions: false);
+        var disksAll = fetch.Disks;
 
         _result.AddRange(disksAll.Where(a => a.Health != "PASSED" && a.Health != "OK")
                                  .Select(a => new DiagnosticResult
@@ -850,9 +911,11 @@ public partial class DiagnosticEngine
         // Detailed S.M.A.R.T. attribute checks — one API call per disk, disabled by default
         if (settings.Node.Smart.Enabled)
         {
-            foreach (var disk in disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)))
+            var smartResults = await RunParallelAsync(disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)),
+                                                      d => nodeApi.Disks.Smart.GetAsync(disk: d.DevPath));
+
+            foreach (var (disk, smart) in disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)).ToList().Zip(smartResults))
             {
-                var smart = await nodeApi.Disks.Smart.GetAsync(disk: disk.DevPath);
                 if (smart?.Attributes == null) { continue; }
 
                 foreach (var attr in smart.Attributes)
@@ -958,8 +1021,7 @@ public partial class DiagnosticEngine
 
         #region Zfs
         // ZFS pool health: anything other than ONLINE means degraded/faulted pool
-        var zfsList = await nodeApi.Disks.Zfs.GetAsync() ?? [];
-
+        var zfsList = fetch.ZfsList;
         _result.AddRange(zfsList.Where(a => a.Health != "ONLINE")
                                 .Select(a => new DiagnosticResult
                                 {
@@ -987,9 +1049,9 @@ public partial class DiagnosticEngine
         // Detailed ZFS checks: pool errors and vdev state — one API call per pool
         if (settings.Node.NodeStorage.ZfsDetail && zfsList.Any())
         {
-            foreach (var zfs in zfsList)
+            var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync());
+            foreach (var (zfs, detail) in zfsList.Zip(zfsDetails))
             {
-                var detail = await nodeApi.Disks.Zfs[zfs.Name].GetAsync();
                 if (detail == null) { continue; }
 
                 // Pool-level errors string (e.g. "1 data errors, use '-v' for a list")
@@ -1017,7 +1079,7 @@ public partial class DiagnosticEngine
         // LVM-thin metadata pool full causes silent data corruption — check before it's too late
         if (settings.Node.NodeStorage.LvmThinMetadata)
         {
-            var lvmThinList = await nodeApi.Disks.Lvmthin.GetAsync() ?? [];
+            var lvmThinList = fetch.LvmThinList;
             foreach (var lv in lvmThinList.Where(a => a.MetadataSize > 0))
             {
                 var metaPct = (double)lv.MetadataUsed / lv.MetadataSize * 100.0;

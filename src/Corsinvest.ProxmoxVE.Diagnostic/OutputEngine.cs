@@ -36,7 +36,8 @@ internal class OutputEngine
                                 : [];
 
         var duration = Stopwatch.StartNew();
-        var result = await new DiagnosticEngine(client, settings!).AnalyzeAsync(ignoredIssues!);
+        using var httpClient = new HttpClient();
+        var result = await new DiagnosticEngine(client, settings!, httpClient).AnalyzeAsync(ignoredIssues!);
         duration.Stop();
 
         if (!string.IsNullOrWhiteSpace(outputFile)) { File.Delete(outputFile!); }
@@ -186,5 +187,4 @@ internal class OutputEngine
 
         workbook.SaveAs(fileName);
     }
-
 }

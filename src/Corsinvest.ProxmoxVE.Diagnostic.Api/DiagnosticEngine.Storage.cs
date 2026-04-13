@@ -147,7 +147,7 @@ public partial class DiagnosticEngine
         // than physically available. If the sum of all VM disk sizes exceeds the storage capacity
         // the storage will silently fill up and VMs will crash or freeze.
         foreach (var storage in _storageResources.Where(a => a.IsAvailable
-                                                              && _thinProvisioningTypes.Contains(a.PluginType ?? string.Empty)
+                                                              && _thinProvisioningTypes.Contains(a.PluginType ?? "")
                                                               && a.DiskSize > 0))
         {
             if (!allocatedByStorage.TryGetValue(storage.Storage, out var allocated)) { continue; }
@@ -169,7 +169,7 @@ public partial class DiagnosticEngine
 
         #region No storage with backup content type
         // If no storage in the cluster has 'backup' as a content type, vzdump has nowhere to save backups.
-        var hasBackupStorage = _storageResources.Any(a => a.Content?.Split(',').Contains("backup") == true);
+        var hasBackupStorage = _storageResources.Any(a => a.Content?.Split(',').Contains("backup") is true);
         if (!hasBackupStorage)
         {
             _result.Add(new DiagnosticResult
@@ -227,7 +227,7 @@ public partial class DiagnosticEngine
             // Use full _resources to count how many nodes mount each storage
             var storagesByName = _resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
                                            .GroupBy(a => a.Storage)
-                                           .Where(g => _sharedStorageTypes.Contains(g.First().PluginType ?? string.Empty) && g.Count() == 1)
+                                           .Where(g => _sharedStorageTypes.Contains(g.First().PluginType ?? "") && g.Count() == 1)
                                            .Select(g => g.First());
 
             _result.AddRange(storagesByName.Select(a => new DiagnosticResult
