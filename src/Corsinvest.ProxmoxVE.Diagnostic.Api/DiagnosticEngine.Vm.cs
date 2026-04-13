@@ -5,6 +5,7 @@
 
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
@@ -25,7 +26,33 @@ public partial class DiagnosticEngine
     // win8  covers Win8/2012/2012R2 — all EOL (Oct 2023).
     private static readonly string[] _osNotMaintained = ["win8", "win7", "wvista", "w2k8", "w2k3", "wxp", "w2k"];
 
-    private async Task CheckQemuAsync(bool hasCluster)
+    private record VmFetchData(ClusterResource Item,
+                               VmConfigQemu Config,
+                               VmFirewallOptions Firewall,
+                               IEnumerable<KeyValue> Pending,
+                               IEnumerable<VmSnapshot> Snapshots,
+                               object? AgentInfo);
+
+    private async Task<VmFetchData> FetchVmDataAsync(ClusterResource item)
+    {
+        var vmApi = client.Nodes[item.Node].Qemu[item.VmId];
+        var config = (VmConfigQemu)_vmConfigs[item.VmId];
+        var firewallTask = vmApi.Firewall.Options.GetAsync();
+        var pendingTask = vmApi.Pending.GetAsync();
+        var snapshotTask = settings.Snapshot.Enabled ? vmApi.Snapshot.GetAsync() : Task.FromResult<IEnumerable<VmSnapshot>>([]);
+        await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
+
+        object? agentInfo = null;
+        if (config.AgentEnabled && item.IsRunning)
+        {
+            try { agentInfo = await vmApi.Agent.Info.GetAsync(); }
+            catch { /* agent not running — handled in check */ }
+        }
+
+        return new VmFetchData(item, config, firewallTask.Result, pendingTask.Result, snapshotTask.Result, agentInfo);
+    }
+
+    private async Task CheckVmAsync(bool hasCluster)
     {
         // Build set of VM IDs managed by HA from already-loaded resources
         var haVmIds = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
@@ -64,14 +91,17 @@ public partial class DiagnosticEngine
             }
         }
 
-        foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                                  && a.VmType == VmType.Qemu
-                                                  && !a.IsTemplate))
+        // Pre-fetch all VM data in parallel
+        var vmFetchResults = await RunParallelAsync(_resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                                            && a.VmType == VmType.Qemu
+                                                                            && !a.IsTemplate),
+                                                    FetchVmDataAsync);
+
+        foreach (var fetch in vmFetchResults)
         {
-            var nodeApi = client.Nodes[item.Node];
-            var vmApi = nodeApi.Qemu[item.VmId];
+            var item = fetch.Item;
+            var config = fetch.Config;
             var id = item.GetWebUrl();
-            var config = (VmConfigQemu)_vmConfigs[item.VmId];
 
             #region OS
             // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly
@@ -115,43 +145,23 @@ public partial class DiagnosticEngine
                     Gravity = DiagnosticResultGravity.Warning,
                 });
             }
-            else if (item.IsRunning)
+            else if (item.IsRunning && fetch.AgentInfo == null)
             {
-                // agent/info: verify agent is running and retrieve version for outdated check
-                try
+                _result.Add(new DiagnosticResult
                 {
-                    var agentInfo = await vmApi.Agent.Info.GetAsync();
-                    if (agentInfo?.Result == null)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0004",
-                            Description = "Qemu Agent in guest not running",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Agent",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
-                catch
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0004",
-                        Description = "Qemu Agent in guest not running",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Agent",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                    Id = id,
+                    ErrorCode = "WG0004",
+                    Description = "Qemu Agent in guest not running",
+                    Context = DiagnosticResultContext.Qemu,
+                    SubContext = "Agent",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
             }
             #endregion
 
             #region Virtio
             // VirtIO SCSI controller and disk bus offer significantly better throughput than IDE/SATA emulation
-            if (config is VmConfigQemu qc && !(qc.ScsiHw ?? string.Empty).StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase))
+            if (config is VmConfigQemu qc && !(qc.ScsiHw ?? "").StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 _result.Add(new DiagnosticResult
                 {
@@ -265,7 +275,7 @@ public partial class DiagnosticEngine
                 if (!string.IsNullOrWhiteSpace(cpuType)
                     && !cpuType.Equals(CpuTypeHost, StringComparison.OrdinalIgnoreCase))
                 {
-                    var cpuFlags = qemuConfig.Cpu ?? string.Empty;
+                    var cpuFlags = qemuConfig.Cpu ?? "";
                     var missingFlags = _cpuSecurityFlags
                                         .Where(f => !cpuFlags.Contains(f, StringComparison.OrdinalIgnoreCase))
                                         .ToList();
@@ -292,7 +302,7 @@ public partial class DiagnosticEngine
                 if (!string.IsNullOrWhiteSpace(qemuConfig.Hotplug)
                     && qemuConfig.Hotplug != "0"
                     && qemuConfig.Hotplug.Split(',').Any(p => p.Trim() == "cpu")
-                    && config.OsType?.StartsWith("win", StringComparison.OrdinalIgnoreCase) == true)
+                    && config.OsType?.StartsWith("win", StringComparison.OrdinalIgnoreCase) is true)
                 {
                     _result.Add(new DiagnosticResult
                     {
@@ -499,7 +509,7 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Firewall and IP filter
-            CheckVmFirewall(_result, await vmApi.Firewall.Options.GetAsync(), id, DiagnosticResultContext.Qemu);
+            CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Qemu);
             #endregion
 
             #region USB/PCI passthrough
@@ -526,11 +536,9 @@ public partial class DiagnosticEngine
             await CheckCommonVmAsync(settings,
                                      settings.Qemu,
                                      config,
-                                     await vmApi.Pending.GetAsync(),
-                                     settings.Snapshot.Enabled
-                                        ? await vmApi.Snapshot.GetAsync()
-                                        : [],
-                                     await vmApi.Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation),
+                                     fetch.Pending,
+                                     fetch.Snapshots,
+                                     await client.Nodes[item.Node].Qemu[item.VmId].Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation),
                                      DiagnosticResultContext.Qemu,
                                      item.Node,
                                      item.VmId,

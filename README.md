@@ -195,19 +195,26 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | Health score low                   | WG0032        | HealthScore      | Warning/Critical | Composite health score below threshold                                         |
 | Task history errors                | CN0005        | Tasks            | Critical         | Failed tasks found in the last 48 hours                                        |
 | Disk SMART problem                 | WN0016        | S.M.A.R.T.       | Warning          | Disk reports a SMART health problem                                            |
-| Disk temperature                   | WN0018/CN0006 | S.M.A.R.T.       | Warning/Critical | Disk temperature exceeds configured threshold                                  |
+| Disk temperature                   | WN0019/CN0007 | S.M.A.R.T.       | Warning/Critical | Disk temperature exceeds configured threshold                                  |
 | Disk reallocated sectors           | WN0020        | S.M.A.R.T.       | Warning          | Disk has reallocated sectors — disk may be failing                             |
 | Disk pending sectors               | CN0008        | S.M.A.R.T.       | Critical         | Disk has pending sectors — imminent data loss risk                             |
 | Disk uncorrectable sectors         | CN0009        | S.M.A.R.T.       | Critical         | Disk has offline uncorrectable sectors                                         |
 | Disk UDMA CRC errors               | WN0021        | S.M.A.R.T.       | Warning          | Disk has UDMA CRC errors — check cable/controller                              |
 | Disk reported uncorrectable errors | WN0022        | S.M.A.R.T.       | Warning          | Disk has reported uncorrectable errors                                         |
 | SSD wearout not valid              | WN0017        | SSD Wearout      | Warning          | SSD does not expose wear data                                                  |
-| SSD wearout above threshold        | WN0023/CN0007 | SSD Wearout      | Warning/Critical | SSD wearout consumed above threshold                                           |
+| SSD wearout above threshold        | WN0018        | SSD Wearout      | Warning/Critical | SSD wearout consumed above threshold                                           |
+| ZFS pool usage above threshold     | WN0023        | Zfs              | Warning/Critical | ZFS pool disk usage above configured threshold                                 |
 | ZFS pool health problem            | CN0010        | Zfs              | Critical         | ZFS pool is not in ONLINE state                                                |
 | ZFS vdev degraded/faulted          | CN0012        | Zfs              | Critical         | ZFS pool vdev is in a degraded or faulted state                                |
 | ZFS vdev I/O errors                | WN0025        | Zfs              | Warning          | ZFS pool vdev has accumulated read/write/checksum errors                       |
 | ZFS pool errors                    | WN0024        | Zfs              | Warning          | ZFS pool reports errors                                                        |
-| LVM-thin metadata usage            | WN0026/CN0011 | Storage          | Warning/Critical | LVM-thin metadata usage is high — full metadata causes data corruption         |
+| LVM-thin metadata usage            | WN0026/CN0013 | LvmThin          | Warning/Critical | LVM-thin metadata usage is high — full metadata causes data corruption         |
+| IOWait above threshold             | WN0028        | Usage            | Warning/Critical | CPU IOWait above configured threshold — indicates storage bottleneck           |
+| Root filesystem usage              | WN0029        | Usage            | Warning/Critical | Node root filesystem usage above configured threshold                          |
+| SWAP usage above threshold         | WN0030        | Usage            | Warning/Critical | Node SWAP usage above configured threshold — indicates RAM pressure             |
+| Unknown resource type              | CU0001        | Status           | Critical         | A cluster resource with an unknown type was detected                           |
+| Open CVE on installed package      | WN0041/CN0014 | CVE              | Warning/Critical | Installed package has an open CVE in the Debian security tracker               |
+| Proxmox VE CVE                     | WN0042/CN0015 | CVE              | Warning/Critical | A known CVE affects the installed Proxmox VE version                           |
 
 </details>
 
@@ -421,6 +428,13 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid --settings-file=s
     "MaxAgeDays": 60, // warn if backup older than N days, 0 = disabled
     "RecentDays": 7, // warn if no backup in last N days, 0 = disabled
   },
+  "MaxParallelRequests": 5, // global parallel API requests (1 = sequential)
+  "ApiTimeout": 0,          // HTTP timeout in seconds (0 = 100s default)
+  "Cve": {
+    "DebianTrackerEnabled": false, // check installed packages against Debian security advisories
+    "NvdEnabled": false,           // check for CVEs specific to Proxmox VE (NVD API 2.0)
+    "MinCvssScore": 7.0,           // ignore CVEs below this CVSS score (NVD only)
+  },
 }
 ```
 
@@ -436,6 +450,78 @@ Set `Warning` and `Critical` to `0` to disable health score checks entirely.
 > **PSI Pressure** (PVE 9.0+): Linux Pressure Stall Information metrics. Checks are automatically skipped on older PVE versions where the values are always zero.
 
 </details>
+
+---
+
+## Performance Tuning
+
+By default the diagnostic runs up to **5 parallel API requests** (`MaxParallelRequests = 5`). This works well for most clusters, but you can tune it to match your environment.
+
+### Speed up the diagnostic
+
+Increase `MaxParallelRequests` to fetch more data at the same time:
+
+```jsonc
+"MaxParallelRequests": 10
+```
+
+> **Don't go too high.** Each parallel request is a real HTTP call to Proxmox. Too many at once can slow down the API, increase memory usage on both sides, and make the diagnostic less stable. Values between 5 and 15 are a reasonable range.
+
+### Handle slow or high-latency clusters
+
+Parallelism means more simultaneous requests — if your cluster is slow or the network has high latency, some calls may time out. Increase `ApiTimeout` to give them more time:
+
+```jsonc
+"ApiTimeout": 300   // seconds (0 = 100s default)
+```
+
+### Summary
+
+| Setting | Effect | Default |
+|---------|--------|---------|
+| `MaxParallelRequests` ↑ | Faster, but more load on Proxmox and higher memory usage | 5 |
+| `ApiTimeout` ↑ | Avoids timeouts on slow/high-latency clusters | 100s |
+
+---
+
+## CVE Scanning
+
+cv4pve-diag can optionally check your cluster for known security vulnerabilities. Both sources are **disabled by default** and require internet access at runtime.
+
+### Debian Security Tracker
+
+Checks every installed package on each node against the Debian security advisory feed, automatically filtered to the Debian release that matches your PVE version (e.g. bookworm for PVE 8, bullseye for PVE 7).
+
+```jsonc
+"Cve": {
+  "DebianTrackerEnabled": true
+}
+```
+
+- Packages with open, high-severity vulnerabilities → **Critical** (`CN0014`)
+- Packages with open, medium or unrated vulnerabilities → **Warning** (`WN0041`)
+
+### NVD (Proxmox VE CVEs)
+
+Queries the NVD database for CVEs that specifically affect Proxmox VE. Only CVEs that apply to your installed version are reported. Requires no API key.
+
+```jsonc
+"Cve": {
+  "NvdEnabled": true,
+  "MinCvssScore": 7.0   // ignore CVEs below this score
+}
+```
+
+- CVSS score ≥ 9.0 → **Critical** (`CN0015`)
+- CVSS score ≥ 7.0 → **Warning** (`WN0042`)
+
+### Summary
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `Cve.DebianTrackerEnabled` | Check installed packages against Debian advisories | `false` |
+| `Cve.NvdEnabled` | Check for Proxmox VE CVEs via NVD | `false` |
+| `Cve.MinCvssScore` | Minimum CVSS score to report (NVD only) | `7.0` |
 
 ---
 

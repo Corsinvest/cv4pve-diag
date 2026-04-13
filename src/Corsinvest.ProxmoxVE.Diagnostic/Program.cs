@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 var settingsFileName = "settings.json";
 var ignoredIssuesFileName = "ignored-issues.json";
 
-var app = ConsoleHelper.CreateApp("cv4pve-diag", "Diagnostic for Proxmox VE");
+var app = ConsoleHelper.CreateApp("Diagnostic for Proxmox VE");
 var loggerFactory = ConsoleHelper.CreateLoggerFactory<Program>(app.GetLogLevelFromDebug());
 
 var optSettingsFile = app.AddOption<string>("--settings-file", "File settings (generated from create-settings)")
@@ -31,7 +31,7 @@ optOutput.DefaultValueFactory = (_) => OutputType.Text;
 var optOutputFile = app.AddOption<string>("--output-file", "Output file name");
 
 app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
-   .SetAction((action) =>
+   .SetAction((_) =>
    {
        File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
        Console.Out.WriteLine(OutputEngine.PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
@@ -40,7 +40,7 @@ app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
    });
 
 app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})")
-   .SetAction((action) =>
+   .SetAction((_) =>
    {
        File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
        Console.Out.WriteLine(OutputEngine.PrintEnum("Context", typeof(DiagnosticResultContext)));

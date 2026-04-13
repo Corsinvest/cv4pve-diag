@@ -43,9 +43,8 @@ public partial class DiagnosticEngine
         #region Pending config changes
         // Config changes applied via the API are held in "pending" until the VM is rebooted.
         // Calling out pending changes helps operators know a reboot is needed for changes to take effect.
-        var pendingAll = pending.ToList();
-        var pendingChanges = pendingAll.Where(a => a.Key != "vmstate"
-                                                   && (a.Pending != null || a.Delete == 1)).ToList();
+        var pendingChanges = pending.Where(a => a.Key != "vmstate"
+                                                && (a.Pending != null || a.Delete == 1)).ToList();
         if (pendingChanges.Count > 0)
         {
             _result.Add(new DiagnosticResult
@@ -112,8 +111,8 @@ public partial class DiagnosticEngine
         if (!foundBackupConfig)
         {
             foundBackupConfig = _clusterBackups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
-                                              .SelectMany(a => a.VmId.Split(","))
-                                              .Any(a => long.TryParse(a.Trim(), out var id) && id == vmId);
+                                               .SelectMany(a => a.VmId.Split(","))
+                                               .Any(a => long.TryParse(a.Trim(), out var id) && id == vmId);
             if (!foundBackupConfig)
             {
                 foreach (var poolId in _clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
@@ -158,7 +157,7 @@ public partial class DiagnosticEngine
                                      {
                                          Id = id,
                                          ErrorCode = "WG0018",
-                                         Description = $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : string.Empty)} — detached from VM but still in storage",
+                                         Description = $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : "")} — detached from VM but still in storage",
                                          Context = context,
                                          SubContext = "Hardware",
                                          Gravity = DiagnosticResultGravity.Warning,

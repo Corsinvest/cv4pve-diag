@@ -11,6 +11,16 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 public class Settings
 {
     /// <summary>
+    /// Max parallel requests when fetching (1 = sequential)
+    /// </summary>
+    public int MaxParallelRequests { get; set; } = 5;
+
+    /// <summary>
+    /// API timeout in seconds (0 = use default)
+    /// </summary>
+    public int ApiTimeout { get; set; } = 0;
+
+    /// <summary>
     /// Store
     /// </summary>
     /// <returns></returns>
@@ -67,5 +77,10 @@ public class Settings
     /// Backup checks configuration
     /// </summary>
     public SettingsBackup Backup { get; set; } = new();
+
+    /// <summary>
+    /// CVE checks configuration
+    /// </summary>
+    public SettingsCve Cve { get; set; } = new();
 
 }

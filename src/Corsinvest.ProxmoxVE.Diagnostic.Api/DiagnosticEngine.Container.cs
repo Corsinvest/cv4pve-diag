@@ -5,24 +5,45 @@
 
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
-    private async Task CheckLxcAsync()
+    private record ContainerFetchData(ClusterResource Item,
+                                      VmConfigLxc Config,
+                                      VmFirewallOptions Firewall,
+                                      IEnumerable<KeyValue> Pending,
+                                      IEnumerable<VmSnapshot> Snapshots);
+
+    private async Task<ContainerFetchData> FetchContainerDataAsync(ClusterResource item)
     {
-        foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                                  && a.VmType == VmType.Lxc
-                                                  && !a.IsTemplate))
+        var vmApi = client.Nodes[item.Node].Lxc[item.VmId];
+        var firewallTask = vmApi.Firewall.Options.GetAsync();
+        var pendingTask = vmApi.Pending.GetAsync();
+        var snapshotTask = settings.Snapshot.Enabled ? vmApi.Snapshot.GetAsync() : Task.FromResult<IEnumerable<VmSnapshot>>([]);
+        await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
+        return new ContainerFetchData(item, (VmConfigLxc)_vmConfigs[item.VmId],
+                                      firewallTask.Result, pendingTask.Result, snapshotTask.Result);
+    }
+
+    private async Task CheckContainerAsync()
+    {
+        var ctItems = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                           && a.VmType == VmType.Lxc
+                                           && !a.IsTemplate).ToList();
+        var ctFetchResults = await RunParallelAsync(ctItems, FetchContainerDataAsync);
+
+        foreach (var fetch in ctFetchResults)
         {
-            var vmApi = client.Nodes[item.Node].Lxc[item.VmId];
+            var item = fetch.Item;
+            var lxcConfig = fetch.Config;
             var id = item.GetWebUrl();
-            var lxcConfig = (VmConfigLxc)_vmConfigs[item.VmId];
 
             #region Firewall and IP filter
-            CheckVmFirewall(_result, await vmApi.Firewall.Options.GetAsync(), id, DiagnosticResultContext.Lxc);
+            CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Lxc);
             #endregion
 
             if (lxcConfig is VmConfigLxc lxc)
@@ -62,13 +83,13 @@ public partial class DiagnosticEngine
 
                     // Privileged container with AppArmor explicitly disabled via features=apparmor=0
                     // or via raw lxc.apparmor.profile=unconfined — no kernel confinement at all
-                    var appArmorDisabledViaFeatures = (lxc.Features ?? string.Empty)
+                    var appArmorDisabledViaFeatures = (lxc.Features ?? "")
                         .Split(',')
                         .Any(p => p.Trim().Equals("apparmor=0", StringComparison.OrdinalIgnoreCase));
 
                     var appArmorDisabledViaRaw = lxcConfig.ExtensionData?.Any(kv =>
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
-                        && kv.Value?.ToString()?.Equals("unconfined", StringComparison.OrdinalIgnoreCase) == true) == true;
+                        && kv.Value?.ToString()?.Equals("unconfined", StringComparison.OrdinalIgnoreCase) is true) is true;
 
                     if (appArmorDisabledViaFeatures || appArmorDisabledViaRaw)
                     {
@@ -155,11 +176,9 @@ public partial class DiagnosticEngine
             await CheckCommonVmAsync(settings,
                                      settings.Lxc,
                                      lxcConfig,
-                                     await vmApi.Pending.GetAsync(),
-                                     settings.Snapshot.Enabled
-                                        ? await vmApi.Snapshot.GetAsync()
-                                        : [],
-                                     await vmApi.Rrddata.GetAsync(settings.Lxc.Rrd.TimeFrame, settings.Lxc.Rrd.Consolidation),
+                                     fetch.Pending,
+                                     fetch.Snapshots,
+                                     await client.Nodes[item.Node].Lxc[item.VmId].Rrddata.GetAsync(settings.Lxc.Rrd.TimeFrame, settings.Lxc.Rrd.Consolidation),
                                      DiagnosticResultContext.Lxc,
                                      item.Node,
                                      item.VmId,

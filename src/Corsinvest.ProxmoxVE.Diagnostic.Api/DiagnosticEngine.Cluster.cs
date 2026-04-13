@@ -12,9 +12,12 @@ public partial class DiagnosticEngine
 {
     private async Task<bool> CheckClusterAsync()
     {
-        var clusterConfigNodes = await client.Cluster.Config.Nodes.GetAsync();
+        var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync();
+        var clusterBackupTask = client.Cluster.Backup.GetAsync();
+        await Task.WhenAll(clusterConfigNodesTask, clusterBackupTask);
+        var clusterConfigNodes = clusterConfigNodesTask.Result;
         var hasCluster = clusterConfigNodes.Any();
-        _clusterBackups = await client.Cluster.Backup.GetAsync();
+        _clusterBackups = clusterBackupTask.Result;
 
         CheckClusterBackupCompression();
 
@@ -65,8 +68,8 @@ public partial class DiagnosticEngine
 
         // Backup jobs without retention policy — storage will fill up indefinitely
         _result.AddRange(backupList.Where(a => a.Enabled
-                                               && a.ExtensionData?.ContainsKey("maxfiles") != true
-                                               && a.ExtensionData?.ContainsKey("prune-backups") != true)
+                                               && a.ExtensionData?.ContainsKey("maxfiles") is not true
+                                               && a.ExtensionData?.ContainsKey("prune-backups") is not true)
                                    .Select(a => new DiagnosticResult
                                    {
                                        Id = $"cluster/backup/{a.Id}",
@@ -81,8 +84,11 @@ public partial class DiagnosticEngine
     private async Task CheckClusterHaAndReplicationAsync()
     {
         // Cluster without any HA resource configured — no automatic failover on node failure
-        var haResources = await client.Cluster.Ha.Resources.GetAsync();
-        if (!haResources.Any())
+        var haResourcesTask = client.Cluster.Ha.Resources.GetAsync();
+        var replJobsTask = client.Cluster.Replication.GetAsync();
+        await Task.WhenAll(haResourcesTask, replJobsTask);
+
+        if (!haResourcesTask.Result.Any())
         {
             _result.Add(new DiagnosticResult
             {
@@ -96,8 +102,7 @@ public partial class DiagnosticEngine
         }
 
         // Cluster without any replication job — no storage redundancy between nodes
-        var replJobs = await client.Cluster.Replication.GetAsync();
-        if (!replJobs.Any())
+        if (!replJobsTask.Result.Any())
         {
             _result.Add(new DiagnosticResult
             {
@@ -227,9 +232,10 @@ public partial class DiagnosticEngine
         }
 
         // Firewall enabled at cluster level but disabled on individual nodes — inconsistent protection
-        foreach (var node in _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline))
+        var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
+        var nodeFwResults = await RunParallelAsync(onlineNodes, node => client.Nodes[node.Node].Firewall.Options.GetAsync());
+        foreach (var (node, nodeFwOptions) in onlineNodes.Zip(nodeFwResults))
         {
-            var nodeFwOptions = await client.Nodes[node.Node].Firewall.Options.GetAsync();
             if (!nodeFwOptions.Enable)
             {
                 _result.Add(new DiagnosticResult
@@ -262,11 +268,15 @@ public partial class DiagnosticEngine
     private async Task CheckClusterAccessAsync()
     {
         // Local users (pam/pve realm) without expiration and tokens without expiration are a security risk
-        var accessUsers = await client.Access.Users.GetAsync();
+        var accessUsersTask = client.Access.Users.GetAsync();
+        var tfaEntriesTask = client.Access.Tfa.GetAsync();
+        var aclsTask = client.Access.Acl.GetAsync();
+        await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask);
+        var accessUsers = accessUsersTask.Result;
+        var tfaEntries = tfaEntriesTask.Result;
+        var acls = aclsTask.Result;
 
-        // TFA check — fetch once and reuse for all user checks
-        var tfaEntries = await client.Access.Tfa.GetAsync();
-        var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any() == true)
+        var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any() is true)
                                      .Select(t => t.UserId)
                                      .ToHashSet();
 
@@ -286,7 +296,6 @@ public partial class DiagnosticEngine
         }
 
         // Admin users without TFA — fetch ACLs once to find users with Administrator role
-        var acls = await client.Access.Acl.GetAsync();
         var adminUserIds = acls.Where(a => a.Roleid == "Administrator" && a.Type == "user")
                                .Select(a => a.UsersGroupid)
                                .ToHashSet();
