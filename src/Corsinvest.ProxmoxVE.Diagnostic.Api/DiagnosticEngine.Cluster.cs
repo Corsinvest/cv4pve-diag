@@ -10,7 +10,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
-    private async Task<bool> CheckClusterAsync()
+    private async Task<bool> CheckClusterAsync(int pveMajorVersion)
     {
         var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync();
         var clusterBackupTask = client.Cluster.Backup.GetAsync();
@@ -24,7 +24,7 @@ public partial class DiagnosticEngine
         if (hasCluster)
         {
             var clusterStatus = await client.Cluster.Status.GetAsync();
-            await CheckClusterQuorumAndHaAsync(clusterStatus);
+            await CheckClusterQuorumAndHaAsync(clusterStatus, pveMajorVersion);
             await CheckClusterHaAndReplicationAsync();
         }
 
@@ -116,7 +116,8 @@ public partial class DiagnosticEngine
         }
     }
 
-    private async Task CheckClusterQuorumAndHaAsync(IEnumerable<ClusterStatus> clusterStatus)
+    private async Task CheckClusterQuorumAndHaAsync(IEnumerable<ClusterStatus> clusterStatus,
+                                                    int pveMajorVersion)
     {
         // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
         var clusterInfo = clusterStatus.FirstOrDefault(a => a.Type == "cluster");
@@ -154,26 +155,30 @@ public partial class DiagnosticEngine
             }
         }
 
-        // HA groups referencing nodes that are currently offline — failover may not work
-        var onlineNodeNames = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
-                                       .Select(a => a.Node)
-                                       .ToHashSet();
-        foreach (var haGroup in await client.Cluster.Ha.Groups.GetAsync())
+        if (pveMajorVersion < 9)
         {
-            if (string.IsNullOrWhiteSpace(haGroup.Nodes)) { continue; }
-            var groupNodes = haGroup.Nodes.Split(',').Select(n => n.Split(':')[0].Trim());
-            var offlineMembers = groupNodes.Where(n => !onlineNodeNames.Contains(n)).ToList();
-            if (offlineMembers.Count > 0)
+            // HA groups referencing nodes that are currently offline — failover may not work
+            var onlineNodeNames = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
+                                            .Select(a => a.Node)
+                                            .ToHashSet();
+
+            foreach (var haGroup in await client.Cluster.Ha.Groups.GetAsync())
             {
-                _result.Add(new DiagnosticResult
+                if (string.IsNullOrWhiteSpace(haGroup.Nodes)) { continue; }
+                var groupNodes = haGroup.Nodes.Split(',').Select(n => n.Split(':')[0].Trim());
+                var offlineMembers = groupNodes.Where(n => !onlineNodeNames.Contains(n)).ToList();
+                if (offlineMembers.Count > 0)
                 {
-                    Id = $"cluster/ha/groups/{haGroup.Group}",
-                    ErrorCode = "CC0003",
-                    Description = $"HA group '{haGroup.Group}' has offline node(s): {string.Join(", ", offlineMembers)}",
-                    Context = DiagnosticResultContext.Cluster,
-                    SubContext = "HA",
-                    Gravity = DiagnosticResultGravity.Critical,
-                });
+                    _result.Add(new DiagnosticResult
+                    {
+                        Id = $"cluster/ha/groups/{haGroup.Group}",
+                        ErrorCode = "CC0003",
+                        Description = $"HA group '{haGroup.Group}' has offline node(s): {string.Join(", ", offlineMembers)}",
+                        Context = DiagnosticResultContext.Cluster,
+                        SubContext = "HA",
+                        Gravity = DiagnosticResultGravity.Critical,
+                    });
+                }
             }
         }
     }

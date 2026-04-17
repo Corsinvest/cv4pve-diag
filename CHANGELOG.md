@@ -2,6 +2,13 @@
 
 ---
 
+## [2.2.1] — 2026-04-17
+
+### Fixes
+
+- HA Groups correctly skipped on PVE 9 and later where the API endpoint was removed
+
+
 ## [2.2.0] — 2026-04-13
 
 ### New checks

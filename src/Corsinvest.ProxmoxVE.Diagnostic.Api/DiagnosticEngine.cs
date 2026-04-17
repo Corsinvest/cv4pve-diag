@@ -75,7 +75,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             await FetchCveDataAsync(pveMajorVersion);
 
-            var hasCluster = await CheckClusterAsync();
+            var hasCluster = await CheckClusterAsync(pveMajorVersion);
 
             // Pre-fetch backup storages once per node — shared by CheckQemuAsync and CheckLxcAsync
             var backupStorageResults = await RunParallelAsync(_resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
