@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
-using System.Net.Http.Headers;
 using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 
