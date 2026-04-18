@@ -73,12 +73,15 @@ All binaries on the [Releases page](https://github.com/Corsinvest/cv4pve-diag/re
 
 ### Required Permissions
 
-| Permission          | Purpose                                  | Scope            |
-| ------------------- | ---------------------------------------- | ---------------- |
-| **VM.Audit**        | Read VM/CT configuration and status      | Virtual machines |
-| **Datastore.Audit** | Check storage capacity and content       | Storage systems  |
-| **Pool.Audit**      | Access pool information                  | Resource pools   |
-| **Sys.Audit**       | Node system information, services, disks | Cluster nodes    |
+| Permission          | Purpose                                               | Scope            |
+| ------------------- | ----------------------------------------------------- | ---------------- |
+| **VM.Audit**        | Read VM/CT configuration and status                   | Virtual machines |
+| **Datastore.Audit** | Check storage capacity and content                    | Storage systems  |
+| **Pool.Audit**      | Access pool information                               | Resource pools   |
+| **Sys.Audit**       | Node system information, services, disks              | Cluster nodes    |
+| **Sys.Modify**      | Query APT package update list (`/nodes/{node}/apt/update`) | Cluster nodes    |
+
+> **Note:** Proxmox does not expose a dedicated read-only privilege for APT: the `/nodes/{node}/apt/update` endpoint requires `Sys.Modify` even for GET requests. Without it the diagnostic fails with `Permission check failed (/nodes/<node>, Sys.Modify)`.
 
 </details>
 
