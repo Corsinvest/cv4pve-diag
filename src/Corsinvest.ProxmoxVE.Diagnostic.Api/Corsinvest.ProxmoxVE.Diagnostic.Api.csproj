@@ -7,7 +7,7 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>ProxmoxVE;Api,Client;Rest;Corsinvest;Diagnostic</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <PackageOutputPath>..\..\..\.nupkgs\</PackageOutputPath>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Corsinvest/cv4pve-diag</RepositoryUrl>

@@ -21,6 +21,19 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 
 ---
 
+## Where cv4pve-diag fits
+
+The cv4pve suite follows the Unix philosophy — each tool does one thing and does it well. `cv4pve-diag` is focused on **finding problems**: it runs a fixed set of health checks and reports what is wrong.
+
+| Tool | Purpose | Output |
+|---|---|---|
+| [**cv4pve-diag**](https://github.com/Corsinvest/cv4pve-diag) | **Health checks** — detects misconfigurations, risks and best-practice violations | Issue list with severity |
+| [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) | Cluster inventory and reporting | Excel workbook |
+
+> Use `cv4pve-diag` when you want to know *what is wrong*, `cv4pve-report` when you want to know *what you have*.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -73,12 +86,13 @@ All binaries on the [Releases page](https://github.com/Corsinvest/cv4pve-diag/re
 
 ### Required Permissions
 
-| Permission          | Purpose                                  | Scope            |
-| ------------------- | ---------------------------------------- | ---------------- |
-| **VM.Audit**        | Read VM/CT configuration and status      | Virtual machines |
-| **Datastore.Audit** | Check storage capacity and content       | Storage systems  |
-| **Pool.Audit**      | Access pool information                  | Resource pools   |
-| **Sys.Audit**       | Node system information, services, disks | Cluster nodes    |
+| Permission | Purpose | Scope |
+|------------|---------|-------|
+| **VM.Audit** | Read VM/CT configuration and status | Virtual machines |
+| **Datastore.Audit** | Check storage capacity and content | Storage systems |
+| **Pool.Audit** | Access pool information | Resource pools |
+| **Sys.Audit** | Node system information, services, disks | Cluster nodes |
+| **Sys.Modify** | APT repositories, available updates and installed package versions | Cluster nodes |
 
 </details>
 

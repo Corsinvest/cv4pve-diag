@@ -2,6 +2,17 @@
 
 ---
 
+## [2.2.2] — 2026-04-18
+
+### Documentation
+
+- Documented the `Sys.Modify` permission requirement: Proxmox requires it even for read access to the APT update list (`/nodes/{node}/apt/update`).
+
+### Fixes
+
+- NuGet package license metadata corrected from `MIT` to `GPL-3.0-only` to match the project licence.
+
+
 ## [2.2.1] — 2026-04-17
 
 ### Fixes
