@@ -25,10 +25,10 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 
 The cv4pve suite follows the Unix philosophy — each tool does one thing and does it well. `cv4pve-diag` is focused on **finding problems**: it runs a fixed set of health checks and reports what is wrong.
 
-| Tool | Purpose | Output |
-|---|---|---|
-| [**cv4pve-diag**](https://github.com/Corsinvest/cv4pve-diag) | **Health checks** — detects misconfigurations, risks and best-practice violations | Issue list with severity |
-| [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) | Cluster inventory and reporting | Excel workbook |
+| Tool | Purpose |
+|---|---|
+| [**cv4pve-diag**](https://github.com/Corsinvest/cv4pve-diag) | **Health checks** — detects misconfigurations, risks and best-practice violations |
+| [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) | Cluster inventory and reporting |
 
 > Use `cv4pve-diag` when you want to know *what is wrong*, `cv4pve-report` when you want to know *what you have*.
 
@@ -129,7 +129,7 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | nodes/pve02/qemu/203        | CG0002 | Disk 'scsi0' disabled for backup                                   | Qemu    | Backup          | Critical |
 | nodes/pve01/lxc/100         | CG0002 | Disk 'rootfs' disabled for backup                                  | Lxc     | Backup          | Critical |
 | nodes/pve01/qemu/1030       | WG0026 | Memory (rrd Day AVERAGE) usage 92.9% - 5.99 GB of 6.44 GB         | Qemu    | Usage           | Critical |
-| nodes/pve02                 | WN0008 | Nodes hosts configuration not equal                                | Node    | Hosts           | Warning  |
+| nodes/pve02                 | WN0005 | Nodes hosts configuration not equal                                | Node    | Hosts           | Warning  |
 | nodes/pve01/storage/local   | WS0001 | Image Orphaned 51.54 GB file vm-106-disk-1                         | Storage | Image           | Warning  |
 | nodes/pve01/storage/pbs01   | WS0003 | Storage usage 75% - 2.42 TB of 3.22 TB                            | Storage | Usage           | Warning  |
 | nodes/pve02/qemu/106        | WG0003 | Qemu Agent not enabled                                             | Qemu    | Agent           | Warning  |
