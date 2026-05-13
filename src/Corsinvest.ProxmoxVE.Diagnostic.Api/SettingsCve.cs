@@ -15,14 +15,14 @@ public class SettingsCve
     /// Downloads CVE data for all Debian packages installed on each node.
     /// Covers system packages (kernel, qemu, lxc, openssl, ...).
     /// </summary>
-    public bool DebianTrackerEnabled { get; set; } = true;
+    public bool DebianTrackerEnabled { get; set; }
 
     /// <summary>
     /// Enable NVD checks for Proxmox-specific CVE.
     /// Queries NVD API once with keywordSearch=proxmox to find CVE affecting PVE directly.
     /// Optional API key speeds up the request (free at https://nvd.nist.gov/developers/request-an-api-key).
     /// </summary>
-    public bool NvdEnabled { get; set; } = true;
+    public bool NvdEnabled { get; set; }
 
     /// <summary>
     /// Minimum CVSS v3 base score to report (0.0–10.0).
