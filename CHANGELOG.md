@@ -2,6 +2,18 @@
 
 ---
 
+## [2.2.3] — 2026-05-13
+
+### Fixes
+
+- CVE checks are now really disabled by default (#34) — no more unexpected calls to `services.nvd.nist.gov` and `security-tracker.debian.org` unless you enable them in `settings.json`.
+- More reliable detection of TPM 2.0 on Windows 11 VMs.
+
+### Dependencies
+
+- Updated Corsinvest API packages to 9.1.17.
+
+
 ## [2.2.2] — 2026-04-18
 
 ### Documentation

@@ -385,7 +385,7 @@ public partial class DiagnosticEngine
                         });
                     }
 
-                    if (string.IsNullOrWhiteSpace(qemuConfig.Tpmstate0))
+                    if (qemuConfig.GetDisk("tpmstate0") is null)
                     {
                         _result.Add(new DiagnosticResult
                         {
