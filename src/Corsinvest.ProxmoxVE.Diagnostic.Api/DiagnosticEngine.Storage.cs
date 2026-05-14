@@ -11,11 +11,20 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
+    private const string StoragePluginPbs = "pbs";
+
     private static readonly HashSet<string> _thinProvisioningTypes = new(StringComparer.OrdinalIgnoreCase)
         { "lvmthin", "zfspool", "rbd", "cephfs" };
 
     private static readonly HashSet<string> _sharedStorageTypes = new(StringComparer.OrdinalIgnoreCase)
         { "nfs", "cifs", "cephfs", "rbd", "iscsi", "iscsidirect", "glusterfs" };
+
+    private static bool IsPbsPluginType(string pluginType)
+        => string.Equals(pluginType, StoragePluginPbs, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsPbsStorage(string storageName)
+        => !string.IsNullOrWhiteSpace(storageName)
+           && _storageResources.Any(s => s.Storage == storageName && IsPbsPluginType(s.PluginType));
 
     private record StorageContent(string Id,
                                   string Volume,
