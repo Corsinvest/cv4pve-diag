@@ -54,8 +54,12 @@ public partial class DiagnosticEngine
             return;
         }
 
-        // Backup jobs without compression waste storage space (zstd recommended)
-        _result.AddRange(backupList.Where(a => a.Enabled && string.IsNullOrWhiteSpace(a.Compress))
+        // Backup jobs without compression waste storage space (zstd recommended).
+        // PBS targets are skipped: Proxmox Backup Server compresses chunks server-side
+        // (always zstd) and exposes no 'compress' option on the job.
+        _result.AddRange(backupList.Where(a => a.Enabled
+                                               && string.IsNullOrWhiteSpace(a.Compress)
+                                               && !IsPbsStorage(a.Storage))
                                    .Select(a => new DiagnosticResult
                                    {
                                        Id = $"cluster/backup/{a.Id}",
