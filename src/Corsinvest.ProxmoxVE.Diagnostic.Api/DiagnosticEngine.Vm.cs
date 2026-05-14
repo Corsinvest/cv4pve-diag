@@ -200,22 +200,21 @@ public partial class DiagnosticEngine
 
 
             #region Cdrom
-            // A mounted ISO left in the drive is harmless but wastes storage and may confuse OS reinstalls
-            foreach (var value in config.ExtensionData.Values.Where(a => a != null).Select(a => a.ToString()!))
-            {
-                if (value.Contains("media=cdrom") && value != "none,media=cdrom")
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0005",
-                        Description = "Cdrom mounted",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Hardware",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
-            }
+            // A mounted ISO left in the drive is harmless but wastes storage and may confuse OS reinstalls.
+            // Cloud-init drives are excluded (Kind == CloudInit) — they always look like a cdrom but are
+            // legitimate and would otherwise generate a noisy false positive.
+            // Empty drives (Storage "none") are also skipped.
+            _result.AddRange(config.DisksAll
+                                   .Where(d => d.Kind == VmDiskKind.Cdrom && d.Storage != "none")
+                                   .Select(cdrom => new DiagnosticResult
+                                   {
+                                       Id = id,
+                                       ErrorCode = "WG0005",
+                                       Description = $"Cdrom mounted on '{cdrom.Id}' ({cdrom.Storage}:{cdrom.FileName})",
+                                       Context = DiagnosticResultContext.Qemu,
+                                       SubContext = "Hardware",
+                                       Gravity = DiagnosticResultGravity.Warning,
+                                   }));
             #endregion
 
             #region CPU Type
