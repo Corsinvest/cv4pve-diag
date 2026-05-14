@@ -2,6 +2,20 @@
 
 ---
 
+## [2.2.4] — 2026-05-14
+
+### Fixes
+
+- `WS0002` (Image Orphaned) — cloud-init drives (`vm-{vmid}-cloudinit`) and mounted ISOs are recognised as in-use and no longer reported as orphaned. Thin provisioning calculations are unchanged: they still consider only real data disks. (#38)
+- `WG0005` (Cdrom mounted) — cloud-init drives are no longer flagged. Real ISO mounts are still reported, with the drive id and `storage:filename` in the description for easier triage. (#38)
+- `CG0002` (Disk disabled for backup) — LXC `rootfs` is no longer flagged when no `backup=` flag is set. The parser now matches Proxmox defaults: Qemu disks included unless `backup=0`, LXC `rootfs` always included, LXC `mp*` excluded unless `backup=1`. (#37)
+- `IC0001` (Backup job no compression) — backup jobs targeting Proxmox Backup Server are no longer flagged. PBS handles compression server-side and exposes no `compress` option on the job. (#39)
+
+### Dependencies
+
+- Updated Corsinvest API packages to `9.1.18`.
+
+
 ## [2.2.3] — 2026-05-13
 
 ### Fixes
