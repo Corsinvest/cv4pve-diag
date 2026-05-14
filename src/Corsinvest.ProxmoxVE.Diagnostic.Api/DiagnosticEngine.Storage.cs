@@ -109,23 +109,29 @@ public partial class DiagnosticEngine
             }
         }
 
-        // Remove volumes that are actually attached to a VM/LXC disk
-        // At the same time accumulate allocated disk size per storage for thin provisioning check
+        // Remove volumes that are actually attached to a VM/LXC — match against ALL
+        // volume entries (data disks + CD-ROM + cloud-init) so e.g. vm-NNN-cloudinit
+        // is not reported as orphaned (WS0002).
+        // Separately, accumulate allocated disk size per storage for the thin provisioning
+        // check — only real data disks count, CD-ROM/cloud-init are not provisioned.
         var allocatedByStorage = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
         {
             var config = _vmConfigs[item.VmId];
 
-            foreach (var disk in config.Disks)
+            foreach (var disk in config.DisksAll)
             {
                 storagesImages.RemoveAll(a => a.VmId == item.VmId
                                               && a.Storage == disk.Storage
                                               && a.FileName == disk.FileName);
+            }
 
-                // Parse PVE disk size string (e.g. "32G", "500M") to bytes
-                // Exclude LXC mount points (mp*): they may be bind mounts reporting
-                // the full device/pool capacity rather than thin-allocated size.
-                // Only count volumes with no explicit MountPoint (QEMU disks, LXC rootfs).
+            // Parse PVE disk size string (e.g. "32G", "500M") to bytes.
+            // Exclude LXC mount points (mp*): they may be bind mounts reporting
+            // the full device/pool capacity rather than thin-allocated size.
+            // Only count volumes with no explicit MountPoint (QEMU disks, LXC rootfs).
+            foreach (var disk in config.Disks)
+            {
                 if (string.IsNullOrWhiteSpace(disk.MountPoint)
                     && !string.IsNullOrWhiteSpace(disk.Storage)
                     && !string.IsNullOrWhiteSpace(disk.Size))
