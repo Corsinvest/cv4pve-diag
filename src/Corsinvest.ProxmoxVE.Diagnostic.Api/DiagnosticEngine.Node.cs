@@ -36,32 +36,37 @@ public partial class DiagnosticEngine
                                    IEnumerable<NodeNetwork> Networks);
 
     private record NodeFetchData(ClusterResource Item,
-                                 NodeSubscription Subscription,
-                                 IEnumerable<NodeService> Services,
-                                 IEnumerable<NodeCertificate> Certificates,
-                                 IEnumerable<NodeReplication> Replication,
-                                 IEnumerable<NodeAptUpdate> AptUpdate,
-                                 IEnumerable<NodeHardwarePci> PciDevices,
-                                 IEnumerable<NodeTask> Tasks,
-                                 IEnumerable<NodeDiskList> Disks,
-                                 IEnumerable<NodeDiskZfs> ZfsList,
-                                 IEnumerable<NodeDiskLvmThin> LvmThinList);
+                                 NodeSubscription? Subscription,
+                                 IReadOnlyList<NodeService> Services,
+                                 IReadOnlyList<NodeCertificate> Certificates,
+                                 IReadOnlyList<NodeReplication> Replication,
+                                 IReadOnlyList<NodeAptUpdate> AptUpdate,
+                                 IReadOnlyList<NodeHardwarePci> PciDevices,
+                                 IReadOnlyList<NodeTask> Tasks,
+                                 IReadOnlyList<NodeDiskList> Disks,
+                                 IReadOnlyList<NodeDiskZfs> ZfsList,
+                                 IReadOnlyList<NodeDiskLvmThin> LvmThinList);
 
     private async Task<NodeFetchData> FetchNodeDataAsync(ClusterResource item)
     {
         var api = client.Nodes[item.Node];
-        var subscriptionTask = api.Subscription.GetAsync();
-        var servicesTask = api.Services.GetAsync();
-        var certificatesTask = api.Certificates.Info.GetAsync();
-        var replicationTask = api.Replication.GetAsync();
-        var aptUpdateTask = api.Apt.Update.GetAsync();
-        var pciTask = api.Hardware.Pci.GetAsync();
-        var tasksTask = api.Tasks.GetAsync(errors: true, limit: 1000);
-        var disksListTask = api.Disks.List.GetAsync(include_partitions: false);
-        var zfsListTask = api.Disks.Zfs.GetAsync();
+        var id = item.GetWebUrl();
+        var node = item.Node;
+
+        // Each call is individually safe: a single failing endpoint degrades to an empty
+        // list / null and records a finding, without aborting the other node data.
+        var subscriptionTask = api.Subscription.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Node, $"subscription on node '{node}'");
+        var servicesTask = api.Services.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"services on node '{node}'");
+        var certificatesTask = api.Certificates.Info.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"certificates on node '{node}'");
+        var replicationTask = api.Replication.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"replication on node '{node}'");
+        var aptUpdateTask = api.Apt.Update.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"APT updates on node '{node}'");
+        var pciTask = api.Hardware.Pci.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"PCI devices on node '{node}'");
+        var tasksTask = api.Tasks.GetAsync(errors: true, limit: 1000).ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"task history on node '{node}'");
+        var disksListTask = api.Disks.List.GetAsync(include_partitions: false).ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"disks on node '{node}'");
+        var zfsListTask = api.Disks.Zfs.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"ZFS pools on node '{node}'");
         var lvmThinListTask = settings.Node.NodeStorage.LvmThinMetadata
-                                    ? api.Disks.Lvmthin.GetAsync()
-                                    : Task.FromResult<IEnumerable<NodeDiskLvmThin>>([]);
+                                    ? api.Disks.Lvmthin.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"LVM-thin metadata on node '{node}'")
+                                    : Task.FromResult<IReadOnlyList<NodeDiskLvmThin>>([]);
         await Task.WhenAll(subscriptionTask, servicesTask, certificatesTask, replicationTask,
                            aptUpdateTask, pciTask, tasksTask, disksListTask, zfsListTask, lvmThinListTask);
 
@@ -74,41 +79,64 @@ public partial class DiagnosticEngine
                                  pciTask.Result,
                                  tasksTask.Result,
                                  disksListTask.Result,
-                                 zfsListTask.Result ?? [],
-                                 lvmThinListTask.Result ?? []);
+                                 zfsListTask.Result,
+                                 lvmThinListTask.Result);
     }
 
     private async Task CheckNodesAsync(bool hasCluster)
     {
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
 
-        // Pre-fetch lightweight per-node data — nodes in parallel, 8 calls per node in parallel
+        // Pre-fetch lightweight per-node data — nodes in parallel, 8 calls per node in parallel.
+        // These are the node's foundational data (version, status, network, …) used together by
+        // most node checks. If any of them fails the whole node is skipped (with a finding) rather
+        // than carrying half-populated state into every downstream check.
         var nodeCompareResults = await RunParallelAsync(onlineNodes, async item =>
         {
-            var api = client.Nodes[item.Node];
-            var versionTask = api.Version.GetAsync();
-            var hostsTask = api.Hosts.GetEtcHosts();
-            var dnsTask = api.Dns.GetAsync();
-            var aptVersionsTask = api.Apt.Versions.GetAsync();
-            var statusTask = api.Status.GetAsync();
-            var aptRepositoriesTask = api.Apt.Repositories.GetAsync();
-            var networksTask = api.Network.GetAsync();
-            var timeTask = api.Time.Time();
-            await Task.WhenAll(versionTask, hostsTask, dnsTask, aptVersionsTask,
-                               statusTask, aptRepositoriesTask, networksTask, timeTask);
+            var id = item.GetWebUrl();
+            try
+            {
+                var api = client.Nodes[item.Node];
+                var versionTask = api.Version.GetAsync();
+                var hostsTask = api.Hosts.GetEtcHosts();
+                var dnsTask = api.Dns.GetAsync();
+                var aptVersionsTask = api.Apt.Versions.GetAsync();
+                var statusTask = api.Status.GetAsync();
+                var aptRepositoriesTask = api.Apt.Repositories.GetAsync();
+                var networksTask = api.Network.GetAsync();
+                var timeTask = api.Time.Time();
+                await Task.WhenAll(versionTask, hostsTask, dnsTask, aptVersionsTask,
+                                   statusTask, aptRepositoriesTask, networksTask, timeTask);
 
-            var timeRaw = timeTask.Result.ToData();
-            return (item.Node, Data: new NodeCompareData(versionTask.Result,
-                                                         ((string)hostsTask.Result.ToData().data).Split('\n'),
-                                                         dnsTask.Result,
-                                                         timeRaw.timezone as string ?? "",
-                                                         aptVersionsTask.Result,
-                                                         statusTask.Result,
-                                                         timeRaw.time is long t ? t : 0L,
-                                                         aptRepositoriesTask.Result,
-                                                         networksTask.Result));
+                var timeRaw = timeTask.Result.ToData();
+                return (item.Node, Data: (NodeCompareData?)new NodeCompareData(versionTask.Result,
+                                                             ((string)hostsTask.Result.ToData().data).Split('\n'),
+                                                             dnsTask.Result,
+                                                             timeRaw.timezone as string ?? "",
+                                                             aptVersionsTask.Result,
+                                                             statusTask.Result,
+                                                             timeRaw.time is long t ? t : 0L,
+                                                             aptRepositoriesTask.Result,
+                                                             networksTask.Result));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = DiagnosticSafeExtensions.ApiErrorCode,
+                    Description = $"Unable to read node data for '{item.Node}': {(ex is PveResultException pex ? DiagnosticSafeExtensions.BuildApiErrorMessage(pex.Result) : ex.Message)}",
+                    Context = DiagnosticResultContext.Node,
+                    SubContext = "ApiError",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+                return (item.Node, Data: (NodeCompareData?)null);
+            }
         });
-        var nodeCompareData = nodeCompareResults.ToDictionary(r => r.Node, r => r.Data);
+        // Nodes whose foundational data failed to load are dropped here (a finding was already
+        // recorded). Downstream checks index/iterate this dictionary, so it holds only good nodes.
+        var nodeCompareData = nodeCompareResults.Where(r => r.Data != null)
+                                                .ToDictionary(r => r.Node, r => r.Data!);
 
         // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
         var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);
@@ -174,8 +202,11 @@ public partial class DiagnosticEngine
                 continue;
             }
 
+            // Node data failed to load — the failure was already recorded, skip this node.
+            if (!nodeCompareData.TryGetValue(item.Node, out var compareData)) { continue; }
+
             var nodeApi = client.Nodes[item.Node];
-            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, aptRepositories, networks) = nodeCompareData[item.Node];
+            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, aptRepositories, networks) = compareData;
             if (!int.TryParse(version.Version?.Split(".")[0], out var nodeVersion)) { continue; }
 
             #region End Of Life
@@ -197,8 +228,10 @@ public partial class DiagnosticEngine
             var fetch = nodeFetchData[item.Node];
 
             #region Subscription
-            // Without an active subscription the node uses the community repo and has no enterprise support
-            if (!fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase))
+            // Without an active subscription the node uses the community repo and has no enterprise support.
+            // Subscription is null when its fetch failed — the failure was already recorded, so just skip.
+            if (fetch.Subscription != null
+                && !fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase))
             {
                 _result.Add(new DiagnosticResult
                 {

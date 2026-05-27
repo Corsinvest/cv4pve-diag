@@ -28,18 +28,21 @@ public partial class DiagnosticEngine
 
     private record VmFetchData(ClusterResource Item,
                                VmConfigQemu Config,
-                               VmFirewallOptions Firewall,
-                               IEnumerable<KeyValue> Pending,
-                               IEnumerable<VmSnapshot> Snapshots,
+                               VmFirewallOptions? Firewall,
+                               IReadOnlyList<KeyValue> Pending,
+                               IReadOnlyList<VmSnapshot> Snapshots,
                                object? AgentInfo);
 
     private async Task<VmFetchData> FetchVmDataAsync(ClusterResource item)
     {
         var vmApi = client.Nodes[item.Node].Qemu[item.VmId];
+        var id = item.GetWebUrl();
         var config = (VmConfigQemu)_vmConfigs[item.VmId];
-        var firewallTask = vmApi.Firewall.Options.GetAsync();
-        var pendingTask = vmApi.Pending.GetAsync();
-        var snapshotTask = settings.Snapshot.Enabled ? vmApi.Snapshot.GetAsync() : Task.FromResult<IEnumerable<VmSnapshot>>([]);
+        var firewallTask = vmApi.Firewall.Options.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Qemu, $"firewall options of VM {item.VmId}");
+        var pendingTask = vmApi.Pending.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Qemu, $"pending changes of VM {item.VmId}");
+        var snapshotTask = settings.Snapshot.Enabled
+                            ? vmApi.Snapshot.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Qemu, $"snapshots of VM {item.VmId}")
+                            : Task.FromResult<IReadOnlyList<VmSnapshot>>([]);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
 
         object? agentInfo = null;
@@ -508,7 +511,8 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Firewall and IP filter
-            CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Qemu);
+            // Firewall is null when its fetch failed — the failure was already recorded, so skip.
+            if (fetch.Firewall != null) { CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Qemu); }
             #endregion
 
             #region USB/PCI passthrough
