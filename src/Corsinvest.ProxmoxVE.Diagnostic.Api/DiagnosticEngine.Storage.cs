@@ -35,8 +35,23 @@ public partial class DiagnosticEngine
 
     private async Task CheckStorageAsync()
     {
-        // Storage not reachable from the node — VMs on that node cannot read/write
-        _result.AddRange(_storageResources.Where(a => !a.IsAvailable)
+        // Storage deliberately disabled by the admin — not a fault, but worth surfacing
+        // (backup jobs / guests may still point at it). Reported separately from a real outage below.
+        _result.AddRange(_storageResources.Where(a => string.Equals(a.Status, "disabled", StringComparison.OrdinalIgnoreCase))
+                                          .Select(a => new DiagnosticResult
+                                          {
+                                              Id = a.GetWebUrl(),
+                                              ErrorCode = "WS0008",
+                                              Description = $"Storage '{a.Storage}' is disabled",
+                                              Context = DiagnosticResultContext.Storage,
+                                              SubContext = "Status",
+                                              Gravity = DiagnosticResultGravity.Warning,
+                                          }));
+
+        // Storage not reachable from the node — VMs on that node cannot read/write.
+        // Excludes storages disabled on purpose (handled above) — those are not a fault.
+        _result.AddRange(_storageResources.Where(a => !a.IsAvailable
+                                                      && !string.Equals(a.Status, "disabled", StringComparison.OrdinalIgnoreCase))
                                           .Select(a => new DiagnosticResult
                                           {
                                               Id = a.GetWebUrl(),

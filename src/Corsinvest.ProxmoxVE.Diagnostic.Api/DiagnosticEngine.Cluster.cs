@@ -89,8 +89,9 @@ public partial class DiagnosticEngine
     {
         // Cluster without any HA resource configured — no automatic failover on node failure
         var haResourcesTask = client.Cluster.Ha.Resources.GetAsync();
+        var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync();
         var replJobsTask = client.Cluster.Replication.GetAsync();
-        await Task.WhenAll(haResourcesTask, replJobsTask);
+        await Task.WhenAll(haResourcesTask, haStatusTask, replJobsTask);
 
         if (!haResourcesTask.Result.Any())
         {
@@ -105,6 +106,21 @@ public partial class DiagnosticEngine
             });
         }
 
+        // HA service in error state — the resource is not running and will not be recovered automatically
+        _result.AddRange(haStatusTask.Result
+                            .Where(a => a.Type == "service"
+                                        && !string.IsNullOrWhiteSpace(a.State)
+                                        && a.State.Equals("error", StringComparison.OrdinalIgnoreCase))
+                            .Select(a => new DiagnosticResult
+                            {
+                                Id = $"cluster/ha/{a.Sid}",
+                                ErrorCode = "CC0005",
+                                Description = $"HA resource '{a.Sid}' is in error state on node '{a.Node}' — manual recovery required",
+                                Context = DiagnosticResultContext.Cluster,
+                                SubContext = "HA",
+                                Gravity = DiagnosticResultGravity.Critical,
+                            }));
+
         // Cluster without any replication job — no storage redundancy between nodes
         if (!replJobsTask.Result.Any())
         {
@@ -118,6 +134,30 @@ public partial class DiagnosticEngine
                 Gravity = DiagnosticResultGravity.Info,
             });
         }
+
+        // Disabled replication job — the guest's data is no longer kept in sync on the target node
+        _result.AddRange(replJobsTask.Result.Where(a => a.Disable)
+                                            .Select(a => new DiagnosticResult
+                                            {
+                                                Id = $"cluster/replication/{a.Id}",
+                                                ErrorCode = "WC0009",
+                                                Description = $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) is disabled — data is no longer replicated",
+                                                Context = DiagnosticResultContext.Cluster,
+                                                SubContext = "Replication",
+                                                Gravity = DiagnosticResultGravity.Warning,
+                                            }));
+
+        // Enabled replication job without a schedule — it will never run automatically
+        _result.AddRange(replJobsTask.Result.Where(a => !a.Disable && string.IsNullOrWhiteSpace(a.Schedule))
+                                            .Select(a => new DiagnosticResult
+                                            {
+                                                Id = $"cluster/replication/{a.Id}",
+                                                ErrorCode = "WC0010",
+                                                Description = $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) has no schedule — it will never run automatically",
+                                                Context = DiagnosticResultContext.Cluster,
+                                                SubContext = "Replication",
+                                                Gravity = DiagnosticResultGravity.Warning,
+                                            }));
     }
 
     private async Task CheckClusterQuorumAndHaAsync(IEnumerable<ClusterStatus> clusterStatus,
@@ -280,10 +320,14 @@ public partial class DiagnosticEngine
         var accessUsersTask = client.Access.Users.GetAsync();
         var tfaEntriesTask = client.Access.Tfa.GetAsync();
         var aclsTask = client.Access.Acl.GetAsync();
-        await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask);
+        var groupsTask = client.Access.Groups.GetAsync();
+        var rolesTask = client.Access.Roles.GetAsync();
+        await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask);
         var accessUsers = accessUsersTask.Result;
         var tfaEntries = tfaEntriesTask.Result;
         var acls = aclsTask.Result;
+        var groups = groupsTask.Result;
+        var roles = rolesTask.Result;
 
         var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any() is true)
                                      .Select(t => t.UserId)
@@ -376,5 +420,44 @@ public partial class DiagnosticEngine
                                             Gravity = DiagnosticResultGravity.Info,
                                         }));
         }
+
+        // Enabled users without an email — notifications (backup failures, fencing, etc.) cannot reach them
+        _result.AddRange(accessUsers.Where(a => a.Enable && string.IsNullOrWhiteSpace(a.Email))
+                                    .Select(a => new DiagnosticResult
+                                    {
+                                        Id = $"access/users/{a.Id}",
+                                        ErrorCode = "IC0007",
+                                        Description = $"User '{a.Id}' has no email configured — will not receive notifications",
+                                        Context = DiagnosticResultContext.Cluster,
+                                        SubContext = "Access",
+                                        Gravity = DiagnosticResultGravity.Info,
+                                    }));
+
+        // Empty groups — no users assigned, usually leftover configuration
+        _result.AddRange(groups.Where(a => string.IsNullOrWhiteSpace(a.Users))
+                               .Select(a => new DiagnosticResult
+                               {
+                                   Id = $"access/groups/{a.Id}",
+                                   ErrorCode = "IC0008",
+                                   Description = $"Group '{a.Id}' has no members",
+                                   Context = DiagnosticResultContext.Cluster,
+                                   SubContext = "Access",
+                                   Gravity = DiagnosticResultGravity.Info,
+                               }));
+
+        // Custom roles not referenced by any ACL — dead configuration
+        var rolesInUse = acls.Where(a => !string.IsNullOrWhiteSpace(a.Roleid))
+                             .Select(a => a.Roleid)
+                             .ToHashSet();
+        _result.AddRange(roles.Where(a => a.Special == 0 && !rolesInUse.Contains(a.Id))
+                              .Select(a => new DiagnosticResult
+                              {
+                                  Id = $"access/roles/{a.Id}",
+                                  ErrorCode = "IC0009",
+                                  Description = $"Custom role '{a.Id}' is not assigned in any ACL — unused",
+                                  Context = DiagnosticResultContext.Cluster,
+                                  SubContext = "Access",
+                                  Gravity = DiagnosticResultGravity.Info,
+                              }));
     }
 }
