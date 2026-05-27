@@ -156,8 +156,11 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | No quorum                           | CC0001 | Quorum      | Critical | Cluster has lost quorum — VM operations may be blocked                   |
 | Corosync expected_votes mismatch    | CC0002 | Quorum      | Critical | Corosync expected votes does not match online node count                 |
 | HA group with offline nodes         | CC0003 | HA          | Critical | HA group references nodes that are currently offline                     |
+| HA resource in error state          | CC0005 | HA          | Critical | HA service is in error state — manual recovery required                  |
 | No HA resources configured          | IC0002 | HA          | Info     | No VMs/CTs protected by HA — no automatic failover on node failure       |
 | No replication jobs configured      | IC0003 | Replication | Info     | No storage replication configured — no redundant copy across nodes       |
+| Replication job disabled            | WC0009 | Replication | Warning  | Replication job is disabled — guest data is no longer replicated         |
+| Replication job no schedule         | WC0010 | Replication | Warning  | Enabled replication job has no schedule — it will never run              |
 | Pool empty                          | IC0004 | Pool        | Info     | Resource pool exists but has no VMs or storage assigned                  |
 | Cluster firewall disabled           | WC0003 | Firewall    | Warning  | Cluster-level firewall is completely disabled                            |
 | Firewall policy not DROP            | WC0004 | Firewall    | Warning  | Inbound or outbound policy allows unmatched traffic through              |
@@ -168,7 +171,12 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | Overly broad permissions            | WC0005 | Access      | Warning  | User has Administrator role at root path `/` — prefer scoped permissions |
 | Disabled user with active API token | WC0006 | Access      | Warning  | Disabled user still has valid API tokens that should be revoked          |
 | Local user no expiration            | IC0005 | Access      | Info     | Local user has no expiration date configured                             |
-| API token no expiration             | IC0006 | Access      | Info     | API token has no expiration date configured                              |
+| API token no expiration             | IC0006 | Access      | Info     | API token has no expiration date configured                             |
+| User without email                  | IC0007 | Access      | Info     | Enabled user has no email — will not receive notifications               |
+| Empty group                         | IC0008 | Access      | Info     | Group has no members                                                     |
+| Unused custom role                  | IC0009 | Access      | Info     | Custom role is not assigned in any ACL                                   |
+| Nodes PVE version mismatch          | WC0011 | Version     | Warning  | Online nodes run different Proxmox VE versions                           |
+| Nodes kernel mismatch               | WC0012 | Version     | Warning  | Online nodes run different kernel versions                               |
 
 </details>
 
@@ -187,9 +195,12 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | Nodes APT repos not equal          | WN0008        | AptRepositories  | Warning          | APT repository sources differ between nodes                                    |
 | NIC MTU mismatch                   | WN0009        | Network          | Warning          | Physical NIC MTU differs between nodes                                         |
 | NIC not active                     | WN0010        | Network          | Warning          | Physical NIC is down                                                           |
+| Bond without redundancy            | WN0034        | Network          | Warning          | Bond has fewer than two slaves — no link redundancy                            |
 | Package versions not equal         | CN0002        | PackageVersions  | Critical         | Nodes have different package versions installed                                |
 | Service not running                | WN0011        | Service          | Warning          | A required system service is not running                                       |
 | Certificate expired                | CN0003        | Certificates     | Critical         | TLS certificate has expired                                                    |
+| Certificate expiring soon          | WN0023        | Certificates     | Warning          | TLS certificate expires within 30 days                                         |
+| Certificate self-signed            | IN0004        | Certificates     | Info             | TLS certificate is self-signed — consider a CA-signed certificate              |
 | Replication errors                 | CN0004        | Replication      | Critical         | Replication job has errors                                                     |
 | Updates available                  | IN0001        | Update           | Info             | Packages available for update                                                  |
 | Important updates available        | WN0012        | Update           | Warning          | Security/important packages available for update                               |
@@ -237,7 +248,8 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 
 | Check                                | Code   | SubContext | Gravity          | Description                                                                         |
 | ------------------------------------ | ------ | ---------- | ---------------- | ----------------------------------------------------------------------------------- |
-| Storage unavailable                  | CS0001 | Status     | Critical         | Storage is not accessible                                                           |
+| Storage unavailable                  | CS0001 | Status     | Critical         | Storage is not accessible (excludes storages disabled on purpose)                   |
+| Storage disabled                     | WS0008 | Status     | Warning          | Storage is disabled — backup jobs or guests may still point at it                   |
 | Storage usage above threshold        | WS0001 | Usage      | Warning/Critical | Storage usage above configured threshold                                            |
 | Orphaned backup                      | WS0003 | Backup     | Warning          | Backup file whose VMID no longer exists                                             |
 | Orphaned disk image                  | WS0002 | Image      | Warning          | Disk image not attached to any VM/CT                                                |

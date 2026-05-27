@@ -13,6 +13,9 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
+    // Warn when a node TLS certificate expires within this many days.
+    private const int CertificateExpiringDays = 30;
+
     private static readonly Dictionary<int, DateTime> _pveEndOfLife = new()
     {
         { 8, new DateTime(2026, 08, 31) },
@@ -110,6 +113,48 @@ public partial class DiagnosticEngine
         // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
         var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);
         var nodeFetchData = nodeFetchResults.ToDictionary(r => r.Item.Node, r => r);
+
+        #region Cluster-wide version / kernel consistency
+        // Compared once across all online nodes (not per node) — mixed versions/kernels after a partial upgrade
+        if (hasCluster && nodeCompareData.Count > 1)
+        {
+            var pveVersions = nodeCompareData.Values
+                                             .Select(a => a.Version.Version)
+                                             .Where(a => !string.IsNullOrWhiteSpace(a))
+                                             .Distinct()
+                                             .ToList();
+            if (pveVersions.Count > 1)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = "cluster",
+                    ErrorCode = "WC0011",
+                    Description = $"Nodes run different Proxmox VE versions: {string.Join(", ", pveVersions)}",
+                    Context = DiagnosticResultContext.Cluster,
+                    SubContext = "Version",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+
+            var kernels = nodeCompareData.Values
+                                         .Select(a => a.Status?.CurrentKernel?.Release)
+                                         .Where(a => !string.IsNullOrWhiteSpace(a))
+                                         .Distinct()
+                                         .ToList();
+            if (kernels.Count > 1)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = "cluster",
+                    ErrorCode = "WC0012",
+                    Description = $"Nodes run different kernel versions: {string.Join(", ", kernels)}",
+                    Context = DiagnosticResultContext.Cluster,
+                    SubContext = "Version",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+        }
+        #endregion
 
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Node))
         {
@@ -315,6 +360,20 @@ public partial class DiagnosticEngine
                                          SubContext = "Network",
                                          Gravity = DiagnosticResultGravity.Warning,
                                      }));
+
+            // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
+            _result.AddRange(networks.Where(a => a.Type == "bond")
+                                     .Where(a => (a.Slaves ?? string.Empty)
+                                                    .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length < 2)
+                                     .Select(a => new DiagnosticResult
+                                     {
+                                         Id = id,
+                                         ErrorCode = "WN0034",
+                                         Description = $"Bond '{a.Interface}' has fewer than two slaves — no link redundancy",
+                                         Context = DiagnosticResultContext.Node,
+                                         SubContext = "Network",
+                                         Gravity = DiagnosticResultGravity.Warning,
+                                     }));
             #endregion
 
             #region Package Versions
@@ -378,6 +437,38 @@ public partial class DiagnosticEngine
                                   Context = DiagnosticResultContext.Node,
                                   SubContext = "Certificates",
                                   Gravity = DiagnosticResultGravity.Critical,
+                              }));
+
+            // Certificates expiring within the warning window — renew before they break access
+            var certExpiryLimit = _now.AddDays(CertificateExpiringDays);
+            _result.AddRange(fetch.Certificates
+                              .Where(a =>
+                              {
+                                  var notAfter = DateTimeOffset.FromUnixTimeSeconds(a.NotAfter);
+                                  return notAfter >= _now && notAfter < certExpiryLimit;
+                              })
+                              .Select(a => new DiagnosticResult
+                              {
+                                  Id = id,
+                                  ErrorCode = "WN0023",
+                                  Description = $"Certificate '{a.FileName}' expires on {DateTimeOffset.FromUnixTimeSeconds(a.NotAfter):yyyy-MM-dd} (within {CertificateExpiringDays} days)",
+                                  Context = DiagnosticResultContext.Node,
+                                  SubContext = "Certificates",
+                                  Gravity = DiagnosticResultGravity.Warning,
+                              }));
+
+            // Self-signed certificate (issuer == subject) — browsers and API clients will warn / refuse
+            _result.AddRange(fetch.Certificates
+                              .Where(a => !string.IsNullOrWhiteSpace(a.Issuer)
+                                          && a.Issuer == a.Subject)
+                              .Select(a => new DiagnosticResult
+                              {
+                                  Id = id,
+                                  ErrorCode = "IN0004",
+                                  Description = $"Certificate '{a.FileName}' is self-signed — consider a CA-signed certificate (e.g. ACME/Let's Encrypt)",
+                                  Context = DiagnosticResultContext.Node,
+                                  SubContext = "Certificates",
+                                  Gravity = DiagnosticResultGravity.Info,
                               }));
             #endregion
 
