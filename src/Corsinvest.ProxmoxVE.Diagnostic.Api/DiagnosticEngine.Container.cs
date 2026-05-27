@@ -14,16 +14,19 @@ public partial class DiagnosticEngine
 {
     private record ContainerFetchData(ClusterResource Item,
                                       VmConfigLxc Config,
-                                      VmFirewallOptions Firewall,
-                                      IEnumerable<KeyValue> Pending,
-                                      IEnumerable<VmSnapshot> Snapshots);
+                                      VmFirewallOptions? Firewall,
+                                      IReadOnlyList<KeyValue> Pending,
+                                      IReadOnlyList<VmSnapshot> Snapshots);
 
     private async Task<ContainerFetchData> FetchContainerDataAsync(ClusterResource item)
     {
         var vmApi = client.Nodes[item.Node].Lxc[item.VmId];
-        var firewallTask = vmApi.Firewall.Options.GetAsync();
-        var pendingTask = vmApi.Pending.GetAsync();
-        var snapshotTask = settings.Snapshot.Enabled ? vmApi.Snapshot.GetAsync() : Task.FromResult<IEnumerable<VmSnapshot>>([]);
+        var id = item.GetWebUrl();
+        var firewallTask = vmApi.Firewall.Options.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Lxc, $"firewall options of CT {item.VmId}");
+        var pendingTask = vmApi.Pending.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"pending changes of CT {item.VmId}");
+        var snapshotTask = settings.Snapshot.Enabled
+                            ? vmApi.Snapshot.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"snapshots of CT {item.VmId}")
+                            : Task.FromResult<IReadOnlyList<VmSnapshot>>([]);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
         return new ContainerFetchData(item, (VmConfigLxc)_vmConfigs[item.VmId],
                                       firewallTask.Result, pendingTask.Result, snapshotTask.Result);
@@ -43,7 +46,8 @@ public partial class DiagnosticEngine
             var id = item.GetWebUrl();
 
             #region Firewall and IP filter
-            CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Lxc);
+            // Firewall is null when its fetch failed — the failure was already recorded, so skip.
+            if (fetch.Firewall != null) { CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Lxc); }
             #endregion
 
             if (lxcConfig is VmConfigLxc lxc)

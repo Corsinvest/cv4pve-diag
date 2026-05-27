@@ -44,7 +44,27 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
         try
         {
-            var allResources = await client.Cluster.Resources.GetAsync();
+            IReadOnlyList<ClusterResource> allResources;
+            try
+            {
+                allResources = (await client.Cluster.Resources.GetAsync()).ToList();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The foundational call failed — there is nothing to analyze. Report it as
+                // critical and return cleanly instead of letting the exception crash the run.
+                _result.Add(new DiagnosticResult
+                {
+                    Id = "cluster",
+                    ErrorCode = "CU0001",
+                    Description = $"Unable to read cluster resources: {(ex is PveResultException pex ? DiagnosticSafeExtensions.BuildApiErrorMessage(pex.Result) : ex.Message)}",
+                    Context = DiagnosticResultContext.Cluster,
+                    SubContext = "ApiError",
+                    Gravity = DiagnosticResultGravity.Critical,
+                });
+                return _result;
+            }
+
             _resources = [.. allResources.Where(a => !a.IsUnknown)];
 
             // Resources with unknown type are always a problem — report them all as Critical
@@ -85,18 +105,31 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                                                   node,
                                                                   storages = settings.Backup.Enabled
                                                                                 ? await client.Nodes[node].Storage.GetAsync(content: "backup", enabled: true)
-                                                                                : []
+                                                                                                     .ToSafeEnum(_result, $"nodes/{node}", DiagnosticResultContext.Node, $"backup storages on node '{node}'")
+                                                                                : (IReadOnlyList<NodeStorage>)[]
                                                               });
-            _backupStoragesByNode = backupStorageResults.ToDictionary(a => a.node, a => a.storages);
+            _backupStoragesByNode = backupStorageResults.ToDictionary(a => a.node, a => (IEnumerable<NodeStorage>)a.storages);
 
-            // Pre-fetch VM configs once — shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync
+            // Pre-fetch VM configs once — shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync.
+            // A guest whose config cannot be read is skipped (excluded from the dictionary) so the
+            // checks that index _vmConfigs[VmId] never hit a null — the failure is recorded instead.
             var vmConfigResults = await RunParallelAsync(_resources.Where(a => a.ResourceType == ClusterResourceType.Vm),
                                                          async vm => new
                                                          {
                                                              vm.VmId,
                                                              config = await client.GetVmConfigAsync(vm.Node, vm.VmType, vm.VmId)
+                                                                                  .ToSafeSingle(_result,
+                                                                                                vm.GetWebUrl(),
+                                                                                                DiagnosticResult.DecodeContext(vm.Type),
+                                                                                                $"configuration of {vm.Type} {vm.VmId}")
                                                          });
-            _vmConfigs = vmConfigResults.ToDictionary(r => r.VmId, r => r.config);
+            _vmConfigs = vmConfigResults.Where(r => r.config != null)
+                                        .ToDictionary(r => r.VmId, r => r.config!);
+
+            // Guests whose config failed to load are not present in _vmConfigs — skip them in the
+            // per-guest checks below instead of indexing a missing key.
+            _resources = [.. _resources.Where(a => a.ResourceType != ClusterResourceType.Vm
+                                                   || _vmConfigs.ContainsKey(a.VmId))];
 
             await CheckStorageAsync();
             await CheckNodesAsync(hasCluster);

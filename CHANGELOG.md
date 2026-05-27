@@ -2,6 +2,37 @@
 
 ---
 
+## [Unreleased]
+
+### Resilience
+
+- A failing PVE API call no longer aborts the whole analysis. Each call now degrades gracefully: the affected check is skipped and a Warning (`WG0042`, sub-context `ApiError`) is reported so it is clear the picture is incomplete. Endpoints not implemented on the running PVE version (HTTP 501) are skipped silently.
+
+### New checks
+
+**Cluster:**
+- `CC0005` — HA resource in error state (manual recovery required).
+- `WC0009` — replication job disabled (guest data no longer replicated).
+- `WC0010` — enabled replication job without a schedule (it will never run).
+- `WC0011` — nodes run different Proxmox VE versions.
+- `WC0012` — nodes run different kernel versions.
+- `IC0007` — user without an email (will not receive notifications).
+- `IC0008` — empty group.
+- `IC0009` — unused custom role (not assigned in any ACL).
+
+**Node:**
+- `WN0023` — certificate expiring within 30 days.
+- `WN0034` — bond with fewer than two slaves (no link redundancy).
+- `IN0004` — self-signed certificate.
+
+**Storage:**
+- `WS0008` — storage disabled.
+
+### Fixes
+
+- `CS0001` (Storage unavailable) no longer fires for storages disabled on purpose — those are reported as `WS0008` (Warning) instead of a false Critical.
+
+
 ## [2.2.4] — 2026-05-14
 
 ### Fixes
