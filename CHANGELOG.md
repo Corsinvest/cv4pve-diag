@@ -2,7 +2,7 @@
 
 ---
 
-## [Unreleased]
+## [2.3.0] — 2026-05-27
 
 ### Resilience
 
