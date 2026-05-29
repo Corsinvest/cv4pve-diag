@@ -95,8 +95,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
             var pveMajorVersion = 8; // default to bookworm
             if (firstOnlineNode != null)
             {
-                var ver = await client.Nodes[firstOnlineNode.Node].Version.GetAsync();
-                _ = int.TryParse(ver.Version?.Split('.')[0], out pveMajorVersion);
+                var ver = await client.Nodes[firstOnlineNode.Node].Version.GetAsync()
+                                .ToSafeSingle(_result, firstOnlineNode.GetWebUrl(), DiagnosticResultContext.Node,
+                                              $"PVE version on node '{firstOnlineNode.Node}'");
+                if (ver != null) { _ = int.TryParse(ver.Version?.Split('.')[0], out pveMajorVersion); }
             }
 
             await FetchCveDataAsync(pveMajorVersion);

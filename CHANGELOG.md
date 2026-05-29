@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Resilience
+
+- All remaining cluster fetches are now resilient: a failing call (access, HA, replication, firewall options/rules, pools, status, log, tasks, RRD) no longer aborts the analysis. The affected check is skipped and a `WG0042` Warning is recorded, consistently with what was already in place for per-node and per-guest fetches.
+
 ### New checks
 
 **Access:**
