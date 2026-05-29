@@ -175,6 +175,20 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | User without email                  | IC0007 | Access      | Info     | Enabled user has no email — will not receive notifications               |
 | Empty group                         | IC0008 | Access      | Info     | Group has no members                                                     |
 | Unused custom role                  | IC0009 | Access      | Info     | Custom role is not assigned in any ACL                                   |
+| Admin via group without TFA         | WC0013 | Access      | Warning  | User has Administrator role via a group but no TFA configured            |
+| Disabled user still admin           | WC0014 | Access      | Warning  | Disabled user still has Administrator role on `/`                        |
+| Admin ACL not propagated            | IC0010 | Access      | Info     | Administrator role on `/` with Propagate disabled                        |
+| External realm without TFA          | IC0011 | Access      | Info     | LDAP/AD/OpenID realm does not enforce TFA at realm level                 |
+| root@pam token without privsep      | WC0015 | Access      | Warning  | root@pam API token has no privilege separation                           |
+| User expired but still enabled      | WC0016 | Access      | Warning  | User has expiration date in the past but is still enabled                |
+| Backup job without schedule         | WC0017 | Backup      | Warning  | Enabled backup job has no schedule — will never run                      |
+| Disabled backup job                 | IC0012 | Backup      | Info     | Backup job is disabled                                                   |
+| Backup task failed                  | WC0018 | Backup      | Warning  | Recent vzdump task ended with non-OK status                              |
+| Firewall without logging            | IC0013 | Firewall    | Info     | Cluster firewall has enabled rules but none configure logging            |
+| Many disabled firewall rules        | IC0014 | Firewall    | Info     | Cluster firewall has 10+ disabled rules — stale configuration            |
+| Cluster log has errors              | IC0015 | Log         | Info     | 10+ error-level entries in the cluster journal                           |
+| High task failure rate              | IC0016 | Tasks       | Info     | 10%+ of recent cluster tasks failed                                      |
+| Single-node "cluster"               | IC0017 | Topology    | Info     | Cluster has a single node — HA / quorum / replication ineffective       |
 | Nodes PVE version mismatch          | WC0011 | Version     | Warning  | Online nodes run different Proxmox VE versions                           |
 | Nodes kernel mismatch               | WC0012 | Version     | Warning  | Online nodes run different kernel versions                               |
 
