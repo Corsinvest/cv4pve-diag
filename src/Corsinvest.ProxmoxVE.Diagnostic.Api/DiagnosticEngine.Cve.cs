@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Helpers;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -21,8 +22,9 @@ public partial class DiagnosticEngine
 
     private static readonly string[] _cvssMetricKeys = ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"];
 
-    // Debian Tracker: package → CVE → (status, urgency) — filtered to the detected release at parse time
-    private record DebianCveEntry(string Status, string Urgency);
+    // Debian Tracker: package → CVE → (status, urgency, fixed_version) — filtered to the detected release at parse time.
+    // FixedVersion is null when the tracker has no fix yet, "" when fixed in the base package, otherwise the version that closes the CVE.
+    private record DebianCveEntry(string Status, string Urgency, string? FixedVersion);
 
     // NVD CVE entry — only what we need
     private record NvdCveEntry(string Id,
@@ -42,156 +44,176 @@ public partial class DiagnosticEngine
         httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd("cv4pve-diag/1.0");
 
         var tasks = new List<Task>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
 
-        if (settings.Cve.DebianTrackerEnabled)
-        {
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await using var stream = await httpClient.GetStreamAsync("https://security-tracker.debian.org/tracker/data/json", cts.Token);
-                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
-                    var result = new Dictionary<string, Dictionary<string, DebianCveEntry>>(StringComparer.OrdinalIgnoreCase);
-
-                    foreach (var pkg in doc.RootElement.EnumerateObject())
-                    {
-                        var cveMap = new Dictionary<string, DebianCveEntry>(StringComparer.OrdinalIgnoreCase);
-                        foreach (var cve in pkg.Value.EnumerateObject())
-                        {
-                            if (!cve.Value.TryGetProperty("releases", out var releases)) { continue; }
-
-                            // Filter at parse time — keep only the detected Debian release
-                            if (!releases.TryGetProperty(debianRelease, out var rel)) { continue; }
-
-                            var status = rel.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
-                            var urgency = rel.TryGetProperty("urgency", out var u) ? u.GetString() ?? "" : "";
-
-                            if (status != "open") { continue; }
-                            if (urgency is "unimportant" or "end-of-life") { continue; }
-
-                            cveMap[cve.Name] = new DebianCveEntry(status, urgency);
-                        }
-                        if (cveMap.Count > 0) { result[pkg.Name] = cveMap; }
-                    }
-                    _debianCveData = result;
-                }
-                catch { _debianCveData = []; }
-            }));
-        }
-
-        if (settings.Cve.NvdEnabled)
-        {
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    await using var stream = await httpClient.GetStreamAsync("https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=proxmox&resultsPerPage=100", cts.Token);
-                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
-                    var result = new List<NvdCveEntry>();
-                    if (!doc.RootElement.TryGetProperty("vulnerabilities", out var vulns)) { return; }
-
-                    foreach (var vuln in vulns.EnumerateArray())
-                    {
-                        if (!vuln.TryGetProperty("cve", out var cve)) { continue; }
-                        var id = cve.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
-
-                        // Description (English only)
-                        var desc = "";
-                        if (cve.TryGetProperty("descriptions", out var descs))
-                        {
-                            foreach (var d in descs.EnumerateArray())
-                            {
-                                if (d.TryGetProperty("lang", out var lang) && lang.GetString() == "en")
-                                {
-                                    desc = d.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
-                                    break;
-                                }
-                            }
-                        }
-
-                        // CVSS score — prefer v31, fallback v30, fallback v2
-                        double? score = null;
-                        string? severity = null;
-                        if (cve.TryGetProperty("metrics", out var metrics))
-                        {
-                            foreach (var metricKey in _cvssMetricKeys)
-                            {
-                                if (!metrics.TryGetProperty(metricKey, out var metricArr)) { continue; }
-                                foreach (var m in metricArr.EnumerateArray())
-                                {
-                                    if (!m.TryGetProperty("cvssData", out var cvssData)) { continue; }
-                                    if (cvssData.TryGetProperty("baseScore", out var bs)) { score = bs.GetDouble(); }
-                                    if (m.TryGetProperty("baseSeverity", out var sev)) { severity = sev.GetString(); }
-                                    else if (cvssData.TryGetProperty("baseSeverity", out var sev2)) { severity = sev2.GetString(); }
-                                    break;
-                                }
-                                if (score.HasValue) { break; }
-                            }
-                        }
-
-                        // Filter by MinCvssScore at parse time
-                        if (score < settings.Cve.MinCvssScore) { continue; }
-
-                        // Version range from CPE — first proxmox:virtual_environment entry
-                        string? versionStart = null, versionEnd = null;
-                        if (cve.TryGetProperty("configurations", out var configs))
-                        {
-                            foreach (var config in configs.EnumerateArray())
-                            {
-                                if (!config.TryGetProperty("nodes", out var nodes)) { continue; }
-                                foreach (var node in nodes.EnumerateArray())
-                                {
-                                    if (!node.TryGetProperty("cpeMatch", out var cpeMatches)) { continue; }
-                                    foreach (var cpe in cpeMatches.EnumerateArray())
-                                    {
-                                        if (!cpe.TryGetProperty("criteria", out var criteria)) { continue; }
-                                        if (!criteria.GetString()!.Contains("proxmox:virtual_environment", StringComparison.OrdinalIgnoreCase)) { continue; }
-                                        if (cpe.TryGetProperty("versionStartIncluding", out var vs)) { versionStart = vs.GetString(); }
-                                        if (cpe.TryGetProperty("versionEndExcluding", out var ve)) { versionEnd = ve.GetString(); }
-                                        else if (cpe.TryGetProperty("versionEndIncluding", out var vi)) { versionEnd = vi.GetString(); }
-                                        break;
-                                    }
-                                    if (versionStart != null || versionEnd != null) { break; }
-                                }
-                                if (versionStart != null || versionEnd != null) { break; }
-                            }
-                        }
-
-                        // Skip CVE with no CPE for proxmox:virtual_environment (Salt, Jenkins, Foreman, Terraform, etc.)
-                        if (versionStart == null && versionEnd == null) { continue; }
-
-                        // Skip CVE with no upper version bound — cannot determine if current version is affected
-                        if (string.IsNullOrWhiteSpace(versionEnd)) { continue; }
-
-                        result.Add(new NvdCveEntry(id, desc, score, severity, versionStart, versionEnd));
-                    }
-                    _nvdCveData = result;
-                }
-                catch { _nvdCveData = []; }
-            }));
-        }
+        if (settings.Cve.DebianTrackerEnabled) { tasks.Add(FetchDebianCveAsync(debianRelease)); }
+        if (settings.Cve.NvdEnabled) { tasks.Add(FetchNvdCveAsync()); }
 
         await Task.WhenAll(tasks);
     }
 
-    // Compare two version strings numerically segment by segment (e.g. "8.1.4" vs "7.2-3").
-    // Non-numeric segments are compared as strings. Returns negative if a < b, 0 if equal, positive if a > b.
-    private static int CompareVersions(string a, string b)
+    private async Task FetchDebianCveAsync(string debianRelease)
     {
-        var aParts = a.Split('.', '-');
-        var bParts = b.Split('.', '-');
-        var len = Math.Max(aParts.Length, bParts.Length);
-        for (var i = 0; i < len; i++)
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        try
         {
-            var aSeg = i < aParts.Length ? aParts[i] : "0";
-            var bSeg = i < bParts.Length ? bParts[i] : "0";
-            var cmp = int.TryParse(aSeg, out var aNum) && int.TryParse(bSeg, out var bNum)
-                        ? aNum.CompareTo(bNum)
-                        : string.Compare(aSeg, bSeg, StringComparison.OrdinalIgnoreCase);
-            if (cmp != 0) { return cmp; }
+            await using var stream = await httpClient.GetStreamAsync("https://security-tracker.debian.org/tracker/data/json", cts.Token);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
+            var result = new Dictionary<string, Dictionary<string, DebianCveEntry>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var pkg in doc.RootElement.EnumerateObject())
+            {
+                var cveMap = new Dictionary<string, DebianCveEntry>(StringComparer.OrdinalIgnoreCase);
+                foreach (var cve in pkg.Value.EnumerateObject())
+                {
+                    if (!cve.Value.TryGetProperty("releases", out var releases)) { continue; }
+
+                    // Filter at parse time — keep only the detected Debian release
+                    if (!releases.TryGetProperty(debianRelease, out var rel)) { continue; }
+
+                    var status = rel.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
+                    if (status != "open") { continue; }
+
+                    var urgency = rel.TryGetProperty("urgency", out var u) ? u.GetString() ?? "" : "";
+                    if (urgency is "unimportant" or "end-of-life") { continue; }
+
+                    var fixedVersion = rel.TryGetProperty("fixed_version", out var fv) ? fv.GetString() : null;
+
+                    cveMap[cve.Name] = new DebianCveEntry(status, urgency, fixedVersion);
+                }
+                if (cveMap.Count > 0) { result[pkg.Name] = cveMap; }
+            }
+            _debianCveData = result;
         }
-        return 0;
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Surface the failure as a finding instead of silently leaving the check empty —
+            // an empty result would otherwise read as "no CVEs found", giving a false sense of safety.
+            _debianCveData = [];
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster",
+                ErrorCode = DiagnosticSafeExtensions.ApiErrorCode,
+                Description = $"Unable to fetch Debian Security Tracker data: {ex.Message}",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "ApiError",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+    }
+
+    private async Task FetchNvdCveAsync()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        try
+        {
+            // Query by CPE (vs free-text keywordSearch=proxmox) so the server returns only
+            // Proxmox VE entries — no Salt/Jenkins/Foreman/Terraform noise to filter out client-side.
+            // resultsPerPage=2000 is the NVD maximum and comfortably covers all historical PVE CVEs.
+            await using var stream = await httpClient.GetStreamAsync("https://services.nvd.nist.gov/rest/json/cves/2.0?cpeName=cpe:2.3:a:proxmox:virtual_environment:*&resultsPerPage=2000", cts.Token);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
+            var result = new List<NvdCveEntry>();
+            if (!doc.RootElement.TryGetProperty("vulnerabilities", out var vulns)) { _nvdCveData = result; return; }
+
+            foreach (var vuln in vulns.EnumerateArray())
+            {
+                if (!vuln.TryGetProperty("cve", out var cve)) { continue; }
+                var id = cve.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
+
+                var (score, severity) = ExtractCvss(cve);
+
+                // A CVE with no CVSS score cannot be ranked for severity — skip rather than
+                // emit an Info finding with no actionable information.
+                if (score is null || score < settings.Cve.MinCvssScore) { continue; }
+
+                var (versionStart, versionEnd) = ExtractProxmoxVersionRange(cve);
+
+                // Without an upper version bound we cannot tell whether the installed version is affected.
+                // This also drops CVEs where the CPE only references other products.
+                if (string.IsNullOrWhiteSpace(versionEnd)) { continue; }
+
+                var desc = ExtractEnglishDescription(cve);
+                // A finding without a description is noise — skip it.
+                if (string.IsNullOrWhiteSpace(desc)) { continue; }
+
+                result.Add(new NvdCveEntry(id, desc, score, severity, versionStart, versionEnd));
+            }
+            _nvdCveData = result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _nvdCveData = [];
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster",
+                ErrorCode = DiagnosticSafeExtensions.ApiErrorCode,
+                Description = $"Unable to fetch NVD CVE data: {ex.Message}",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "ApiError",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
+    }
+
+    // English description, or empty if not present.
+    private static string ExtractEnglishDescription(JsonElement cve)
+    {
+        if (!cve.TryGetProperty("descriptions", out var descs)) { return ""; }
+        foreach (var d in descs.EnumerateArray())
+        {
+            if (d.TryGetProperty("lang", out var lang) && lang.GetString() == "en")
+            {
+                return d.TryGetProperty("value", out var v) ? v.GetString() ?? "" : "";
+            }
+        }
+        return "";
+    }
+
+    // CVSS base score + severity. Preference order v3.1 → v3.0 → v2, mirroring NVD's own ordering.
+    private static (double? Score, string? Severity) ExtractCvss(JsonElement cve)
+    {
+        if (!cve.TryGetProperty("metrics", out var metrics)) { return (null, null); }
+
+        foreach (var metricKey in _cvssMetricKeys)
+        {
+            if (!metrics.TryGetProperty(metricKey, out var metricArr)) { continue; }
+            foreach (var m in metricArr.EnumerateArray())
+            {
+                if (!m.TryGetProperty("cvssData", out var cvssData)) { continue; }
+                double? score = cvssData.TryGetProperty("baseScore", out var bs) ? bs.GetDouble() : null;
+                var severity = cvssData.TryGetProperty("baseSeverity", out var sev) ? sev.GetString() : null;
+                if (score.HasValue) { return (score, severity); }
+            }
+        }
+        return (null, null);
+    }
+
+    // Pulls (versionStartIncluding, versionEndExcluding|versionEndIncluding) from the first
+    // CPE entry that references proxmox:virtual_environment. The CPE filter is still needed
+    // even with cpeName= on the request: a CVE may include CPEs for other products too, and
+    // we must take the range from the right one.
+    private static (string? Start, string? End) ExtractProxmoxVersionRange(JsonElement cve)
+    {
+        if (!cve.TryGetProperty("configurations", out var configs)) { return (null, null); }
+        foreach (var config in configs.EnumerateArray())
+        {
+            if (!config.TryGetProperty("nodes", out var nodes)) { continue; }
+            foreach (var node in nodes.EnumerateArray())
+            {
+                if (!node.TryGetProperty("cpeMatch", out var cpeMatches)) { continue; }
+                foreach (var cpe in cpeMatches.EnumerateArray())
+                {
+                    if (!cpe.TryGetProperty("criteria", out var criteria)) { continue; }
+                    if (!criteria.GetString()!.Contains("proxmox:virtual_environment", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                    var start = cpe.TryGetProperty("versionStartIncluding", out var vs) ? vs.GetString() : null;
+                    string? end = null;
+                    if (cpe.TryGetProperty("versionEndExcluding", out var ve)) { end = ve.GetString(); }
+                    else if (cpe.TryGetProperty("versionEndIncluding", out var vi)) { end = vi.GetString(); }
+                    return (start, end);
+                }
+            }
+        }
+        return (null, null);
     }
 
     private void CheckNodeCve(string id, IEnumerable<NodeAptVersion> aptVersions)
@@ -201,11 +223,19 @@ public partial class DiagnosticEngine
         {
             foreach (var pkg in aptVersions)
             {
-                if (string.IsNullOrWhiteSpace(pkg.Package)) { continue; }
+                if (string.IsNullOrWhiteSpace(pkg.Package) || string.IsNullOrWhiteSpace(pkg.Version)) { continue; }
                 if (!_debianCveData.TryGetValue(pkg.Package, out var cveMap)) { continue; }
 
                 foreach (var (cveId, entry) in cveMap)
                 {
+                    // The installed package may already be at or beyond the fixed version published
+                    // by Debian Security; in that case the CVE is closed for us, skip it.
+                    if (!string.IsNullOrWhiteSpace(entry.FixedVersion)
+                        && DebianVersion.Compare(pkg.Version, entry.FixedVersion) >= 0)
+                    {
+                        continue;
+                    }
+
                     var gravity = entry.Urgency switch
                     {
                         "high" => DiagnosticResultGravity.Critical,
@@ -238,7 +268,7 @@ public partial class DiagnosticEngine
                 // Skip if installed pve-manager version is beyond the vulnerable range
                 if (!string.IsNullOrWhiteSpace(pveVerStr) && !string.IsNullOrWhiteSpace(cve.VersionEnd))
                 {
-                    if (CompareVersions(pveVerStr, cve.VersionEnd) > 0) { continue; }
+                    if (DebianVersion.Compare(pveVerStr, cve.VersionEnd) > 0) { continue; }
                 }
 
                 var gravity = cve.CvssScore switch
