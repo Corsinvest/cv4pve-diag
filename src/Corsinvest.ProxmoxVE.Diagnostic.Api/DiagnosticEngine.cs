@@ -23,6 +23,12 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     private Dictionary<long, VmConfig> _vmConfigs = [];
     private Dictionary<string, IEnumerable<NodeStorage>> _backupStoragesByNode = [];
 
+    // HA-resource ids (vmid) and guest-ids targeted by enabled replication jobs.
+    // Populated by CheckClusterHaAndReplicationAsync and consumed by per-guest checks
+    // (VmsWithoutHaResource, VmsWithoutReplication) — saves re-fetching for every guest.
+    private readonly HashSet<long> _haVmIds = [];
+    private readonly HashSet<long> _replicatedVmIds = [];
+
     // One entry per unique storage: shared storages appear once (deduped by name),
     // non-shared appear once per node. Used everywhere instead of filtering _resources.
     private List<ClusterResource> _storageResources = [];

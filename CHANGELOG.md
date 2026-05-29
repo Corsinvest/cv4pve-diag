@@ -4,6 +4,34 @@
 
 ## [Unreleased]
 
+### New checks
+
+**Access:**
+- `WC0013` — User holds Administrator role transitively via a group but has no TFA.
+- `WC0014` — Disabled user still has Administrator role on `/`.
+- `WC0015` — `root@pam` has API tokens with no privilege separation (token holds full root rights).
+- `WC0016` — User is still enabled past its expiration date.
+- `IC0010` — Administrator ACL on `/` with Propagate disabled — children resources do not inherit.
+- `IC0011` — External realm (LDAP / AD / OpenID) does not enforce TFA at realm level.
+
+**Backup:**
+- `WC0017` — Enabled backup job has no schedule — it will never run automatically.
+- `WC0018` — Recent backup task ended with a non-OK status.
+- `IC0012` — Backup job is currently disabled.
+
+**Firewall:**
+- `IC0013` — Cluster firewall has enabled rules but none configure logging — no audit trail.
+- `IC0014` — Cluster firewall has 10+ disabled rules — stale configuration.
+
+**Cluster:**
+- `IC0015` — 10+ error-level entries in the recent cluster journal.
+- `IC0016` — 10%+ of recent cluster tasks failed — investigate recurring errors.
+- `IC0017` — Cluster has a single node — HA, quorum and replication provide no real protection.
+
+**Per guest:**
+- `IG0015` — Running guest is not covered by any HA resource.
+- `WG0025` — HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data.
+
 ### CVE checks
 
 - `CN0014` / `WN0041` (Debian Security Tracker) — a CVE is no longer reported for a package that is already at or beyond the released fix. Removes most false positives on patched systems.

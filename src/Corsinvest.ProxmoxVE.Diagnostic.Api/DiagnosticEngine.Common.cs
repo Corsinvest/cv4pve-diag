@@ -279,6 +279,41 @@ public partial class DiagnosticEngine
                         ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
                         : 0.0;
         CheckHealthScore(_result, thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+
+        // HA / Replication coverage — only meaningful for running, non-template guests.
+        // IC0002 / IC0003 already cover the "no HA at all / no replication at all" cluster-wide cases;
+        // these two flag individual guests that are NOT covered when the cluster has HA/replication in use.
+        var resource = _resources.FirstOrDefault(r => r.VmId == vmId);
+        if (resource != null && !resource.IsTemplate && resource.IsRunning)
+        {
+            if (_haVmIds.Count > 0 && !_haVmIds.Contains(vmId))
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "IG0015",
+                    Description = "Guest is not managed by any HA resource — it will not be restarted automatically on node failure",
+                    Context = context,
+                    SubContext = "HA",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+            }
+
+            // If the guest is in HA on non-shared storage, replication is the only way the failover target
+            // has a recent copy. Flag HA guests with no enabled replication job.
+            if (_haVmIds.Contains(vmId) && !_replicatedVmIds.Contains(vmId))
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = id,
+                    ErrorCode = "WG0025",
+                    Description = "HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data",
+                    Context = context,
+                    SubContext = "Replication",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+        }
     }
 
     private static void CheckTaskHistory(List<DiagnosticResult> result,

@@ -19,7 +19,7 @@ public partial class DiagnosticEngine
         var hasCluster = clusterConfigNodes.Any();
         _clusterBackups = clusterBackupTask.Result;
 
-        CheckClusterBackupCompression();
+        await CheckClusterBackupAsync();
 
         if (hasCluster)
         {
@@ -31,11 +31,50 @@ public partial class DiagnosticEngine
         await CheckClusterPoolsAsync();
         await CheckClusterFirewallAsync();
         await CheckClusterAccessAsync();
+        await CheckClusterLogAsync();
+
+        // Single-node "cluster": HA, quorum and replication are not effective.
+        // Counted independently of hasCluster so even a non-clustered single host gets the hint.
+        var nodeCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Node);
+        if (nodeCount == 1)
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster",
+                ErrorCode = "IC0017",
+                Description = "Cluster has a single node — HA, quorum and replication provide no real protection",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "Topology",
+                Gravity = DiagnosticResultGravity.Info,
+            });
+        }
 
         return hasCluster;
     }
 
-    private void CheckClusterBackupCompression()
+    private async Task CheckClusterLogAsync()
+    {
+        // 200 recent entries — enough to catch a burst of errors without dragging the whole journal.
+        var entries = await client.Cluster.Log.GetAsync(max: 200)
+                            .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster log");
+
+        // syslog priorities 0..3 are emerg/alert/crit/err — anything above is warning/info/debug.
+        var errors = entries.Count(e => e.Severity >= 0 && e.Severity <= 3);
+        if (errors >= 10)
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster",
+                ErrorCode = "IC0015",
+                Description = $"Cluster log has {errors} error-level entries in the last 200 — review the journal",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "Log",
+                Gravity = DiagnosticResultGravity.Info,
+            });
+        }
+    }
+
+    private async Task CheckClusterBackupAsync()
     {
         var backupList = _clusterBackups.ToList();
 
@@ -83,6 +122,69 @@ public partial class DiagnosticEngine
                                        SubContext = "Backup",
                                        Gravity = DiagnosticResultGravity.Warning,
                                    }));
+
+        // Enabled backup job with no schedule: it will never run automatically.
+        _result.AddRange(backupList.Where(a => a.Enabled && string.IsNullOrWhiteSpace(a.Schedule))
+                                   .Select(a => new DiagnosticResult
+                                   {
+                                       Id = $"cluster/backup/{a.Id}",
+                                       ErrorCode = "WC0017",
+                                       Description = $"Backup job '{a.Id}' is enabled but has no schedule — it will never run automatically",
+                                       Context = DiagnosticResultContext.Cluster,
+                                       SubContext = "Backup",
+                                       Gravity = DiagnosticResultGravity.Warning,
+                                   }));
+
+        // Disabled backup jobs: informational, often leftover configuration worth reviewing.
+        _result.AddRange(backupList.Where(a => !a.Enabled)
+                                   .Select(a => new DiagnosticResult
+                                   {
+                                       Id = $"cluster/backup/{a.Id}",
+                                       ErrorCode = "IC0012",
+                                       Description = $"Backup job '{a.Id}' is currently disabled",
+                                       Context = DiagnosticResultContext.Cluster,
+                                       SubContext = "Backup",
+                                       Gravity = DiagnosticResultGravity.Info,
+                                   }));
+
+        // Cluster-wide task feed — used here for recent backup failures and below for task error rate.
+        var clusterTasks = (await client.Cluster.Tasks.GetAsync()
+                                  .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster task feed"))
+                                  .ToList();
+
+        // Recent vzdump task that did not complete successfully — backup likely failed.
+        _result.AddRange(clusterTasks.Where(t => (t.Type?.StartsWith("vzdump", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                 && t.EndTime > 0
+                                                 && !string.Equals(t.Status, "OK", StringComparison.OrdinalIgnoreCase))
+                                     .Select(t => new DiagnosticResult
+                                     {
+                                         Id = $"nodes/{t.Node}",
+                                         ErrorCode = "WC0018",
+                                         Description = $"Backup task on node '{t.Node}' by '{t.User}' ended with status '{t.Status}'",
+                                         Context = DiagnosticResultContext.Cluster,
+                                         SubContext = "Backup",
+                                         Gravity = DiagnosticResultGravity.Warning,
+                                     }));
+
+        // Overall task failure rate — sustained failures across the cluster usually indicate a systemic issue.
+        var finishedTasks = clusterTasks.Where(t => t.EndTime > 0).ToList();
+        if (finishedTasks.Count >= 10)
+        {
+            var failed = finishedTasks.Count(t => !string.Equals(t.Status, "OK", StringComparison.OrdinalIgnoreCase));
+            var ratio = (double)failed / finishedTasks.Count;
+            if (ratio >= 0.10)
+            {
+                _result.Add(new DiagnosticResult
+                {
+                    Id = "cluster",
+                    ErrorCode = "IC0016",
+                    Description = $"Cluster task failure rate is {ratio:P0} ({failed}/{finishedTasks.Count}) — investigate recurring errors",
+                    Context = DiagnosticResultContext.Cluster,
+                    SubContext = "Tasks",
+                    Gravity = DiagnosticResultGravity.Info,
+                });
+            }
+        }
     }
 
     private async Task CheckClusterHaAndReplicationAsync()
@@ -92,6 +194,18 @@ public partial class DiagnosticEngine
         var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync();
         var replJobsTask = client.Cluster.Replication.GetAsync();
         await Task.WhenAll(haResourcesTask, haStatusTask, replJobsTask);
+
+        // Cache the guest ids referenced by HA / enabled replication so per-guest checks don't re-walk them.
+        foreach (var h in haResourcesTask.Result)
+        {
+            // Sid format is "<type>:<vmid>" — e.g. "vm:100", "ct:200".
+            var parts = (h.Sid ?? "").Split(':');
+            if (parts.Length == 2 && long.TryParse(parts[1], out var vmid)) { _haVmIds.Add(vmid); }
+        }
+        foreach (var r in replJobsTask.Result.Where(r => !r.Disable && !string.IsNullOrWhiteSpace(r.Guest)))
+        {
+            if (long.TryParse(r.Guest, out var vmid)) { _replicatedVmIds.Add(vmid); }
+        }
 
         if (!haResourcesTask.Result.Any())
         {
@@ -300,7 +414,7 @@ public partial class DiagnosticEngine
         }
 
         // Cluster firewall rules with source or dest 0.0.0.0/0 — overly permissive
-        var clusterRules = await client.Cluster.Firewall.Rules.GetAsync();
+        var clusterRules = (await client.Cluster.Firewall.Rules.GetAsync()).ToList();
         _result.AddRange(clusterRules.Where(r => r.Enable
                                                  && (r.Source == "0.0.0.0/0" || r.Dest == "0.0.0.0/0"))
                                      .Select(r => new DiagnosticResult
@@ -312,6 +426,39 @@ public partial class DiagnosticEngine
                                          SubContext = "Firewall",
                                          Gravity = DiagnosticResultGravity.Warning,
                                      }));
+
+        // Cluster firewall is enabled but no enabled rule has logging configured — no audit trail.
+        // "nolog" or empty disables logging; anything else (warning, info, debug, …) is considered logging.
+        var enabledRules = clusterRules.Where(r => r.Enable).ToList();
+        if (enabledRules.Count > 0
+            && !enabledRules.Any(r => !string.IsNullOrWhiteSpace(r.Log)
+                                      && !string.Equals(r.Log, "nolog", StringComparison.OrdinalIgnoreCase)))
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster/firewall/rules",
+                ErrorCode = "IC0013",
+                Description = $"Cluster firewall has {enabledRules.Count} enabled rules but none have logging configured — no audit trail",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "Firewall",
+                Gravity = DiagnosticResultGravity.Info,
+            });
+        }
+
+        // Many disabled rules cluster-wide — stale configuration accumulating noise.
+        var disabledCount = clusterRules.Count(r => !r.Enable);
+        if (disabledCount >= 10)
+        {
+            _result.Add(new DiagnosticResult
+            {
+                Id = "cluster/firewall/rules",
+                ErrorCode = "IC0014",
+                Description = $"Cluster firewall has {disabledCount} disabled rules — consider cleaning up stale configuration",
+                Context = DiagnosticResultContext.Cluster,
+                SubContext = "Firewall",
+                Gravity = DiagnosticResultGravity.Info,
+            });
+        }
     }
 
     private async Task CheckClusterAccessAsync()
@@ -322,12 +469,14 @@ public partial class DiagnosticEngine
         var aclsTask = client.Access.Acl.GetAsync();
         var groupsTask = client.Access.Groups.GetAsync();
         var rolesTask = client.Access.Roles.GetAsync();
-        await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask);
+        var domainsTask = client.Access.Domains.GetAsync();
+        await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask, domainsTask);
         var accessUsers = accessUsersTask.Result;
         var tfaEntries = tfaEntriesTask.Result;
         var acls = aclsTask.Result;
         var groups = groupsTask.Result;
         var roles = rolesTask.Result;
+        var domains = domainsTask.Result;
 
         var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any() is true)
                                      .Select(t => t.UserId)
@@ -459,5 +608,100 @@ public partial class DiagnosticEngine
                                   SubContext = "Access",
                                   Gravity = DiagnosticResultGravity.Info,
                               }));
+
+        // Groups holding Administrator role on '/': any enabled member without TFA is a security risk.
+        // WC0007 covers users with direct ACL; this covers users that get admin transitively via group.
+        var privilegedGroupIds = acls.Where(a => a.Path == "/" && a.Type == "group" && a.Roleid == "Administrator")
+                                     .Select(a => a.UsersGroupid)
+                                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var g in groups.Where(g => privilegedGroupIds.Contains(g.Id) && !string.IsNullOrWhiteSpace(g.Users)))
+        {
+            foreach (var member in g.Users.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (usersWithTfa.Contains(member)) { continue; }
+                var u = accessUsers.FirstOrDefault(x => string.Equals(x.Id, member, StringComparison.OrdinalIgnoreCase));
+                if (u != null && !u.Enable) { continue; }
+                _result.Add(new DiagnosticResult
+                {
+                    Id = $"access/users/{member}",
+                    ErrorCode = "WC0013",
+                    Description = $"User '{member}' has Administrator role via group '{g.Id}' but no TFA configured",
+                    Context = DiagnosticResultContext.Cluster,
+                    SubContext = "Access",
+                    Gravity = DiagnosticResultGravity.Warning,
+                });
+            }
+        }
+
+        // Disabled user that still has Administrator ACL on '/': leftover privilege from before deactivation.
+        var disabledUserIds = accessUsers.Where(u => !u.Enable)
+                                         .Select(u => u.Id)
+                                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _result.AddRange(acls.Where(a => a.Path == "/" && a.Type == "user" && a.Roleid == "Administrator"
+                                         && disabledUserIds.Contains(a.UsersGroupid))
+                             .Select(a => new DiagnosticResult
+                             {
+                                 Id = $"access/users/{a.UsersGroupid}",
+                                 ErrorCode = "WC0014",
+                                 Description = $"Disabled user '{a.UsersGroupid}' still has Administrator role on '/' — revoke the ACL entry",
+                                 Context = DiagnosticResultContext.Cluster,
+                                 SubContext = "Access",
+                                 Gravity = DiagnosticResultGravity.Warning,
+                             }));
+
+        // Administrator ACL on '/' with Propagate disabled: unusual, often a misconfiguration.
+        _result.AddRange(acls.Where(a => a.Path == "/" && a.Roleid == "Administrator" && a.Propagate == 0)
+                             .Select(a => new DiagnosticResult
+                             {
+                                 Id = "access/acl",
+                                 ErrorCode = "IC0010",
+                                 Description = $"{a.Type} '{a.UsersGroupid}' has Administrator role on '/' but Propagate is disabled — children resources do not inherit it",
+                                 Context = DiagnosticResultContext.Cluster,
+                                 SubContext = "Access",
+                                 Gravity = DiagnosticResultGravity.Info,
+                             }));
+
+        // External realm (LDAP/AD/OpenID) without realm-level TFA: weaker baseline than pve/pam where per-user TFA can be enforced.
+        _result.AddRange(domains.Where(d => string.IsNullOrWhiteSpace(d.Tfa)
+                                            && (string.Equals(d.Type, "ldap", StringComparison.OrdinalIgnoreCase)
+                                                || string.Equals(d.Type, "ad", StringComparison.OrdinalIgnoreCase)
+                                                || string.Equals(d.Type, "openid", StringComparison.OrdinalIgnoreCase)))
+                                .Select(d => new DiagnosticResult
+                                {
+                                    Id = $"access/domains/{d.Realm}",
+                                    ErrorCode = "IC0011",
+                                    Description = $"External realm '{d.Realm}' ({d.Type}) does not enforce TFA at realm level",
+                                    Context = DiagnosticResultContext.Cluster,
+                                    SubContext = "Access",
+                                    Gravity = DiagnosticResultGravity.Info,
+                                }));
+
+        // root@pam API tokens without privilege separation inherit full root rights — they should always be priv-separated.
+        if (root != null)
+        {
+            _result.AddRange(root.Tokens.Where(t => t.Privsep == 0)
+                                        .Select(t => new DiagnosticResult
+                                        {
+                                            Id = $"access/users/root@pam",
+                                            ErrorCode = "WC0015",
+                                            Description = $"root@pam token '{t.Id}' has no privilege separation — it has full root rights",
+                                            Context = DiagnosticResultContext.Cluster,
+                                            SubContext = "Access",
+                                            Gravity = DiagnosticResultGravity.Warning,
+                                        }));
+        }
+
+        // Enabled user whose expiration has already passed: account should have been deactivated.
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        _result.AddRange(accessUsers.Where(u => u.Enable && u.Expire > 0 && u.Expire < nowUnix)
+                                    .Select(u => new DiagnosticResult
+                                    {
+                                        Id = $"access/users/{u.Id}",
+                                        ErrorCode = "WC0016",
+                                        Description = $"User '{u.Id}' is enabled but expired on {DateTimeOffset.FromUnixTimeSeconds(u.Expire):yyyy-MM-dd} — account should be deactivated",
+                                        Context = DiagnosticResultContext.Cluster,
+                                        SubContext = "Access",
+                                        Gravity = DiagnosticResultGravity.Warning,
+                                    }));
     }
 }
