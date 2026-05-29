@@ -11,16 +11,8 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 public class SettingsCve
 {
     /// <summary>
-    /// Enable Debian Security Tracker checks.
-    /// Downloads CVE data for all Debian packages installed on each node.
-    /// Covers system packages (kernel, qemu, lxc, openssl, ...).
-    /// </summary>
-    public bool DebianTrackerEnabled { get; set; }
-
-    /// <summary>
-    /// Enable NVD checks for Proxmox-specific CVE.
-    /// Queries NVD API once with keywordSearch=proxmox to find CVE affecting PVE directly.
-    /// Optional API key speeds up the request (free at https://nvd.nist.gov/developers/request-an-api-key).
+    /// Enable NVD checks for Proxmox VE specific CVEs.
+    /// Queries the NVD API once with a Proxmox VE CPE filter.
     /// </summary>
     public bool NvdEnabled { get; set; }
 

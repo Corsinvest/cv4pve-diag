@@ -38,10 +38,12 @@
 
 ### CVE checks
 
-- `CN0014` / `WN0041` (Debian Security Tracker) — a CVE is no longer reported for a package that is already at or beyond the released fix. Removes most false positives on patched systems.
-- `CN0015` / `WN0042` (NVD) — the NVD query now targets Proxmox VE directly (CPE-based) instead of a generic keyword search, so no relevant historical CVE is missed and no unrelated product is reported.
-- Failures fetching CVE data now emit a `WG0042` warning instead of leaving the section silently empty.
-- CVE entries with no severity score or no description are skipped.
+- **Removed** the Debian Security Tracker check (`CN0014` / `WN0041`) and the `Cve.DebianTrackerEnabled` setting. PVE's `/apt/versions` API only exposes a curated list of Proxmox-distributed packages (`proxmox-ve`, `pve-manager`, kernel, `qemu-server`, …), which is not what the Debian Security Tracker indexes. The two sets do not overlap, so the check was producing zero findings by design. For a Debian-wide audit run `debsecan` directly on each node.
+- `CN0015` / `WN0042` (NVD) — the NVD query now uses `virtualMatchString` (instead of `cpeName` with a `*` version wildcard, which NVD rejects with 404), so the check actually runs and returns Proxmox VE CVEs across all versions.
+- NVD fetch failures now emit a `WG0042` warning instead of leaving the check silently empty.
+- NVD CVE entries with no CVSS score or no description are skipped.
+
+> **Migration:** if your `settings.json` contains `"DebianTrackerEnabled": true`, just remove that line. The rest of the `Cve` section keeps working as before.
 
 
 ## [2.3.0] — 2026-05-27

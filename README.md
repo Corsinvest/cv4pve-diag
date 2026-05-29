@@ -252,7 +252,6 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 | Root filesystem usage              | WN0029        | Usage            | Warning/Critical | Node root filesystem usage above configured threshold                          |
 | SWAP usage above threshold         | WN0030        | Usage            | Warning/Critical | Node SWAP usage above configured threshold — indicates RAM pressure             |
 | Unknown resource type              | CU0001        | Status           | Critical         | A cluster resource with an unknown type was detected                           |
-| Open CVE on installed package      | WN0041/CN0014 | CVE              | Warning/Critical | Installed package has an open CVE in the Debian security tracker               |
 | Proxmox VE CVE                     | WN0042/CN0015 | CVE              | Warning/Critical | A known CVE affects the installed Proxmox VE version                           |
 
 </details>
@@ -471,9 +470,8 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid --settings-file=s
   "MaxParallelRequests": 5, // global parallel API requests (1 = sequential)
   "ApiTimeout": 0,          // HTTP timeout in seconds (0 = 100s default)
   "Cve": {
-    "DebianTrackerEnabled": false, // check installed packages against Debian security advisories
     "NvdEnabled": false,           // check for CVEs specific to Proxmox VE (NVD API 2.0)
-    "MinCvssScore": 7.0,           // ignore CVEs below this CVSS score (NVD only)
+    "MinCvssScore": 7.0,           // ignore CVEs below this CVSS score
   },
 }
 ```
@@ -526,24 +524,7 @@ Parallelism means more simultaneous requests — if your cluster is slow or the 
 
 ## CVE Scanning
 
-cv4pve-diag can optionally check your cluster for known security vulnerabilities. Both sources are **disabled by default** and require internet access at runtime.
-
-### Debian Security Tracker
-
-Checks every installed package on each node against the Debian security advisory feed, automatically filtered to the Debian release that matches your PVE version (e.g. bookworm for PVE 8, bullseye for PVE 7).
-
-```jsonc
-"Cve": {
-  "DebianTrackerEnabled": true
-}
-```
-
-- Packages with open, high-severity vulnerabilities → **Critical** (`CN0014`)
-- Packages with open, medium or unrated vulnerabilities → **Warning** (`WN0041`)
-
-### NVD (Proxmox VE CVEs)
-
-Queries the NVD database for CVEs that specifically affect Proxmox VE. Only CVEs that apply to your installed version are reported. Requires no API key.
+cv4pve-diag can optionally check your cluster for Proxmox VE specific CVEs via the NVD (National Vulnerability Database) API. **Disabled by default**, requires internet access at runtime, no API key needed.
 
 ```jsonc
 "Cve": {
@@ -555,13 +536,16 @@ Queries the NVD database for CVEs that specifically affect Proxmox VE. Only CVEs
 - CVSS score ≥ 9.0 → **Critical** (`CN0015`)
 - CVSS score ≥ 7.0 → **Warning** (`WN0042`)
 
+Only CVEs that apply to your installed `pve-manager` version are reported (matched against the NVD version range).
+
+> **Scope.** This check covers Proxmox VE itself (`cpe:2.3:a:proxmox:virtual_environment`). For a Debian-wide system package audit run [`debsecan`](https://manpages.debian.org/bookworm/debsecan/debsecan.1.en.html) directly on each node — PVE's REST API does not expose the full installed package set, so it is not something diag can do remotely.
+
 ### Summary
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `Cve.DebianTrackerEnabled` | Check installed packages against Debian advisories | `false` |
 | `Cve.NvdEnabled` | Check for Proxmox VE CVEs via NVD | `false` |
-| `Cve.MinCvssScore` | Minimum CVSS score to report (NVD only) | `7.0` |
+| `Cve.MinCvssScore` | Minimum CVSS score to report | `7.0` |
 
 ---
 
