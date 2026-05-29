@@ -60,15 +60,15 @@ public partial class DiagnosticEngine
         // Build set of VM IDs managed by HA from already-loaded resources
         var haVmIds = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                            && !string.IsNullOrWhiteSpace(a.HaState))
-                               .Select(a => a.VmId)
-                               .ToHashSet();
+                                .Select(a => a.VmId)
+                                .ToHashSet();
 
         // vCPU overcommit check — sum of vCPUs per node vs physical CPUs
         // CpuSize on node resource = physical CPU count; on VM resource = assigned vCPUs
         foreach (var nodeGroup in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                        && a.VmType == VmType.Qemu
                                                        && !a.IsTemplate)
-                                           .GroupBy(a => a.Node))
+                                            .GroupBy(a => a.Node))
         {
             var nodeResource = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
                                                              && a.Node == nodeGroup.Key);
@@ -541,7 +541,8 @@ public partial class DiagnosticEngine
                                      config,
                                      fetch.Pending,
                                      fetch.Snapshots,
-                                     await client.Nodes[item.Node].Qemu[item.VmId].Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation),
+                                     await client.Nodes[item.Node].Qemu[item.VmId].Rrddata.GetAsync(settings.Qemu.Rrd.TimeFrame, settings.Qemu.Rrd.Consolidation)
+                                                 .ToSafeEnum(_result, id, DiagnosticResultContext.Qemu, $"RRD data for VM {item.VmId}"),
                                      DiagnosticResultContext.Qemu,
                                      item.Node,
                                      item.VmId,

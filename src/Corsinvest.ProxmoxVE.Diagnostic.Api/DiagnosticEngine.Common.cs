@@ -117,7 +117,9 @@ public partial class DiagnosticEngine
             {
                 foreach (var poolId in _clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
                 {
-                    var poolDetail = await client.Pools[poolId].GetAsync();
+                    var poolDetail = await client.Pools[poolId].GetAsync()
+                                           .ToSafeSingle(_result, $"pools/{poolId}", DiagnosticResultContext.Cluster, $"members of pool '{poolId}'");
+                    if (poolDetail == null) { continue; }
                     foundBackupConfig = poolDetail.Members.Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmId);
                     if (foundBackupConfig) { break; }
                 }

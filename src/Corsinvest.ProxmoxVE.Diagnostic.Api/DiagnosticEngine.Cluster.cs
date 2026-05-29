@@ -12,8 +12,10 @@ public partial class DiagnosticEngine
 {
     private async Task<bool> CheckClusterAsync(int pveMajorVersion)
     {
-        var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync();
-        var clusterBackupTask = client.Cluster.Backup.GetAsync();
+        var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync()
+                                            .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster config nodes");
+        var clusterBackupTask = client.Cluster.Backup.GetAsync()
+                                      .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster backup jobs");
         await Task.WhenAll(clusterConfigNodesTask, clusterBackupTask);
         var clusterConfigNodes = clusterConfigNodesTask.Result;
         var hasCluster = clusterConfigNodes.Any();
@@ -23,7 +25,8 @@ public partial class DiagnosticEngine
 
         if (hasCluster)
         {
-            var clusterStatus = await client.Cluster.Status.GetAsync();
+            var clusterStatus = await client.Cluster.Status.GetAsync()
+                                      .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster status");
             await CheckClusterQuorumAndHaAsync(clusterStatus, pveMajorVersion);
             await CheckClusterHaAndReplicationAsync();
         }
@@ -190,9 +193,12 @@ public partial class DiagnosticEngine
     private async Task CheckClusterHaAndReplicationAsync()
     {
         // Cluster without any HA resource configured — no automatic failover on node failure
-        var haResourcesTask = client.Cluster.Ha.Resources.GetAsync();
-        var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync();
-        var replJobsTask = client.Cluster.Replication.GetAsync();
+        var haResourcesTask = client.Cluster.Ha.Resources.GetAsync()
+                                    .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA resources");
+        var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync()
+                                 .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA status");
+        var replJobsTask = client.Cluster.Replication.GetAsync()
+                                 .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "replication jobs");
         await Task.WhenAll(haResourcesTask, haStatusTask, replJobsTask);
 
         // Cache the guest ids referenced by HA / enabled replication so per-guest checks don't re-walk them.
@@ -320,7 +326,8 @@ public partial class DiagnosticEngine
                                             .Select(a => a.Node)
                                             .ToHashSet();
 
-            foreach (var haGroup in await client.Cluster.Ha.Groups.GetAsync())
+            foreach (var haGroup in await client.Cluster.Ha.Groups.GetAsync()
+                                          .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA groups"))
             {
                 if (string.IsNullOrWhiteSpace(haGroup.Nodes)) { continue; }
                 var groupNodes = haGroup.Nodes.Split(',').Select(n => n.Split(':')[0].Trim());
@@ -343,7 +350,8 @@ public partial class DiagnosticEngine
 
     // Pools with no VMs and no storage assigned serve no purpose
     private async Task CheckClusterPoolsAsync()
-    => _result.AddRange((await client.Pools.GetAsync())
+    => _result.AddRange((await client.Pools.GetAsync()
+                                .ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "pools"))
                             .Where(a => !_resources.Any(r => r.Pool == a.Id))
                             .Select(a => new DiagnosticResult
                             {
@@ -357,7 +365,10 @@ public partial class DiagnosticEngine
 
     private async Task CheckClusterFirewallAsync()
     {
-        var clusterFwOptions = await client.Cluster.Firewall.Options.GetAsync();
+        var clusterFwOptions = await client.Cluster.Firewall.Options.GetAsync()
+                                     .ToSafeSingle(_result, "cluster", DiagnosticResultContext.Cluster, "cluster firewall options");
+        // If the fetch failed we already recorded a finding — nothing else this method can do.
+        if (clusterFwOptions == null) { return; }
 
         // Cluster firewall completely disabled — no traffic filtering at all
         if (!clusterFwOptions.Enable)
@@ -394,12 +405,16 @@ public partial class DiagnosticEngine
             }
         }
 
-        // Firewall enabled at cluster level but disabled on individual nodes — inconsistent protection
+        // Firewall enabled at cluster level but disabled on individual nodes — inconsistent protection.
+        // The per-node fetch is wrapped: a single faulty node degrades to null and is silently skipped
+        // (the failure was already recorded as a finding by ToSafeSingle).
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
-        var nodeFwResults = await RunParallelAsync(onlineNodes, node => client.Nodes[node.Node].Firewall.Options.GetAsync());
+        var nodeFwResults = await RunParallelAsync(onlineNodes,
+            node => client.Nodes[node.Node].Firewall.Options.GetAsync()
+                          .ToSafeSingle(_result, node.GetWebUrl(), DiagnosticResultContext.Node, $"firewall options on node '{node.Node}'"));
         foreach (var (node, nodeFwOptions) in onlineNodes.Zip(nodeFwResults))
         {
-            if (!nodeFwOptions.Enable)
+            if (nodeFwOptions != null && !nodeFwOptions.Enable)
             {
                 _result.Add(new DiagnosticResult
                 {
@@ -414,7 +429,8 @@ public partial class DiagnosticEngine
         }
 
         // Cluster firewall rules with source or dest 0.0.0.0/0 — overly permissive
-        var clusterRules = (await client.Cluster.Firewall.Rules.GetAsync()).ToList();
+        var clusterRules = (await client.Cluster.Firewall.Rules.GetAsync()
+                                  .ToSafeEnum(_result, "cluster/firewall/rules", DiagnosticResultContext.Cluster, "cluster firewall rules")).ToList();
         _result.AddRange(clusterRules.Where(r => r.Enable
                                                  && (r.Source == "0.0.0.0/0" || r.Dest == "0.0.0.0/0"))
                                      .Select(r => new DiagnosticResult
@@ -464,12 +480,12 @@ public partial class DiagnosticEngine
     private async Task CheckClusterAccessAsync()
     {
         // Local users (pam/pve realm) without expiration and tokens without expiration are a security risk
-        var accessUsersTask = client.Access.Users.GetAsync();
-        var tfaEntriesTask = client.Access.Tfa.GetAsync();
-        var aclsTask = client.Access.Acl.GetAsync();
-        var groupsTask = client.Access.Groups.GetAsync();
-        var rolesTask = client.Access.Roles.GetAsync();
-        var domainsTask = client.Access.Domains.GetAsync();
+        var accessUsersTask = client.Access.Users.GetAsync().ToSafeEnum(_result, "access/users", DiagnosticResultContext.Cluster, "access users");
+        var tfaEntriesTask = client.Access.Tfa.GetAsync().ToSafeEnum(_result, "access/tfa", DiagnosticResultContext.Cluster, "TFA entries");
+        var aclsTask = client.Access.Acl.GetAsync().ToSafeEnum(_result, "access/acl", DiagnosticResultContext.Cluster, "ACL entries");
+        var groupsTask = client.Access.Groups.GetAsync().ToSafeEnum(_result, "access/groups", DiagnosticResultContext.Cluster, "access groups");
+        var rolesTask = client.Access.Roles.GetAsync().ToSafeEnum(_result, "access/roles", DiagnosticResultContext.Cluster, "access roles");
+        var domainsTask = client.Access.Domains.GetAsync().ToSafeEnum(_result, "access/domains", DiagnosticResultContext.Cluster, "access domains");
         await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask, domainsTask);
         var accessUsers = accessUsersTask.Result;
         var tfaEntries = tfaEntriesTask.Result;

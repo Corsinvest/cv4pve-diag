@@ -182,7 +182,8 @@ public partial class DiagnosticEngine
                                      lxcConfig,
                                      fetch.Pending,
                                      fetch.Snapshots,
-                                     await client.Nodes[item.Node].Lxc[item.VmId].Rrddata.GetAsync(settings.Lxc.Rrd.TimeFrame, settings.Lxc.Rrd.Consolidation),
+                                     await client.Nodes[item.Node].Lxc[item.VmId].Rrddata.GetAsync(settings.Lxc.Rrd.TimeFrame, settings.Lxc.Rrd.Consolidation)
+                                                 .ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"RRD data for CT {item.VmId}"),
                                      DiagnosticResultContext.Lxc,
                                      item.Node,
                                      item.VmId,
