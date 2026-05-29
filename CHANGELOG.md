@@ -2,6 +2,16 @@
 
 ---
 
+## [Unreleased]
+
+### CVE checks
+
+- `CN0014` / `WN0041` (Debian Security Tracker) — a CVE is no longer reported for a package that is already at or beyond the released fix. Removes most false positives on patched systems.
+- `CN0015` / `WN0042` (NVD) — the NVD query now targets Proxmox VE directly (CPE-based) instead of a generic keyword search, so no relevant historical CVE is missed and no unrelated product is reported.
+- Failures fetching CVE data now emit a `WG0042` warning instead of leaving the section silently empty.
+- CVE entries with no severity score or no description are skipped.
+
+
 ## [2.3.0] — 2026-05-27
 
 ### Resilience
