@@ -31,4 +31,8 @@
     <PackageReference Include="Corsinvest.ProxmoxVE.Api.Extension" />
     <!-- <ProjectReference Include="..\..\..\cv4pve-api-dotnet\src\Corsinvest.ProxmoxVE.Api.Extension\Corsinvest.ProxmoxVE.Api.Extension.csproj" /> -->
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Corsinvest.ProxmoxVE.Diagnostic.Api.Tests" />
+  </ItemGroup>
 </Project>
