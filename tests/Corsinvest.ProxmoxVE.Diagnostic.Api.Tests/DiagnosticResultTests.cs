@@ -138,7 +138,10 @@ public class DiagnosticResultTests
     {
         var rule = new DiagnosticResult
         {
-            Id = ".*", ErrorCode = ".*", SubContext = ".*", Description = ".*",
+            Id = ".*",
+            ErrorCode = ".*",
+            SubContext = ".*",
+            Description = ".*",
             // Context left at default → should match any finding context
             Gravity = DiagnosticResultGravity.Warning,
         };
@@ -153,7 +156,10 @@ public class DiagnosticResultTests
     {
         var rule = new DiagnosticResult
         {
-            Id = ".*", ErrorCode = ".*", SubContext = ".*", Description = ".*",
+            Id = ".*",
+            ErrorCode = ".*",
+            SubContext = ".*",
+            Description = ".*",
             Context = DiagnosticResultContext.Qemu,
             // Gravity left at default (Info=0) → matches any
         };
@@ -180,8 +186,12 @@ public class DiagnosticResultTests
         DiagnosticResultGravity gravity = DiagnosticResultGravity.Warning)
         => new()
         {
-            Id = id, ErrorCode = errorCode, SubContext = subContext, Description = description,
-            Context = context, Gravity = gravity,
+            Id = id,
+            ErrorCode = errorCode,
+            SubContext = subContext,
+            Description = description,
+            Context = context,
+            Gravity = gravity,
         };
 
     private static DiagnosticResult MakeFinding(
@@ -193,7 +203,11 @@ public class DiagnosticResultTests
         DiagnosticResultGravity gravity = DiagnosticResultGravity.Warning)
         => new()
         {
-            Id = id, ErrorCode = errorCode, SubContext = subContext, Description = description,
-            Context = context, Gravity = gravity,
+            Id = id,
+            ErrorCode = errorCode,
+            SubContext = subContext,
+            Description = description,
+            Context = context,
+            Gravity = gravity,
         };
 }
