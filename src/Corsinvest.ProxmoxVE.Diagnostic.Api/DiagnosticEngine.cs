@@ -73,17 +73,21 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             _resources = [.. allResources.Where(a => !a.IsUnknown)];
 
-            // Resources with unknown type are always a problem — report them all as Critical
-            _result.AddRange(allResources.Where(a => a.IsUnknown)
-                                         .Select(a => new DiagnosticResult
-                                         {
-                                             Id = a.GetWebUrl(),
-                                             ErrorCode = "CU0001",
-                                             Description = $"Unknown resource {a.Type}",
-                                             Context = DiagnosticResult.DecodeContext(a.Type),
-                                             SubContext = "Status",
-                                             Gravity = DiagnosticResultGravity.Critical,
-                                         }));
+            // Resources with unknown type are always a problem — report them all as Critical.
+            // Per-item KO carries the originating context (the type-specific DecodeContext).
+            foreach (var a in allResources.Where(a => a.IsUnknown))
+            {
+                CreateResult(
+                    isOk: false,
+                    id: a.GetWebUrl(),
+                    errorCode: "CU0001",
+                    subContext: "Status",
+                    context: DiagnosticResult.DecodeContext(a.Type),
+                    gravityKo: DiagnosticResultGravity.Critical,
+                    descriptionKo: $"Unknown resource {a.Type}",
+                    descriptionOk: "",
+                    compliance: []);
+            }
 
             // Deduplicated storage list: shared → one record per storage name, non-shared → one per node
             _storageResources = [.. _resources.Where(a => a.ResourceType == ClusterResourceType.Storage)
@@ -112,9 +116,8 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                                               {
                                                                   node,
                                                                   storages = settings.Backup.Enabled
-                                                                                ? await client.Nodes[node].Storage.GetAsync(content: "backup", enabled: true)
-                                                                                                     .ToSafeEnum(_result, $"nodes/{node}", DiagnosticResultContext.Node, $"backup storages on node '{node}'")
-                                                                                : (IReadOnlyList<NodeStorage>)[]
+                                                                                ? await client.Nodes[node].Storage.GetAsync(content: "backup", enabled: true).ToSafeEnum(_result, $"nodes/{node}", DiagnosticResultContext.Node, $"backup storages on node '{node}'")
+                                                                                : []
                                                               });
             _backupStoragesByNode = backupStorageResults.ToDictionary(a => a.node, a => (IEnumerable<NodeStorage>)a.storages);
 
@@ -131,6 +134,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                                                                                 DiagnosticResult.DecodeContext(vm.Type),
                                                                                                 $"configuration of {vm.Type} {vm.VmId}")
                                                          });
+
             _vmConfigs = vmConfigResults.Where(r => r.config != null)
                                         .ToDictionary(r => r.VmId, r => r.config!);
 

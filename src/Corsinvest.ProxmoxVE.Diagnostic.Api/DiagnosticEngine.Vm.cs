@@ -7,6 +7,7 @@ using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -81,15 +82,16 @@ public partial class DiagnosticEngine
             {
                 foreach (var vm in nodeGroup)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = vm.GetWebUrl(),
-                        ErrorCode = "WG0036",
-                        Description = $"Node '{nodeGroup.Key}' vCPU overcommit ratio is {ratio:F1}x ({totalVCpus} vCPUs / {nodeResource.CpuSize} physical) — exceeds threshold of {settings.Node.MaxVCpuRatio}x",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "CPU",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: false,
+                        id: vm.GetWebUrl(),
+                        errorCode: "WG0036",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: $"Node '{nodeGroup.Key}' vCPU overcommit ratio is {ratio:F1}x ({totalVCpus} vCPUs / {nodeResource.CpuSize} physical) — exceeds threshold of {settings.Node.MaxVCpuRatio}x",
+                        descriptionOk: "",
+                        compliance: []);
                 }
             }
         }
@@ -108,97 +110,112 @@ public partial class DiagnosticEngine
 
             #region OS
             // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly
-            if (config.OsType == null)
+            CreateResult(
+                isOk: config.OsType != null,
+                id: id,
+                errorCode: "WG0001",
+                subContext: "OS",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "OsType not set!",
+                descriptionOk: $"OsType set to '{config.OsTypeDecode}'",
+                compliance: []);
+            if (config.OsType != null)
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0001",
-                    Description = "OsType not set!",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "OS",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-            else if (_osNotMaintained.Contains(config.OsType))
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0002",
-                    Description = $"OS '{config.OsTypeDecode}' not maintained from vendor!",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "OSNotMaintained",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
+                CreateResult(
+                    isOk: !_osNotMaintained.Contains(config.OsType),
+                    id: id,
+                    errorCode: "WG0002",
+                    subContext: "OSNotMaintained",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"OS '{config.OsTypeDecode}' not maintained from vendor!",
+                    descriptionOk: $"OS '{config.OsTypeDecode}' is supported by the vendor",
+                    compliance:
+                    [
+                        ComplianceControls.Iso27001.A_8_8,
+                        ComplianceControls.Nis2.Art_21_e,
+                        ComplianceControls.PciDss.R_6_3,
+                        ComplianceControls.Gdpr.Art_32_1_b,
+                    ]);
             }
             #endregion
 
             #region Agent
             // QEMU Guest Agent enables freeze-consistent snapshots, IP reporting and graceful shutdown
-            if (!config.AgentEnabled)
+            CreateResult(
+                isOk: config.AgentEnabled,
+                id: id,
+                errorCode: "WG0003",
+                subContext: "Agent",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "Qemu Agent not enabled",
+                descriptionOk: "Qemu Agent is enabled",
+                compliance: []);
+            if (config.AgentEnabled && item.IsRunning)
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0003",
-                    Description = "Qemu Agent not enabled",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Agent",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-            else if (item.IsRunning && fetch.AgentInfo == null)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0004",
-                    Description = "Qemu Agent in guest not running",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Agent",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
+                CreateResult(
+                    isOk: fetch.AgentInfo != null,
+                    id: id,
+                    errorCode: "WG0004",
+                    subContext: "Agent",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Qemu Agent in guest not running",
+                    descriptionOk: "Qemu Agent is running inside the guest",
+                    compliance: []);
             }
             #endregion
 
             #region Virtio
             // VirtIO SCSI controller and disk bus offer significantly better throughput than IDE/SATA emulation
-            if (config is VmConfigQemu qc && !(qc.ScsiHw ?? "").StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase))
+            if (config is VmConfigQemu qc)
             {
-                _result.Add(new DiagnosticResult
+                var scsiHwIsVirtIO = (qc.ScsiHw ?? "").StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase);
+                CreateResult(
+                    isOk: scsiHwIsVirtIO,
+                    id: id,
+                    errorCode: "IG0001",
+                    subContext: "VirtIO",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "For more performance switch controller to VirtIO SCSI",
+                    descriptionOk: $"SCSI controller is VirtIO ({qc.ScsiHw})",
+                    compliance: []);
+
+                // IG0002 is only meaningful when the SCSI HW is NOT VirtIO; otherwise individual disks
+                // riding on a non-VirtIO controller would be misreported.
+                if (!scsiHwIsVirtIO)
                 {
-                    Id = id,
-                    ErrorCode = "IG0001",
-                    Description = "For more performance switch controller to VirtIO SCSI",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "VirtIO",
-                    Gravity = DiagnosticResultGravity.Info,
-                });
-                _result.AddRange(config.Disks.Where(a => !a.Id.StartsWith(VirtioPrefix))
-                                             .Select(a => new DiagnosticResult
-                                             {
-                                                 Id = id,
-                                                 ErrorCode = "IG0002",
-                                                 Description = $"For more performance switch '{a.Id}' hdd to VirtIO",
-                                                 Context = DiagnosticResultContext.Qemu,
-                                                 SubContext = "VirtIO",
-                                                 Gravity = DiagnosticResultGravity.Info,
-                                             }));
+                    CreateResultPerItem(
+                        items: config.Disks.ToList(),
+                        isItemOk: a => a.Id.StartsWith(VirtioPrefix),
+                        itemId: _ => id,
+                        itemDescriptionKo: a => $"For more performance switch '{a.Id}' hdd to VirtIO",
+                        aggregatedIdOk: id,
+                        aggregatedDescriptionOk: _ => "All disks use the VirtIO bus",
+                        errorCode: "IG0002",
+                        subContext: "VirtIO",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        compliance: []);
+                }
             }
 
             // VirtIO network driver has lower CPU overhead and higher throughput than e1000/rtl8139
-            _result.AddRange(config.Networks
-                .Where(n => !string.IsNullOrWhiteSpace(n.Model) && !n.Model.StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase))
-                .Select(n => new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "IG0003",
-                    Description = $"For more performance switch '{n.Id}' network to VirtIO",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "VirtIO",
-                    Gravity = DiagnosticResultGravity.Info,
-                }));
+            CreateResultPerItem(
+                items: config.Networks.Where(n => !string.IsNullOrWhiteSpace(n.Model)).ToList(),
+                isItemOk: n => n.Model.StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase),
+                itemId: _ => id,
+                itemDescriptionKo: n => $"For more performance switch '{n.Id}' network to VirtIO",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "All network interfaces use the VirtIO driver",
+                errorCode: "IG0003",
+                subContext: "VirtIO",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Info,
+                compliance: []);
             #endregion
 
 
@@ -207,17 +224,18 @@ public partial class DiagnosticEngine
             // Cloud-init drives are excluded (Kind == CloudInit) — they always look like a cdrom but are
             // legitimate and would otherwise generate a noisy false positive.
             // Empty drives (Storage "none") are also skipped.
-            _result.AddRange(config.DisksAll
-                                   .Where(d => d.Kind == VmDiskKind.Cdrom && d.Storage != "none")
-                                   .Select(cdrom => new DiagnosticResult
-                                   {
-                                       Id = id,
-                                       ErrorCode = "WG0005",
-                                       Description = $"Cdrom mounted on '{cdrom.Id}' ({cdrom.Storage}:{cdrom.FileName})",
-                                       Context = DiagnosticResultContext.Qemu,
-                                       SubContext = "Hardware",
-                                       Gravity = DiagnosticResultGravity.Warning,
-                                   }));
+            CreateResultPerItem(
+                items: config.DisksAll.Where(d => d.Kind == VmDiskKind.Cdrom).ToList(),
+                isItemOk: d => d.Storage == "none",
+                itemId: _ => id,
+                itemDescriptionKo: cdrom => $"Cdrom mounted on '{cdrom.Id}' ({cdrom.Storage}:{cdrom.FileName})",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "No CD-ROM drives have media mounted",
+                errorCode: "WG0005",
+                subContext: "Hardware",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance: []);
             #endregion
 
             #region CPU Type
@@ -227,48 +245,51 @@ public partial class DiagnosticEngine
 
                 // "host" exposes all physical CPU features to the guest but prevents live migration
                 // between nodes with different CPU models. Only relevant in a multi-node cluster.
-                if (cpuType == CpuTypeHost && hasCluster)
+                if (hasCluster)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0006",
-                        Description = "CPU type 'host' prevents live migration to nodes with a different CPU model",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "CPU",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: cpuType != CpuTypeHost,
+                        id: id,
+                        errorCode: "WG0006",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: "CPU type 'host' prevents live migration to nodes with a different CPU model",
+                        descriptionOk: $"CPU type '{cpuType}' allows live migration",
+                        compliance: []);
 
                     // CPU type 'host' + HA enabled: HA requires live migration between nodes,
                     // which is impossible when the CPU type is 'host' (node-specific CPU features).
                     if (haVmIds.Contains(item.VmId))
                     {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "CG0004",
-                            Description = "CPU type 'host' is incompatible with HA — HA requires live migration which needs a portable CPU type",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "CPU",
-                            Gravity = DiagnosticResultGravity.Critical,
-                        });
+                        CreateResult(
+                            isOk: cpuType != CpuTypeHost,
+                            id: id,
+                            errorCode: "CG0004",
+                            subContext: "CPU",
+                            context: DiagnosticResultContext.Qemu,
+                            gravityKo: DiagnosticResultGravity.Critical,
+                            descriptionKo: "CPU type 'host' is incompatible with HA — HA requires live migration which needs a portable CPU type",
+                            descriptionOk: $"CPU type '{cpuType}' is compatible with HA live migration",
+                            compliance: []);
                     }
                 }
 
                 // "kvm64" is a very old baseline lacking AVX, SSE4 and other modern extensions.
                 // x86-64-v2 is the minimum recommended for current Linux/Windows guests.
                 // We only flag explicit "kvm64" — if Cpu is unset, the cluster default applies and we cannot know it.
-                if (cpuType == CpuTypeKvm64)
+                if (!string.IsNullOrWhiteSpace(cpuType))
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0004",
-                        Description = "CPU type 'kvm64' is outdated, consider x86-64-v2 or higher for better performance",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "CPU",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
+                    CreateResult(
+                        isOk: cpuType != CpuTypeKvm64,
+                        id: id,
+                        errorCode: "IG0004",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: "CPU type 'kvm64' is outdated, consider x86-64-v2 or higher for better performance",
+                        descriptionOk: $"CPU type '{cpuType}' is not the outdated kvm64 baseline",
+                        compliance: []);
                 }
 
                 #region CPU security flags
@@ -282,18 +303,22 @@ public partial class DiagnosticEngine
                                         .Where(f => !cpuFlags.Contains(f, StringComparison.OrdinalIgnoreCase))
                                         .ToList();
 
-                    if (missingFlags.Count > 0)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0037",
-                            Description = $"CPU type '{cpuType}' is missing security flags: {string.Join(", ", missingFlags)} — add to cpu flags to mitigate Spectre/Meltdown/MDS",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "CPU",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
+                    CreateResult(
+                        isOk: missingFlags.Count == 0,
+                        id: id,
+                        errorCode: "WG0037",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: $"CPU type '{cpuType}' is missing security flags: {string.Join(", ", missingFlags)} — add to cpu flags to mitigate Spectre/Meltdown/MDS",
+                        descriptionOk: $"CPU type '{cpuType}' has all Spectre/Meltdown/MDS mitigation flags configured",
+                        compliance:
+                        [
+                            ComplianceControls.Iso27001.A_8_8,
+                            ComplianceControls.Nis2.Art_21_e,
+                            ComplianceControls.PciDss.R_6_3,
+                            ComplianceControls.Gdpr.Art_32_1_b,
+                        ]);
                 }
                 #endregion
 
@@ -301,72 +326,78 @@ public partial class DiagnosticEngine
                 // CPU hotplug allows adding vCPUs to a running VM without restarting it.
                 // Windows guests do not support CPU hotplug — they enumerate CPUs only at boot.
                 // Enabling it on a Windows VM wastes resources (PVE reserves CPU slots) and may confuse the guest.
-                if (!string.IsNullOrWhiteSpace(qemuConfig.Hotplug)
-                    && qemuConfig.Hotplug != "0"
-                    && qemuConfig.Hotplug.Split(',').Any(p => p.Trim() == "cpu")
-                    && config.OsType?.StartsWith("win", StringComparison.OrdinalIgnoreCase) is true)
+                if (config.OsType?.StartsWith("win", StringComparison.OrdinalIgnoreCase) is true)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0007",
-                        Description = "CPU hotplug is enabled but Windows guests do not support it — disable to avoid resource waste",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "CPU",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    var cpuHotplugEnabled = !string.IsNullOrWhiteSpace(qemuConfig.Hotplug)
+                                             && qemuConfig.Hotplug != "0"
+                                             && qemuConfig.Hotplug.Split(',').Any(p => p.Trim() == "cpu");
+                    CreateResult(
+                        isOk: !cpuHotplugEnabled,
+                        id: id,
+                        errorCode: "WG0007",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: "CPU hotplug is enabled but Windows guests do not support it — disable to avoid resource waste",
+                        descriptionOk: "CPU hotplug is not enabled on this Windows guest",
+                        compliance: []);
                 }
                 #endregion
 
                 #region Balloon
                 // Balloon=0 disables the virtio-balloon driver — RAM is fully reserved and cannot be reclaimed
                 // by the host. Skip this check when hugepages are used (balloon is incompatible with hugepages).
-                if (qemuConfig.Balloon == 0 && string.IsNullOrWhiteSpace(qemuConfig.Hugepages))
+                if (string.IsNullOrWhiteSpace(qemuConfig.Hugepages))
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0005",
-                        Description = "Balloon driver disabled, RAM is statically allocated",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Balloon",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
+                    CreateResult(
+                        isOk: qemuConfig.Balloon != 0,
+                        id: id,
+                        errorCode: "IG0005",
+                        subContext: "Balloon",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: "Balloon driver disabled, RAM is statically allocated",
+                        descriptionOk: $"Balloon driver enabled ({qemuConfig.Balloon} MB)",
+                        compliance: []);
                 }
                 #endregion
 
                 #region Disk cache
-                foreach (var disk in config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Cache)))
-                {
-                    // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
-                    if (disk.Cache == DiskCacheUnsafe)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0008",
-                            Description = $"Disk '{disk.Id}' uses cache=unsafe, data loss risk on host crash",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Hardware",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
+                ComplianceMapping[] dataIntegrityControls =
+                [
+                    ComplianceControls.Iso27001.A_8_13,
+                    ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                ];
 
-                    // cache=writeback improves performance but data in the host page cache is not yet on disk.
-                    // If backup is also disabled for that disk, a crash can cause data loss with no recovery option.
-                    if (disk.Cache == DiskCacheWriteback && !disk.Backup)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0009",
-                            Description = $"Disk '{disk.Id}' has cache=writeback but backup is disabled",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "Hardware",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
-                }
+                // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
+                CreateResultPerItem(
+                    items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Cache)).ToList(),
+                    isItemOk: d => d.Cache != DiskCacheUnsafe,
+                    itemId: _ => id,
+                    itemDescriptionKo: d => $"Disk '{d.Id}' uses cache=unsafe, data loss risk on host crash",
+                    aggregatedIdOk: id,
+                    aggregatedDescriptionOk: _ => "No disk uses cache=unsafe",
+                    errorCode: "WG0008",
+                    subContext: "Hardware",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    compliance: dataIntegrityControls);
+
+                // cache=writeback improves performance but data in the host page cache is not yet on disk.
+                // If backup is also disabled for that disk, a crash can cause data loss with no recovery option.
+                CreateResultPerItem(
+                    items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Cache)).ToList(),
+                    isItemOk: d => !(d.Cache == DiskCacheWriteback && !d.Backup),
+                    itemId: _ => id,
+                    itemDescriptionKo: d => $"Disk '{d.Id}' has cache=writeback but backup is disabled",
+                    aggregatedIdOk: id,
+                    aggregatedDescriptionOk: _ => "No disk combines cache=writeback with backup disabled",
+                    errorCode: "WG0009",
+                    subContext: "Hardware",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    compliance: dataIntegrityControls);
                 #endregion
 
                 #region SecureBoot Windows 11
@@ -374,65 +405,60 @@ public partial class DiagnosticEngine
                 // Without these the guest may fail to install or update.
                 if (config.OsType == OsTypeWin11)
                 {
-                    if (qemuConfig.Bios != BiosOvmf)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0010",
-                            Description = "Windows 11 requires UEFI (bios=ovmf) for SecureBoot",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "SecureBoot",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
+                    CreateResult(
+                        isOk: qemuConfig.Bios == BiosOvmf,
+                        id: id,
+                        errorCode: "WG0010",
+                        subContext: "SecureBoot",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: "Windows 11 requires UEFI (bios=ovmf) for SecureBoot",
+                        descriptionOk: "Windows 11 guest is configured with UEFI (ovmf)",
+                        compliance: []);
 
-                    if (qemuConfig.GetDisk("tpmstate0") is null)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WG0011",
-                            Description = "Windows 11 requires TPM 2.0 (tpmstate0) for SecureBoot",
-                            Context = DiagnosticResultContext.Qemu,
-                            SubContext = "SecureBoot",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                    }
+                    CreateResult(
+                        isOk: qemuConfig.GetDisk("tpmstate0") is not null,
+                        id: id,
+                        errorCode: "WG0011",
+                        subContext: "SecureBoot",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: "Windows 11 requires TPM 2.0 (tpmstate0) for SecureBoot",
+                        descriptionOk: "Windows 11 guest has TPM 2.0 (tpmstate0) configured",
+                        compliance: []);
                 }
                 #endregion
 
                 #region Memory balloon overcommit
                 // Balloon very close to Memory means ballooning has no room to reclaim memory
-                if (qemuConfig.Balloon > 0 && config.Memory > 0
-                    && (double)qemuConfig.Balloon / config.Memory > 0.95)
+                if (qemuConfig.Balloon > 0 && config.Memory > 0)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0006",
-                        Description = $"VM memory balloon ({qemuConfig.Balloon}MB) is >95% of total memory ({config.Memory}MB) — ballooning has no room to reclaim memory",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Balloon",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
+                    var balloonRatio = (double)qemuConfig.Balloon / config.Memory;
+                    CreateResult(
+                        isOk: balloonRatio <= 0.95,
+                        id: id,
+                        errorCode: "IG0006",
+                        subContext: "Balloon",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: $"VM memory balloon ({qemuConfig.Balloon}MB) is >95% of total memory ({config.Memory}MB) — ballooning has no room to reclaim memory",
+                        descriptionOk: $"VM memory balloon ({qemuConfig.Balloon}MB) leaves room to reclaim memory (total {config.Memory}MB)",
+                        compliance: []);
                 }
                 #endregion
 
                 #region RNG device
                 // virtio-rng is rarely needed — may indicate misconfiguration
-                if (!string.IsNullOrWhiteSpace(qemuConfig.Rng0))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0007",
-                        Description = "VM has a virtio-rng (RNG) device configured — verify this is intentional",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Hardware",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
+                CreateResult(
+                    isOk: string.IsNullOrWhiteSpace(qemuConfig.Rng0),
+                    id: id,
+                    errorCode: "IG0007",
+                    subContext: "Hardware",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "VM has a virtio-rng (RNG) device configured — verify this is intentional",
+                    descriptionOk: "VM has no RNG device configured",
+                    compliance: []);
                 #endregion
 
                 #region Serial console
@@ -440,18 +466,16 @@ public partial class DiagnosticEngine
                 var serialKeys = config.ExtensionData?.Keys
                     .Where(k => k.StartsWith("serial", StringComparison.OrdinalIgnoreCase))
                     .ToList() ?? [];
-                if (serialKeys.Count > 0)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0008",
-                        Description = $"VM has serial console configured ({string.Join(", ", serialKeys)}) — verify this is intentional",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "Hardware",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
+                CreateResult(
+                    isOk: serialKeys.Count == 0,
+                    id: id,
+                    errorCode: "IG0008",
+                    subContext: "Hardware",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: $"VM has serial console configured ({string.Join(", ", serialKeys)}) — verify this is intentional",
+                    descriptionOk: "VM has no serial console configured",
+                    compliance: []);
                 #endregion
             }
             #endregion
@@ -460,59 +484,62 @@ public partial class DiagnosticEngine
             // HA requires live migration. If any disk is on non-shared storage the migration fails.
             if (haVmIds.Contains(item.VmId))
             {
-                foreach (var disk in config.Disks.Where(d => !d.IsUnused
-                                                             && !string.IsNullOrWhiteSpace(d.Storage)
-                                                             && !_storageResources.Any(s => s.Storage == d.Storage && s.Shared)))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "CG0005",
-                        Description = $"Disk '{disk.Id}' is on non-shared storage '{disk.Storage}' but VM is managed by HA — live migration will fail",
-                        Context = DiagnosticResultContext.Qemu,
-                        SubContext = "HA",
-                        Gravity = DiagnosticResultGravity.Critical,
-                    });
-                }
+                CreateResultPerItem(
+                    items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Storage)).ToList(),
+                    isItemOk: d => _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
+                    itemId: _ => id,
+                    itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but VM is managed by HA — live migration will fail",
+                    aggregatedIdOk: id,
+                    aggregatedDescriptionOk: _ => "All HA VM disks are on shared storage",
+                    errorCode: "CG0005",
+                    subContext: "HA",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Critical,
+                    compliance:
+                    [
+                        ComplianceControls.Iso27001.A_5_30,
+                        ComplianceControls.Nis2.Art_21_c,
+                        ComplianceControls.Dora.Art_12,
+                        ComplianceControls.Gdpr.Art_32_1_b,
+                    ]);
             }
             #endregion
 
             #region Machine type
             // An empty machine type means QEMU picks the default at startup, which may change across
             // PVE upgrades and cause unexpected guest behaviour after an upgrade.
-            if (config is VmConfigQemu qemuMachine && string.IsNullOrWhiteSpace(qemuMachine.Machine))
+            if (config is VmConfigQemu qemuMachine)
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "IG0012",
-                    Description = "Machine type not set — QEMU will use the default, which may change across PVE upgrades",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Hardware",
-                    Gravity = DiagnosticResultGravity.Info,
-                });
+                CreateResult(
+                    isOk: !string.IsNullOrWhiteSpace(qemuMachine.Machine),
+                    id: id,
+                    errorCode: "IG0012",
+                    subContext: "Hardware",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "Machine type not set — QEMU will use the default, which may change across PVE upgrades",
+                    descriptionOk: $"Machine type explicitly set to '{qemuMachine.Machine}'",
+                    compliance: []);
             }
             #endregion
 
             #region No network interface
             // A VM with no network interface is completely isolated — likely a misconfiguration
-            if (!config.Networks.Any())
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0034",
-                    Description = "VM has no network interface configured — completely isolated from network",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Network",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: config.Networks.Any(),
+                id: id,
+                errorCode: "WG0034",
+                subContext: "Network",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "VM has no network interface configured — completely isolated from network",
+                descriptionOk: $"VM has {config.Networks.Count()} network interface(s) configured",
+                compliance: []);
             #endregion
 
             #region Firewall and IP filter
             // Firewall is null when its fetch failed — the failure was already recorded, so skip.
-            if (fetch.Firewall != null) { CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Qemu); }
+            if (fetch.Firewall != null) { CheckVmFirewall(fetch.Firewall, id, DiagnosticResultContext.Qemu); }
             #endregion
 
             #region USB/PCI passthrough
@@ -522,18 +549,16 @@ public partial class DiagnosticEngine
                          || k.StartsWith("hostpci", StringComparison.OrdinalIgnoreCase))
                 .ToList() ?? [];
 
-            if (passthroughKeys.Count > 0)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0012",
-                    Description = $"VM has USB/PCI passthrough configured ({string.Join(", ", passthroughKeys)}) — live migration and HA failover are not possible",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Hardware",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: passthroughKeys.Count == 0,
+                id: id,
+                errorCode: "WG0012",
+                subContext: "Hardware",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: $"VM has USB/PCI passthrough configured ({string.Join(", ", passthroughKeys)}) — live migration and HA failover are not possible",
+                descriptionOk: "VM has no USB/PCI passthrough configured",
+                compliance: []);
             #endregion
 
             await CheckCommonVmAsync(settings,
@@ -552,9 +577,9 @@ public partial class DiagnosticEngine
 
         // Duplicate MAC check — collect all MACs across all VMs and flag duplicates
         var allMacs = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                           && a.VmType == VmType.Qemu
-                                           && !a.IsTemplate)
-                               .SelectMany(a => _vmConfigs[a.VmId].Networks
+                                            && a.VmType == VmType.Qemu
+                                            && !a.IsTemplate)
+                                .SelectMany(a => _vmConfigs[a.VmId].Networks
                                                     .Where(n => !string.IsNullOrWhiteSpace(n.MacAddress))
                                                     .Select(n => new
                                                     {
@@ -562,26 +587,29 @@ public partial class DiagnosticEngine
                                                         Url = a.GetWebUrl(),
                                                         Mac = n.MacAddress.ToUpperInvariant()
                                                     }))
-                               .ToList();
+                                .ToList();
 
-        var duplicateMacs = allMacs.GroupBy(x => x.Mac)
-                                   .Where(g => g.Count() > 1);
-
-        foreach (var group in duplicateMacs)
-        {
-            foreach (var entry in group)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = entry.Url,
-                    ErrorCode = "WG0033",
-                    Description = $"Duplicate MAC address {group.Key} shared with VM(s) {string.Join(", ", group.Where(x => x.VmId != entry.VmId).Select(x => x.VmId))} — causes network conflicts",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Network",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-        }
+        CreateResultPerItem(
+            items: allMacs.GroupBy(x => x.Mac)
+                                       .Where(g => g.Count() > 1)
+                                       .SelectMany(g => g.Select(e => new { Entry = e, Group = g.ToList() }))
+                                       .ToList(),
+            isItemOk: _ => false,
+            itemId: x => x.Entry.Url,
+            itemDescriptionKo: x => $"Duplicate MAC address {x.Entry.Mac} shared with VM(s) {string.Join(", ", x.Group.Where(o => o.VmId != x.Entry.VmId).Select(o => o.VmId))} — causes network conflicts",
+            aggregatedIdOk: "cluster/vms",
+            aggregatedDescriptionOk: _ => "No duplicate MAC addresses across VMs",
+            errorCode: "WG0033",
+            subContext: "Network",
+            context: DiagnosticResultContext.Qemu,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance:
+            [
+                ComplianceControls.Iso27001.A_8_20,
+                ComplianceControls.Iso27001.A_8_22,
+                ComplianceControls.Nis2.Art_21_e,
+                ComplianceControls.Gdpr.Art_5_1_f,
+            ]);
 
         // Template checks — config already pre-fetched
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
@@ -595,18 +623,16 @@ public partial class DiagnosticEngine
             // QEMU agent on a template is useless — the template is never running.
             // Worse: clones inherit the setting and may generate spurious "agent not running" warnings
             // until the guest installs the agent, creating noise in diagnostics.
-            if (config.AgentEnabled)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WG0014",
-                    Description = "Template has QEMU agent enabled — agent is unused on templates and clones will inherit this setting",
-                    Context = DiagnosticResultContext.Qemu,
-                    SubContext = "Agent",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: !config.AgentEnabled,
+                id: id,
+                errorCode: "WG0014",
+                subContext: "Agent",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "Template has QEMU agent enabled — agent is unused on templates and clones will inherit this setting",
+                descriptionOk: "Template does not have QEMU agent enabled",
+                compliance: []);
             #endregion
         }
     }

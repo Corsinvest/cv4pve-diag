@@ -4,6 +4,7 @@
  */
 
 using System.Text.RegularExpressions;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -58,6 +59,13 @@ public class DiagnosticResult
     /// <value></value>
     [JsonConverter(typeof(StringEnumConverter))]
     public DiagnosticResultGravity Gravity { get; set; }
+
+    /// <summary>
+    /// Normative controls satisfied by this check. Empty when the check is not mapped to any
+    /// compliance framework. May contain multiple entries — even within the same standard —
+    /// when the check covers several controls.
+    /// </summary>
+    public IReadOnlyList<ComplianceMapping> Compliance { get; set; } = [];
 
     /// <summary>
     /// Decode context

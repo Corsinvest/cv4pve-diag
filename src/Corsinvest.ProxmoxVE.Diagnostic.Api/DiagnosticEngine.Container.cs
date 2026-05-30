@@ -7,6 +7,7 @@ using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -47,44 +48,55 @@ public partial class DiagnosticEngine
 
             #region Firewall and IP filter
             // Firewall is null when its fetch failed — the failure was already recorded, so skip.
-            if (fetch.Firewall != null) { CheckVmFirewall(_result, fetch.Firewall, id, DiagnosticResultContext.Lxc); }
+            if (fetch.Firewall != null) { CheckVmFirewall(fetch.Firewall, id, DiagnosticResultContext.Lxc); }
             #endregion
 
             if (lxcConfig is VmConfigLxc lxc)
             {
+                ComplianceMapping[] containerIsolationControls =
+                [
+                    ComplianceControls.Iso27001.A_5_15,
+                    ComplianceControls.Iso27001.A_8_2,
+                    ComplianceControls.Nis2.Art_21_i,
+                    ComplianceControls.PciDss.R_7_2,
+                    ComplianceControls.Gdpr.Art_5_1_f,
+                ];
+
                 #region Nesting without keyctl
                 // nesting=1 allows Docker/nested containers inside LXC.
                 // keyctl=1 is required alongside nesting for proper isolation of kernel keyrings
                 // between nested containers. Without keyctl the inner containers share the host
                 // keyring and may leak secrets or fail cryptographic operations.
-                if (lxc.HasNesting && !lxc.HasKeyctl)
+                if (lxc.HasNesting)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0038",
-                        Description = "Container has nesting=1 but keyctl=1 is not enabled — kernel keyring isolation may be incomplete",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Features",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: lxc.HasKeyctl,
+                        id: id,
+                        errorCode: "WG0038",
+                        subContext: "Features",
+                        context: DiagnosticResultContext.Lxc,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: "Container has nesting=1 but keyctl=1 is not enabled — kernel keyring isolation may be incomplete",
+                        descriptionOk: "Container has nesting=1 with keyctl=1 — kernel keyring isolation is in place",
+                        compliance: containerIsolationControls);
                 }
                 #endregion
 
                 #region Privileged container
                 // Privileged containers share the host user namespace — root inside = root on host
+                CreateResult(
+                    isOk: lxc.Unprivileged,
+                    id: id,
+                    errorCode: "WG0039",
+                    subContext: "Security",
+                    context: DiagnosticResultContext.Lxc,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Container is privileged (Unprivileged=false) — root inside the container has host-level access",
+                    descriptionOk: "Container is unprivileged",
+                    compliance: containerIsolationControls);
+
                 if (!lxc.Unprivileged)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0039",
-                        Description = "Container is privileged (Unprivileged=false) — root inside the container has host-level access",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Security",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-
                     // Privileged container with AppArmor explicitly disabled via features=apparmor=0
                     // or via raw lxc.apparmor.profile=unconfined — no kernel confinement at all
                     var appArmorDisabledViaFeatures = (lxc.Features ?? "")
@@ -95,66 +107,58 @@ public partial class DiagnosticEngine
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
                         && kv.Value?.ToString()?.Equals("unconfined", StringComparison.OrdinalIgnoreCase) is true) is true;
 
-                    if (appArmorDisabledViaFeatures || appArmorDisabledViaRaw)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "CG0006",
-                            Description = "Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access",
-                            Context = DiagnosticResultContext.Lxc,
-                            SubContext = "Security",
-                            Gravity = DiagnosticResultGravity.Critical,
-                        });
-                    }
+                    CreateResult(
+                        isOk: !(appArmorDisabledViaFeatures || appArmorDisabledViaRaw),
+                        id: id,
+                        errorCode: "CG0006",
+                        subContext: "Security",
+                        context: DiagnosticResultContext.Lxc,
+                        gravityKo: DiagnosticResultGravity.Critical,
+                        descriptionKo: "Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access",
+                        descriptionOk: "Privileged container retains AppArmor confinement",
+                        compliance: containerIsolationControls);
                 }
                 #endregion
 
                 #region No memory limit
                 // Memory=0 means unbounded RAM — the container can consume all host memory and starve other VMs/CTs
-                if (lxc.Memory == 0)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0040",
-                        Description = "Container has no memory limit (Memory=0) — can consume all host RAM and starve other guests",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Memory",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                CreateResult(
+                    isOk: lxc.Memory != 0,
+                    id: id,
+                    errorCode: "WG0040",
+                    subContext: "Memory",
+                    context: DiagnosticResultContext.Lxc,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Container has no memory limit (Memory=0) — can consume all host RAM and starve other guests",
+                    descriptionOk: $"Container has a memory limit configured ({lxc.Memory} MB)",
+                    compliance: []);
                 #endregion
 
                 #region Swap disabled
                 // Swap=0 means no swap — under memory pressure the OOM killer will terminate processes
-                if (lxc.Swap == 0)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0013",
-                        Description = "Container has swap=0 — OOM killer may terminate processes under memory pressure",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Memory",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
+                CreateResult(
+                    isOk: lxc.Swap != 0,
+                    id: id,
+                    errorCode: "IG0013",
+                    subContext: "Memory",
+                    context: DiagnosticResultContext.Lxc,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "Container has swap=0 — OOM killer may terminate processes under memory pressure",
+                    descriptionOk: $"Container has swap configured ({lxc.Swap} MB)",
+                    compliance: []);
                 #endregion
 
                 #region No hostname
-                if (string.IsNullOrWhiteSpace(lxc.Hostname))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "IG0014",
-                        Description = "Container has no hostname configured — difficult to identify in logs",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Config",
-                        Gravity = DiagnosticResultGravity.Info,
-                    });
-                }
+                CreateResult(
+                    isOk: !string.IsNullOrWhiteSpace(lxc.Hostname),
+                    id: id,
+                    errorCode: "IG0014",
+                    subContext: "Config",
+                    context: DiagnosticResultContext.Lxc,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "Container has no hostname configured — difficult to identify in logs",
+                    descriptionOk: $"Container hostname is configured ('{lxc.Hostname}')",
+                    compliance: []);
                 #endregion
 
                 #region Raw LXC config entries
@@ -162,18 +166,16 @@ public partial class DiagnosticEngine
                 var rawLxcKeys = lxcConfig.ExtensionData?.Keys
                     .Where(k => k.StartsWith("lxc.", StringComparison.OrdinalIgnoreCase))
                     .ToList() ?? [];
-                if (rawLxcKeys.Count > 0)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WG0041",
-                        Description = $"Container has raw LXC config entries ({string.Join(", ", rawLxcKeys)}) — bypasses PVE abstractions",
-                        Context = DiagnosticResultContext.Lxc,
-                        SubContext = "Config",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                CreateResult(
+                    isOk: rawLxcKeys.Count == 0,
+                    id: id,
+                    errorCode: "WG0041",
+                    subContext: "Config",
+                    context: DiagnosticResultContext.Lxc,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"Container has raw LXC config entries ({string.Join(", ", rawLxcKeys)}) — bypasses PVE abstractions",
+                    descriptionOk: "Container has no raw lxc.* config entries",
+                    compliance: containerIsolationControls);
                 #endregion
             }
 

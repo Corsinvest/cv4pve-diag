@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Helpers;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
@@ -160,30 +161,57 @@ public partial class DiagnosticEngine
         var pvePkg = aptVersions.FirstOrDefault(p => p.Package?.Equals("pve-manager", StringComparison.OrdinalIgnoreCase) is true);
         var pveVerStr = pvePkg?.Version ?? "";
 
-        foreach (var cve in _nvdCveData)
-        {
-            // Skip if installed pve-manager version is beyond the vulnerable range
-            if (!string.IsNullOrWhiteSpace(pveVerStr) && !string.IsNullOrWhiteSpace(cve.VersionEnd))
-            {
-                if (DebianVersion.Compare(pveVerStr, cve.VersionEnd) > 0) { continue; }
-            }
+        ComplianceMapping[] cveControls =
+        [
+            ComplianceControls.Iso27001.A_8_8,
+            ComplianceControls.Nis2.Art_21_e,
+            ComplianceControls.PciDss.R_6_3,
+            ComplianceControls.Gdpr.Art_32_1_b,
+        ];
 
-            var gravity = cve.CvssScore switch
+        // Applicable CVEs: those whose vulnerable range covers the installed pve-manager version.
+        var applicable = _nvdCveData
+            .Where(cve => string.IsNullOrWhiteSpace(pveVerStr)
+                          || string.IsNullOrWhiteSpace(cve.VersionEnd)
+                          || DebianVersion.Compare(pveVerStr, cve.VersionEnd) <= 0)
+            .Select(cve => new
             {
-                >= 9.0 => DiagnosticResultGravity.Critical,
-                >= 7.0 => DiagnosticResultGravity.Warning,
-                _ => DiagnosticResultGravity.Info,
-            };
+                Cve = cve,
+                Gravity = cve.CvssScore switch
+                {
+                    >= 9.0 => DiagnosticResultGravity.Critical,
+                    >= 7.0 => DiagnosticResultGravity.Warning,
+                    _ => DiagnosticResultGravity.Info,
+                },
+            })
+            .ToList();
 
-            _result.Add(new DiagnosticResult
-            {
-                Id = id,
-                ErrorCode = gravity == DiagnosticResultGravity.Critical ? "CN0015" : "WN0042",
-                Description = $"Proxmox CVE {cve.Id} (CVSS: {cve.CvssScore:F1}, {cve.Severity}): {cve.Description}",
-                Context = DiagnosticResultContext.Node,
-                SubContext = "CVE",
-                Gravity = gravity,
-            });
-        }
+        // Critical CVEs → CN0015
+        CreateResultPerItem(
+            items: applicable.Where(a => a.Gravity == DiagnosticResultGravity.Critical).ToList(),
+            isItemOk: _ => false,
+            itemId: _ => id,
+            itemDescriptionKo: a => $"Proxmox CVE {a.Cve.Id} (CVSS: {a.Cve.CvssScore:F1}, {a.Cve.Severity}): {a.Cve.Description}",
+            aggregatedIdOk: id,
+            aggregatedDescriptionOk: _ => "No critical (CVSS ≥ 9.0) Proxmox VE CVE applies to the installed version",
+            errorCode: "CN0015",
+            subContext: "CVE",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Critical,
+            compliance: cveControls);
+
+        // Warning / Info CVEs → WN0042 (rendered at Warning gravity; mixed Info ones still surface here)
+        CreateResultPerItem(
+            items: applicable.Where(a => a.Gravity != DiagnosticResultGravity.Critical).ToList(),
+            isItemOk: _ => false,
+            itemId: _ => id,
+            itemDescriptionKo: a => $"Proxmox CVE {a.Cve.Id} (CVSS: {a.Cve.CvssScore:F1}, {a.Cve.Severity}): {a.Cve.Description}",
+            aggregatedIdOk: id,
+            aggregatedDescriptionOk: _ => "No non-critical Proxmox VE CVE applies to the installed version",
+            errorCode: "WN0042",
+            subContext: "CVE",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: cveControls);
     }
 }

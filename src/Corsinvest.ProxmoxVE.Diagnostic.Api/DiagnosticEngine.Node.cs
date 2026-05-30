@@ -7,7 +7,9 @@ using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -144,6 +146,13 @@ public partial class DiagnosticEngine
 
         #region Cluster-wide version / kernel consistency
         // Compared once across all online nodes (not per node) — mixed versions/kernels after a partial upgrade
+        ComplianceMapping[] patchConsistencyControls =
+        [
+            ComplianceControls.Iso27001.A_8_8,
+            ComplianceControls.Nis2.Art_21_e,
+            ComplianceControls.PciDss.R_6_3,
+            ComplianceControls.Gdpr.Art_32_1_b,
+        ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
             var pveVersions = nodeCompareData.Values
@@ -151,36 +160,32 @@ public partial class DiagnosticEngine
                                              .Where(a => !string.IsNullOrWhiteSpace(a))
                                              .Distinct()
                                              .ToList();
-            if (pveVersions.Count > 1)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = "cluster",
-                    ErrorCode = "WC0011",
-                    Description = $"Nodes run different Proxmox VE versions: {string.Join(", ", pveVersions)}",
-                    Context = DiagnosticResultContext.Cluster,
-                    SubContext = "Version",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: pveVersions.Count <= 1,
+                id: "cluster",
+                errorCode: "WC0011",
+                subContext: "Version",
+                context: DiagnosticResultContext.Cluster,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: $"Nodes run different Proxmox VE versions: {string.Join(", ", pveVersions)}",
+                descriptionOk: $"All nodes run the same Proxmox VE version ({string.Join(", ", pveVersions)})",
+                compliance: patchConsistencyControls);
 
             var kernels = nodeCompareData.Values
                                          .Select(a => a.Status?.CurrentKernel?.Release)
                                          .Where(a => !string.IsNullOrWhiteSpace(a))
                                          .Distinct()
                                          .ToList();
-            if (kernels.Count > 1)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = "cluster",
-                    ErrorCode = "WC0012",
-                    Description = $"Nodes run different kernel versions: {string.Join(", ", kernels)}",
-                    Context = DiagnosticResultContext.Cluster,
-                    SubContext = "Version",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: kernels.Count <= 1,
+                id: "cluster",
+                errorCode: "WC0012",
+                subContext: "Version",
+                context: DiagnosticResultContext.Cluster,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: $"Nodes run different kernel versions: {string.Join(", ", kernels)}",
+                descriptionOk: $"All nodes run the same kernel version ({string.Join(", ", kernels)})",
+                compliance: patchConsistencyControls);
         }
         #endregion
 
@@ -188,19 +193,23 @@ public partial class DiagnosticEngine
         {
             var id = item.GetWebUrl();
 
-            if (!item.IsOnline)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WN0002",
-                    Description = "Node not online",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Status",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-                continue;
-            }
+            CreateResult(
+                isOk: item.IsOnline,
+                id: id,
+                errorCode: "WN0002",
+                subContext: "Status",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "Node not online",
+                descriptionOk: "Node is online",
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Iso27001.A_8_16,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                ]);
+            if (!item.IsOnline) { continue; }
 
             // Node data failed to load — the failure was already recorded, skip this node.
             if (!nodeCompareData.TryGetValue(item.Node, out var compareData)) { continue; }
@@ -211,17 +220,25 @@ public partial class DiagnosticEngine
 
             #region End Of Life
             // PVE versions with a known EOL date that has already passed
-            if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate) && _now.Date >= eolDate)
+            ComplianceMapping[] patchControls =
+            [
+                ComplianceControls.Iso27001.A_8_8,
+                ComplianceControls.Nis2.Art_21_e,
+                ComplianceControls.PciDss.R_6_3,
+                ComplianceControls.Gdpr.Art_32_1_b,
+            ];
+            if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WN0003",
-                    Description = $"Version {version.Version} end of life {eolDate}",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "EOL",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
+                CreateResult(
+                    isOk: _now.Date < eolDate,
+                    id: id,
+                    errorCode: "WN0003",
+                    subContext: "EOL",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"Version {version.Version} end of life {eolDate}",
+                    descriptionOk: $"Version {version.Version} is still supported (EOL: {eolDate:yyyy-MM-dd})",
+                    compliance: patchControls);
             }
             #endregion
 
@@ -230,210 +247,190 @@ public partial class DiagnosticEngine
             #region Subscription
             // Without an active subscription the node uses the community repo and has no enterprise support.
             // Subscription is null when its fetch failed — the failure was already recorded, so just skip.
-            if (fetch.Subscription != null
-                && !fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase))
+            if (fetch.Subscription != null)
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WN0004",
-                    Description = "Node not have subscription active",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Subscription",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
+                var subscriptionActive = fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase);
+                CreateResult(
+                    isOk: subscriptionActive,
+                    id: id,
+                    errorCode: "WN0004",
+                    subContext: "Subscription",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Node not have subscription active",
+                    descriptionOk: $"Node subscription is active",
+                    compliance:
+                    [
+                        ComplianceControls.Iso27001.A_8_8,
+                        ComplianceControls.Nis2.Art_21_e,
+                        ComplianceControls.PciDss.R_6_3,
+                        ComplianceControls.Gdpr.Art_32_1_b,
+                    ]);
             }
             #endregion
 
             #region RrdData
             // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
-            CheckNodeRrd(_result,
-                         settings,
+            CheckNodeRrd(settings,
                          id,
                          await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation));
             #endregion
 
             #region Cross-node comparisons
-            // All nodes in a cluster must share the same PVE version, /etc/hosts, DNS and timezone
-            // to avoid subtle live migration and corosync issues.
-            // checkInNodes flags prevent duplicate issues when comparing node A vs B and B vs A.
-            var checkInNodes = new bool[] { true, true, true, true, true };
-            foreach (var other in onlineNodes.Where(a => a.Node != item.Node))
+            // Cross-node checks compare this node against every other online node. They have no
+            // meaning on a single-node setup (no peers to compare to) — skip the whole block to
+            // avoid emitting Ok results that confuse the report. Single-node compliance gaps are
+            // already surfaced by IC0017 / IC0002 / IC0003.
+            var otherNodesData = onlineNodes.Where(a => a.Node != item.Node)
+                                            .Select(a => nodeCompareData.TryGetValue(a.Node, out var od) ? od : null)
+                                            .Where(od => od != null)
+                                            .Select(od => od!)
+                                            .ToList();
+            if (otherNodesData.Count > 0)
             {
-                if (!nodeCompareData.TryGetValue(other.Node, out var otherData)) { continue; }
-                var (otherVersion, otherHosts, otherDns, otherTimezone, otherAptVersions, _, _, otherAptRepositories, otherNetworks) = otherData;
+                CreateResult(
+                    isOk: otherNodesData.All(od => version.IsEqual(od.Version)),
+                    id: id,
+                    errorCode: "CN0001",
+                    subContext: "Version",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Critical,
+                    descriptionKo: "Nodes version not equal",
+                    descriptionOk: "Node version matches the rest of the cluster",
+                    compliance: patchConsistencyControls);
 
-                if (checkInNodes[0] && !version.IsEqual(otherVersion))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "CN0001",
-                        Description = "Nodes version not equal",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Version",
-                        Gravity = DiagnosticResultGravity.Critical,
-                    });
-                    checkInNodes[0] = false;
-                }
+                CreateResult(
+                    isOk: otherNodesData.All(od => string.Concat(hosts) == string.Concat(od.Hosts)),
+                    id: id,
+                    errorCode: "WN0005",
+                    subContext: "Hosts",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Nodes hosts configuration not equal",
+                    descriptionOk: "Node /etc/hosts matches the rest of the cluster",
+                    compliance: []);
 
-                if (checkInNodes[1] && string.Concat(hosts) != string.Concat(otherHosts))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0005",
-                        Description = "Nodes hosts configuration not equal",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Hosts",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                    checkInNodes[1] = false;
-                }
+                CreateResult(
+                    isOk: otherNodesData.All(od => dns.IsEqual(od.Dns)),
+                    id: id,
+                    errorCode: "WN0006",
+                    subContext: "DNS",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Nodes DNS not equal",
+                    descriptionOk: "Node DNS configuration matches the rest of the cluster",
+                    compliance: []);
 
-                if (checkInNodes[2] && !dns.IsEqual(otherDns))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0006",
-                        Description = "Nodes DNS not equal",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "DNS",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                    checkInNodes[2] = false;
-                }
-
-                if (checkInNodes[3] && timezone != otherTimezone)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0007",
-                        Description = "Nodes Timezone not equal",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Timezone",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                    checkInNodes[3] = false;
-                }
+                CreateResult(
+                    isOk: otherNodesData.All(od => timezone == od.Timezone),
+                    id: id,
+                    errorCode: "WN0007",
+                    subContext: "Timezone",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Nodes Timezone not equal",
+                    descriptionOk: $"Node timezone ({timezone}) matches the rest of the cluster",
+                    compliance: []);
 
                 // APT repository sources must be identical across nodes to ensure consistent upgrades.
                 // Compare the enabled URIs from all repository files — order-insensitive.
-                if (checkInNodes[4])
-                {
-                    static List<string> GetUris(NodeAptRepositories? repos)
-                        => [.. (repos?.Files ?? [])
-                             .SelectMany(f => f.Repositories ?? [])
-                             .Where(r => r.Enabled)
-                             .SelectMany(r => r.URIs ?? [])
-                             .Order()];
-
-                    var uris = GetUris(aptRepositories);
-                    var otherUris = GetUris(otherAptRepositories);
-
-                    if (!uris.SequenceEqual(otherUris))
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WN0008",
-                            Description = "Nodes APT repositories not equal — inconsistent package sources may cause upgrade problems",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "AptRepositories",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                        checkInNodes[4] = false;
-                    }
-                }
+                static List<string> GetUris(NodeAptRepositories? repos)
+                    => [.. (repos?.Files ?? [])
+                         .SelectMany(f => f.Repositories ?? [])
+                         .Where(r => r.Enabled)
+                         .SelectMany(r => r.URIs ?? [])
+                         .Order()];
+                var myUris = GetUris(aptRepositories);
+                CreateResult(
+                    isOk: otherNodesData.All(od => myUris.SequenceEqual(GetUris(od.AptRepositories))),
+                    id: id,
+                    errorCode: "WN0008",
+                    subContext: "AptRepositories",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: "Nodes APT repositories not equal — inconsistent package sources may cause upgrade problems",
+                    descriptionOk: "Node APT repositories match the rest of the cluster",
+                    compliance: []);
 
                 // MTU mismatch on physical NICs between nodes can cause packet fragmentation,
                 // corosync instability and live migration failures.
                 // Compare MTU of eth interfaces by name — only flag if the same interface exists on both nodes.
-                if (checkInNodes[4])
-                {
-                    var myMtus = networks.Where(a => a.Type == "eth" && a.Mtu.HasValue)
-                                         .ToDictionary(a => a.Interface, a => a.Mtu!.Value);
-
-                    var otherMtus = otherNetworks.Where(a => a.Type == "eth" && a.Mtu.HasValue)
-                                                 .ToDictionary(a => a.Interface, a => a.Mtu!.Value);
-
-                    var mtuMismatches = myMtus.Where(kv => otherMtus.TryGetValue(kv.Key, out var otherMtu)
-                                                           && otherMtu != kv.Value)
-                                              .Select(kv => $"{kv.Key}: {kv.Value} vs {otherMtus[kv.Key]}")
-                                              .ToList();
-
-                    if (mtuMismatches.Count > 0)
-                    {
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "WN0009",
-                            Description = $"NIC MTU mismatch with other nodes: {string.Join(", ", mtuMismatches)}",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "Network",
-                            Gravity = DiagnosticResultGravity.Warning,
-                        });
-                        checkInNodes[4] = false;
-                    }
-                }
+                var myMtus = networks.Where(a => a.Type == "eth" && a.Mtu.HasValue)
+                                     .ToDictionary(a => a.Interface, a => a.Mtu!.Value);
+                var mtuMismatchesList = otherNodesData
+                    .SelectMany(od => od.Networks.Where(a => a.Type == "eth" && a.Mtu.HasValue)
+                                                  .Where(a => myMtus.TryGetValue(a.Interface, out var myMtu) && myMtu != a.Mtu!.Value)
+                                                  .Select(a => $"{a.Interface}: {myMtus[a.Interface]} vs {a.Mtu!.Value}"))
+                    .Distinct()
+                    .ToList();
+                CreateResult(
+                    isOk: mtuMismatchesList.Count == 0,
+                    id: id,
+                    errorCode: "WN0009",
+                    subContext: "Network",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"NIC MTU mismatch with other nodes: {string.Join(", ", mtuMismatchesList)}",
+                    descriptionOk: "Node NIC MTUs match the rest of the cluster",
+                    compliance: []);
             }
             #endregion
 
             #region Network Card
             // Physical NICs (type=eth) that are down — could mean a cable/switch problem
-            _result.AddRange(networks.Where(a => a.Type == "eth" && !a.Active)
-                                     .Select(a => new DiagnosticResult
-                                     {
-                                         Id = id,
-                                         ErrorCode = "WN0010",
-                                         Description = $"Network card '{a.Interface}' not active",
-                                         Context = DiagnosticResultContext.Node,
-                                         SubContext = "Network",
-                                         Gravity = DiagnosticResultGravity.Warning,
-                                     }));
+            CreateResultPerItem(
+                items: networks.Where(a => a.Type == "eth").ToList(),
+                isItemOk: a => a.Active,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Network card '{a.Interface}' not active",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "All physical NICs are active",
+                errorCode: "WN0010",
+                subContext: "Network",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance: []);
 
             // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
-            _result.AddRange(networks.Where(a => a.Type == "bond")
-                                     .Where(a => (a.Slaves ?? string.Empty)
-                                                    .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length < 2)
-                                     .Select(a => new DiagnosticResult
-                                     {
-                                         Id = id,
-                                         ErrorCode = "WN0034",
-                                         Description = $"Bond '{a.Interface}' has fewer than two slaves — no link redundancy",
-                                         Context = DiagnosticResultContext.Node,
-                                         SubContext = "Network",
-                                         Gravity = DiagnosticResultGravity.Warning,
-                                     }));
+            CreateResultPerItem(
+                items: networks.Where(a => a.Type == "bond").ToList(),
+                isItemOk: a => (a.Slaves ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Bond '{a.Interface}' has fewer than two slaves — no link redundancy",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "All bonds have at least two slaves",
+                errorCode: "WN0034",
+                subContext: "Network",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                ]);
             #endregion
 
             #region Package Versions
-            // Mismatched package versions across nodes can cause subtle incompatibilities after partial upgrades
-            var addErrPackageVersions = false;
-            foreach (var other in onlineNodes.Where(a => a.Node != item.Node))
+            // Mismatched package versions across nodes can cause subtle incompatibilities after partial upgrades.
+            // Skip on single-node setups: no peer to compare to.
+            if (onlineNodes.Count(a => a.Node != item.Node) > 0)
             {
-                if (addErrPackageVersions) { break; }
-                if (!nodeCompareData.TryGetValue(other.Node, out var otherPkgData)) { continue; }
-                var (_, _, _, _, otherAptVersions, _, _, _, _) = otherPkgData;
-                foreach (var pkg in aptVersions)
-                {
-                    if (!otherAptVersions.Any(a => a.Version == pkg.Version && a.Title == pkg.Title && a.Package == pkg.Package))
-                    {
-                        addErrPackageVersions = true;
-                        _result.Add(new DiagnosticResult
-                        {
-                            Id = id,
-                            ErrorCode = "CN0002",
-                            Description = "Nodes package version not equal",
-                            Context = DiagnosticResultContext.Node,
-                            SubContext = "PackageVersions",
-                            Gravity = DiagnosticResultGravity.Critical,
-                        });
-                        break;
-                    }
-                }
+                var packagesMatch = onlineNodes.Where(a => a.Node != item.Node)
+                    .All(a => !nodeCompareData.TryGetValue(a.Node, out var otherPkgData)
+                              || aptVersions.All(pkg => otherPkgData.AptVersions.Any(o => o.Version == pkg.Version
+                                                                                           && o.Title == pkg.Title
+                                                                                           && o.Package == pkg.Package)));
+                CreateResult(
+                    isOk: packagesMatch,
+                    id: id,
+                    errorCode: "CN0002",
+                    subContext: "PackageVersions",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Critical,
+                    descriptionKo: "Nodes package version not equal",
+                    descriptionOk: "Node package versions match the rest of the cluster",
+                    compliance: patchConsistencyControls);
             }
             #endregion
 
@@ -445,81 +442,104 @@ public partial class DiagnosticEngine
                                     ? "systemd-timesyncd"
                                     : "chrony");
 
-            _result.AddRange(fetch.Services
-                            .Where(a => !a.IsRunning && !serviceExcluded.Contains(a.Name))
-                            .Select(a => new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WN0011",
-                                Description = $"Service '{a.Description}' not running",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "Service",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            }));
+            CreateResultPerItem(
+                items: fetch.Services.Where(a => !serviceExcluded.Contains(a.Name)).ToList(),
+                isItemOk: a => a.IsRunning,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Service '{a.Description}' not running",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "All monitored services are running",
+                errorCode: "WN0011",
+                subContext: "Service",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_8_16,
+                    ComplianceControls.Nis2.Art_21_f,
+                    ComplianceControls.Dora.Art_10,
+                    ComplianceControls.Gdpr.Art_32_1_d,
+                ]);
             #endregion
 
             #region Certificates
-            // Expired TLS certificates break the web UI and API access
-            _result.AddRange(fetch.Certificates
-                              .Where(a => DateTimeOffset.FromUnixTimeSeconds(a.NotAfter) < _now)
-                              .Select(a => new DiagnosticResult
-                              {
-                                  Id = id,
-                                  ErrorCode = "CN0003",
-                                  Description = $"Certificate '{a.FileName}' expired",
-                                  Context = DiagnosticResultContext.Node,
-                                  SubContext = "Certificates",
-                                  Gravity = DiagnosticResultGravity.Critical,
-                              }));
+            // Expired TLS certificates break the web UI and API access.
+            ComplianceMapping[] cryptoCertControls =
+            [
+                ComplianceControls.Iso27001.A_8_24,
+                ComplianceControls.Nis2.Art_21_h,
+                ComplianceControls.PciDss.R_4_2,
+                ComplianceControls.Gdpr.Art_32_1_a,
+                ComplianceControls.Gdpr.Art_5_1_f,
+            ];
+            CreateResultPerItem(
+                items: fetch.Certificates,
+                isItemOk: a => DateTimeOffset.FromUnixTimeSeconds(a.NotAfter) >= _now,
+                itemId: _ => id,
+                itemDescriptionKo: cert => $"Certificate '{cert.FileName}' expired",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: certs => certs.Count == 0
+                    ? "No certificates to verify"
+                    : $"All {certs.Count} certificate(s) are valid",
+                errorCode: "CN0003",
+                subContext: "Certificates",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Critical,
+                compliance: cryptoCertControls);
 
             // Certificates expiring within the warning window — renew before they break access
             var certExpiryLimit = _now.AddDays(CertificateExpiringDays);
-            _result.AddRange(fetch.Certificates
-                              .Where(a =>
-                              {
-                                  var notAfter = DateTimeOffset.FromUnixTimeSeconds(a.NotAfter);
-                                  return notAfter >= _now && notAfter < certExpiryLimit;
-                              })
-                              .Select(a => new DiagnosticResult
-                              {
-                                  Id = id,
-                                  ErrorCode = "WN0023",
-                                  Description = $"Certificate '{a.FileName}' expires on {DateTimeOffset.FromUnixTimeSeconds(a.NotAfter):yyyy-MM-dd} (within {CertificateExpiringDays} days)",
-                                  Context = DiagnosticResultContext.Node,
-                                  SubContext = "Certificates",
-                                  Gravity = DiagnosticResultGravity.Warning,
-                              }));
+            CreateResultPerItem(
+                items: fetch.Certificates.Where(a =>
+                {
+                    var notAfter = DateTimeOffset.FromUnixTimeSeconds(a.NotAfter);
+                    return notAfter >= _now;
+                }).ToList(),
+                isItemOk: a => DateTimeOffset.FromUnixTimeSeconds(a.NotAfter) >= certExpiryLimit,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Certificate '{a.FileName}' expires on {DateTimeOffset.FromUnixTimeSeconds(a.NotAfter):yyyy-MM-dd} (within {CertificateExpiringDays} days)",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => $"No certificate expires within the next {CertificateExpiringDays} days",
+                errorCode: "WN0023",
+                subContext: "Certificates",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance: cryptoCertControls);
 
             // Self-signed certificate (issuer == subject) — browsers and API clients will warn / refuse
-            _result.AddRange(fetch.Certificates
-                              .Where(a => !string.IsNullOrWhiteSpace(a.Issuer)
-                                          && a.Issuer == a.Subject)
-                              .Select(a => new DiagnosticResult
-                              {
-                                  Id = id,
-                                  ErrorCode = "IN0004",
-                                  Description = $"Certificate '{a.FileName}' is self-signed — consider a CA-signed certificate (e.g. ACME/Let's Encrypt)",
-                                  Context = DiagnosticResultContext.Node,
-                                  SubContext = "Certificates",
-                                  Gravity = DiagnosticResultGravity.Info,
-                              }));
+            CreateResultPerItem(
+                items: fetch.Certificates.Where(a => !string.IsNullOrWhiteSpace(a.Issuer)).ToList(),
+                isItemOk: a => a.Issuer != a.Subject,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Certificate '{a.FileName}' is self-signed — consider a CA-signed certificate (e.g. ACME/Let's Encrypt)",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "No self-signed certificate detected",
+                errorCode: "IN0004",
+                subContext: "Certificates",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Info,
+                compliance: cryptoCertControls);
             #endregion
 
             #region Replication
             // Replication jobs with errors mean the secondary copy is out of date
             var replCount = fetch.Replication.Count(a => a.ExtensionData?.ContainsKey("errors") is true);
-            if (replCount > 0)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "CN0004",
-                    Description = $"{replCount} Replication has errors",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Replication",
-                    Gravity = DiagnosticResultGravity.Critical,
-                });
-            }
+            CreateResult(
+                isOk: replCount == 0,
+                id: id,
+                errorCode: "CN0004",
+                subContext: "Replication",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Critical,
+                descriptionKo: $"{replCount} Replication has errors",
+                descriptionOk: $"All {fetch.Replication.Count} replication job(s) on this node are healthy",
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                ]);
             #endregion
 
             await CheckNodeDiskAsync(nodeApi, settings, id, fetch);
@@ -528,32 +548,28 @@ public partial class DiagnosticEngine
             // Any pending update is informational; "important" priority updates (security) are Warning
             var aptUpdate = fetch.AptUpdate;
             var updateCount = aptUpdate.Count();
-            if (updateCount > 0)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "IN0001",
-                    Description = $"{updateCount} Update available",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Update",
-                    Gravity = DiagnosticResultGravity.Info,
-                });
-            }
+            CreateResult(
+                isOk: updateCount == 0,
+                id: id,
+                errorCode: "IN0001",
+                subContext: "Update",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Info,
+                descriptionKo: $"{updateCount} Update available",
+                descriptionOk: "No package updates available",
+                compliance: []);
 
             var updateImportantCount = aptUpdate.Count(a => a.Priority == "important");
-            if (updateImportantCount > 0)
-            {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WN0012",
-                    Description = $"{updateImportantCount} Update Important available",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Update",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: updateImportantCount == 0,
+                id: id,
+                errorCode: "WN0012",
+                subContext: "Update",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: $"{updateImportantCount} Update Important available",
+                descriptionOk: "No important updates pending",
+                compliance: patchControls);
             #endregion
 
             #region Reboot required
@@ -563,38 +579,45 @@ public partial class DiagnosticEngine
                 // Kversion contains the full uname string; CurrentKernel.Release is the running kernel
                 // Compare the running kernel release against the installed kversion string
                 var runningKernel = nodeStatus.CurrentKernel?.Release ?? "";
-                if (!string.IsNullOrWhiteSpace(runningKernel) && !nodeStatus.Kversion.Contains(runningKernel))
+                if (!string.IsNullOrWhiteSpace(runningKernel))
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0013",
-                        Description = $"Node requires reboot: running kernel '{runningKernel}' differs from installed '{nodeStatus.Kversion}'",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Reboot",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: nodeStatus.Kversion.Contains(runningKernel),
+                        id: id,
+                        errorCode: "WN0013",
+                        subContext: "Reboot",
+                        context: DiagnosticResultContext.Node,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: $"Node requires reboot: running kernel '{runningKernel}' differs from installed '{nodeStatus.Kversion}'",
+                        descriptionOk: $"Node is running the latest installed kernel ({runningKernel})",
+                        compliance: patchControls);
                 }
             }
             #endregion
 
             #region NTP
-            // Compare node UTC time against the client machine time — offset > 60s indicates NTP issue
+            // Compare node UTC time against the client machine time — offset > 60s indicates NTP issue.
+            // Mapped to logging controls: accurate timestamps are a precondition for usable audit logs.
             if (nodeUtcTime > 0)
             {
                 var ntpOffset = Math.Abs(nodeUtcTime - DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                if (ntpOffset > 60)
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0014",
-                        Description = $"Node time offset is {ntpOffset}s — NTP may not be synchronized",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "NTP",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                CreateResult(
+                    isOk: ntpOffset <= 60,
+                    id: id,
+                    errorCode: "WN0014",
+                    subContext: "NTP",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"Node time offset is {ntpOffset}s — NTP may not be synchronized",
+                    descriptionOk: $"Node time offset is {ntpOffset}s (within tolerance)",
+                    compliance:
+                    [
+                        ComplianceControls.Iso27001.A_8_15,
+                        ComplianceControls.Iso27001.A_8_16,
+                        ComplianceControls.Nis2.Art_21_f,
+                        ComplianceControls.PciDss.R_10_2,
+                        ComplianceControls.Gdpr.Art_32_1_d,
+                    ]);
             }
             #endregion
 
@@ -603,25 +626,25 @@ public partial class DiagnosticEngine
             // If all detected PCI devices report IommuGroup == -1 the kernel/firmware has IOMMU disabled.
             // Note: a node with no PCI devices at all is not flagged.
             var pciDevices = fetch.PciDevices;
-            if (pciDevices.Any() && pciDevices.All(a => a.IommuGroup == -1))
+            if (pciDevices.Any())
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "IN0002",
-                    Description = "IOMMU is not enabled — PCI passthrough will not work (enable intel_iommu=on or amd_iommu=on in kernel cmdline)",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "IOMMU",
-                    Gravity = DiagnosticResultGravity.Info,
-                });
+                CreateResult(
+                    isOk: pciDevices.Any(a => a.IommuGroup != -1),
+                    id: id,
+                    errorCode: "IN0002",
+                    subContext: "IOMMU",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "IOMMU is not enabled — PCI passthrough will not work (enable intel_iommu=on or amd_iommu=on in kernel cmdline)",
+                    descriptionOk: "IOMMU is enabled — PCI passthrough is available",
+                    compliance: []);
             }
             #endregion
 
             #region Task history
             // Failed tasks in the last 48 hours (errors=true filters server-side for efficiency)
             var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
-            CheckTaskHistory(_result,
-                             fetch.Tasks.Where(a => a.StartTime >= dayTask),
+            CheckTaskHistory(fetch.Tasks.Where(a => a.StartTime >= dayTask),
                              DiagnosticResultContext.Node, id);
             #endregion
 
@@ -690,105 +713,114 @@ public partial class DiagnosticEngine
 
         #region Bridge VLAN awareness
         // If a VM uses a VLAN tag on a bridge that is not VLAN-aware, the tag is silently ignored
-        foreach (var nodeItem in onlineNodes)
-        {
-            if (!nodeCompareData.TryGetValue(nodeItem.Node, out var nodeData)) { continue; }
-
-            // Build set of non-VLAN-aware bridge names on this node
-            var nonVlanBridges = nodeData.Networks
-                                         .Where(n => n.Type == "bridge" && n.BridgeVlanAware is not true)
-                                         .Select(n => n.Interface)
-                                         .ToHashSet();
-
-            if (nonVlanBridges.Count == 0) { continue; }
-
-            foreach (var vm in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                                    && a.Node == nodeItem.Node
-                                                    && !a.IsTemplate
-                                                    && _vmConfigs.ContainsKey(a.VmId)))
+        // Build a flat list of (vm, net) pairs that hit a non-VLAN-aware bridge on their node,
+        // then run a single per-item check so the Ok branch fires when nothing is mismatched.
+        var vlanBridgeIssues = onlineNodes
+            .Where(n => nodeCompareData.TryGetValue(n.Node, out _))
+            .SelectMany(n =>
             {
-                foreach (var net in _vmConfigs[vm.VmId].Networks
-                                                        .Where(n => n.Tag.HasValue
-                                                                    && !string.IsNullOrWhiteSpace(n.Bridge)
-                                                                    && nonVlanBridges.Contains(n.Bridge)))
-                {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = vm.GetWebUrl(),
-                        ErrorCode = "WN0037",
-                        Description = $"VM {vm.VmId} interface '{net.Id}' uses VLAN tag {net.Tag} on bridge '{net.Bridge}' which is not VLAN-aware — tag will be silently ignored",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Network",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
-            }
-        }
+                var nodeData = nodeCompareData[n.Node];
+                var nonVlanBridges = nodeData.Networks
+                                              .Where(net => net.Type == "bridge" && net.BridgeVlanAware is not true)
+                                              .Select(net => net.Interface)
+                                              .ToHashSet();
+                if (nonVlanBridges.Count == 0) { return Enumerable.Empty<(ClusterResource Vm, VmNetwork Net)>(); }
+                return _resources
+                    .Where(a => a.ResourceType == ClusterResourceType.Vm
+                                && a.Node == n.Node
+                                && !a.IsTemplate
+                                && _vmConfigs.ContainsKey(a.VmId))
+                    .SelectMany(vm => _vmConfigs[vm.VmId].Networks
+                                        .Where(net => net.Tag.HasValue
+                                                       && !string.IsNullOrWhiteSpace(net.Bridge)
+                                                       && nonVlanBridges.Contains(net.Bridge))
+                                        .Select(net => (Vm: vm, Net: net)));
+            })
+            .ToList();
+        CreateResultPerItem(
+            items: vlanBridgeIssues,
+            isItemOk: _ => false,
+            itemId: x => x.Vm.GetWebUrl(),
+            itemDescriptionKo: x => $"VM {x.Vm.VmId} interface '{x.Net.Id}' uses VLAN tag {x.Net.Tag} on bridge '{x.Net.Bridge}' which is not VLAN-aware — tag will be silently ignored",
+            aggregatedIdOk: "cluster/network",
+            aggregatedDescriptionOk: _ => "No VM interface uses a VLAN tag on a non-VLAN-aware bridge",
+            errorCode: "WN0037",
+            subContext: "Network",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: []);
         #endregion
 
         #region Memory overcommit
         // Sum of VM/CT allocated RAM on a node exceeds physical node RAM — risk of OOM
-        foreach (var nodeItem in onlineNodes)
-        {
-            var nodeResource = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
-                                                             && a.Node == nodeItem.Node);
-            if (nodeResource == null || nodeResource.MemorySize == 0) { continue; }
-
-            var allocatedMem = _resources.Where(a => (a.ResourceType == ClusterResourceType.Vm)
-                                                    && a.Node == nodeItem.Node)
-                                        .Aggregate(0UL, (acc, a) => acc + a.MemorySize);
-
-            if (allocatedMem > nodeResource.MemorySize)
+        var memOvercommitItems = onlineNodes
+            .Select(n =>
             {
-                var overcommitPct = Math.Round((allocatedMem / (double)nodeResource.MemorySize * 100) - 100, 1);
-                _result.Add(new DiagnosticResult
-                {
-                    Id = nodeItem.GetWebUrl(),
-                    ErrorCode = "WN0036",
-                    Description = $"Node '{nodeItem.Node}' memory overcommitted by {overcommitPct}% " +
-                                  $"(allocated: {allocatedMem / 1024 / 1024 / 1024} GB, physical: {nodeResource.MemorySize / 1024 / 1024 / 1024} GB)",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Memory",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
-        }
+                var nr = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.Node == n.Node);
+                if (nr == null || nr.MemorySize == 0) { return null; }
+                var allocated = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node)
+                                          .Aggregate(0UL, (acc, a) => acc + a.MemorySize);
+                return new { NodeItem = n, NodeResource = nr, AllocatedMem = allocated };
+            })
+            .Where(p => p != null)
+            .Select(p => p!)
+            .ToList();
+        CreateResultPerItem(
+            items: memOvercommitItems,
+            isItemOk: p => p.AllocatedMem <= p.NodeResource.MemorySize,
+            itemId: p => p.NodeItem.GetWebUrl(),
+            itemDescriptionKo: p =>
+            {
+                var pct = Math.Round((p.AllocatedMem / (double)p.NodeResource.MemorySize * 100) - 100, 1);
+                return $"Node '{p.NodeItem.Node}' memory overcommitted by {pct}% (allocated: {p.AllocatedMem / 1024 / 1024 / 1024} GB, physical: {p.NodeResource.MemorySize / 1024 / 1024 / 1024} GB)";
+            },
+            aggregatedIdOk: "cluster/nodes",
+            aggregatedDescriptionOk: _ => "No node is memory-overcommitted",
+            errorCode: "WN0036",
+            subContext: "Memory",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: []);
         #endregion
 
         #region VM consolidation
         // Nodes with very low CPU and RAM utilization — VMs could be moved to free the node
-        foreach (var nodeItem in onlineNodes)
-        {
-            if (!nodeCompareData.TryGetValue(nodeItem.Node, out var data)) { continue; }
-            var nodeResource = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node
-                                                             && a.Node == nodeItem.Node);
-            if (nodeResource == null) { continue; }
-
-            var vmCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Vm
-                                               && a.Node == nodeItem.Node
-                                               && !a.IsTemplate);
-            if (vmCount == 0) { continue; }
-
-            // CpuUsagePercentage is 0..1 on ClusterResource for nodes
-            var cpuPct = nodeResource.CpuUsagePercentage * 100.0;
-            var memPct = nodeResource.MemorySize > 0
-                            ? nodeResource.MemoryUsagePercentage * 100.0
-                            : 0;
-
-            if (cpuPct < settings.Node.ConsolidationCpuThreshold
-                && memPct < settings.Node.ConsolidationMemThreshold)
+        var consolidationCandidates = onlineNodes
+            .Where(n => nodeCompareData.ContainsKey(n.Node))
+            .Select(n =>
             {
-                _result.Add(new DiagnosticResult
-                {
-                    Id = nodeItem.GetWebUrl(),
-                    ErrorCode = "IN0003",
-                    Description = $"Node '{nodeItem.Node}' has low utilization (CPU: {cpuPct:F1}%, RAM: {memPct:F1}%) — consider consolidating {vmCount} VM(s) to free the node",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Consolidation",
-                    Gravity = DiagnosticResultGravity.Info,
-                });
-            }
-        }
+                var nr = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.Node == n.Node);
+                if (nr == null) { return null; }
+                var vmCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node && !a.IsTemplate);
+                if (vmCount == 0) { return null; }
+                return new { NodeItem = n, NodeResource = nr, VmCount = vmCount };
+            })
+            .Where(p => p != null)
+            .Select(p => p!)
+            .ToList();
+        CreateResultPerItem(
+            items: consolidationCandidates,
+            isItemOk: p =>
+            {
+                var cpuPct = p.NodeResource.CpuUsagePercentage * 100.0;
+                var memPct = p.NodeResource.MemorySize > 0 ? p.NodeResource.MemoryUsagePercentage * 100.0 : 0;
+                return !(cpuPct < settings.Node.ConsolidationCpuThreshold
+                          && memPct < settings.Node.ConsolidationMemThreshold);
+            },
+            itemId: p => p.NodeItem.GetWebUrl(),
+            itemDescriptionKo: p =>
+            {
+                var cpuPct = p.NodeResource.CpuUsagePercentage * 100.0;
+                var memPct = p.NodeResource.MemorySize > 0 ? p.NodeResource.MemoryUsagePercentage * 100.0 : 0;
+                return $"Node '{p.NodeItem.Node}' has low utilization (CPU: {cpuPct:F1}%, RAM: {memPct:F1}%) — consider consolidating {p.VmCount} VM(s) to free the node";
+            },
+            aggregatedIdOk: "cluster/nodes",
+            aggregatedDescriptionOk: _ => "No node is underutilized to the consolidation thresholds",
+            errorCode: "IN0003",
+            subContext: "Consolidation",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Info,
+            compliance: []);
         #endregion
 
         #region CPU Compatibility Mode
@@ -805,37 +837,30 @@ public partial class DiagnosticEngine
             {
                 var minLevel = nodeLevels.Values.Min();
                 var maxLevel = nodeLevels.Values.Max();
-
-                if (minLevel != null && maxLevel != null && minLevel.Level != maxLevel.Level)
-                {
-                    var lowerNodes = nodeLevels.Where(kv => kv.Value.Level == minLevel.Level)
-                                               .Select(kv => kv.Key);
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = "cluster",
-                        ErrorCode = "WN0015",
-                        Description = $"CPU level mismatch: minimum is {minLevel.Name}, maximum is {maxLevel.Name}. " +
-                                      $"Nodes at minimum level: {string.Join(", ", lowerNodes)}. " +
-                                      $"Use cpu type '{minLevel.Name}' for safe live migration.",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "CPUCompatibility",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
-                }
+                var levelsConsistent = !(minLevel != null && maxLevel != null && minLevel.Level != maxLevel.Level);
+                var lowerNodes = minLevel != null
+                                    ? nodeLevels.Where(kv => kv.Value.Level == minLevel.Level).Select(kv => kv.Key)
+                                    : [];
+                CreateResult(
+                    isOk: levelsConsistent,
+                    id: "cluster",
+                    errorCode: "WN0015",
+                    subContext: "CPUCompatibility",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"CPU level mismatch: minimum is {minLevel?.Name}, maximum is {maxLevel?.Name}. Nodes at minimum level: {string.Join(", ", lowerNodes)}. Use cpu type '{minLevel?.Name}' for safe live migration.",
+                    descriptionOk: $"All online nodes share the same x86-64 feature level ({minLevel?.Name})",
+                    compliance: []);
             }
         }
         #endregion
     }
 
-    private static void CheckNodeRrd(List<DiagnosticResult> result,
-                                     Settings settings,
-                                     string id,
-                                     IEnumerable<NodeRrdData> rrdData)
+    private void CheckNodeRrd(Settings settings, string id, IEnumerable<NodeRrdData> rrdData)
     {
         var rrdList = rrdData.ToList();
 
-        CheckThresholdHost(result,
-                           settings.Node,
+        CheckThresholdHost(settings.Node,
                            DiagnosticResultContext.Node,
                            id,
                            rrdList.Select(a => new ThresholdRddData(a, a, a)),
@@ -845,8 +870,7 @@ public partial class DiagnosticEngine
                            netOutErrorCode: "WN0040");
 
         // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck
-        CheckThreshold(result,
-                       settings.Node.Cpu,
+        CheckThreshold(settings.Node.Cpu,
                        "WN0028",
                        DiagnosticResultContext.Node,
                        "Usage",
@@ -858,8 +882,7 @@ public partial class DiagnosticEngine
                        false);
 
         // Root filesystem usage on the node OS disk
-        CheckThreshold(result,
-                       settings.Storage.Threshold,
+        CheckThreshold(settings.Storage.Threshold,
                        "WN0029",
                        DiagnosticResultContext.Node,
                        "Usage",
@@ -871,8 +894,7 @@ public partial class DiagnosticEngine
                        true);
 
         // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation
-        CheckThreshold(result,
-                       settings.Storage.Threshold,
+        CheckThreshold(settings.Storage.Threshold,
                        "WN0030",
                        DiagnosticResultContext.Node,
                        "Usage",
@@ -886,8 +908,7 @@ public partial class DiagnosticEngine
         // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0)
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
-            CheckThreshold(result,
-                           settings.Node.Rrd.Pressure.Cpu,
+            CheckThreshold(settings.Node.Rrd.Pressure.Cpu,
                            "WN0031",
                            DiagnosticResultContext.Node,
                            "Pressure",
@@ -901,8 +922,7 @@ public partial class DiagnosticEngine
 
         if (rrdList.Any(a => a.PressureIoFull > 0))
         {
-            CheckThreshold(result,
-                           settings.Node.Rrd.Pressure.IoFull,
+            CheckThreshold(settings.Node.Rrd.Pressure.IoFull,
                            "WN0032",
                            DiagnosticResultContext.Node,
                            "Pressure",
@@ -916,8 +936,7 @@ public partial class DiagnosticEngine
 
         if (rrdList.Any(a => a.PressureMemoryFull > 0))
         {
-            CheckThreshold(result,
-                           settings.Node.Rrd.Pressure.MemoryFull,
+            CheckThreshold(settings.Node.Rrd.Pressure.MemoryFull,
                            "WN0033",
                            DiagnosticResultContext.Node,
                            "Pressure",
@@ -941,51 +960,47 @@ public partial class DiagnosticEngine
                             : 0.0;
 
         var nodeWeightedLoad = (nodeCpuPct * 0.4) + (nodeRamPct * 0.4) + (nodeDiskPct * 0.2);
-        CheckHealthScore(result,
-                         settings.Node.HealthScore,
+        CheckHealthScore(settings.Node.HealthScore,
                          DiagnosticResultContext.Node,
                          id,
                          nodeWeightedLoad);
     }
 
-    private static void CheckZfsChildren(List<DiagnosticResult> result,
-                                         string id,
-                                         string poolName,
-                                         IEnumerable<NodeDiskZfsDetail.Child> children)
+    private void CheckZfsChildren(string id,
+                                  string poolName,
+                                  IEnumerable<NodeDiskZfsDetail.Child> children)
     {
         foreach (var child in children ?? [])
         {
             // vdev not ONLINE = faulted, removed, unavail, degraded
-            if (!string.IsNullOrWhiteSpace(child.State)
-                && !child.State.Equals("ONLINE", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(child.State))
             {
-                result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "CN0012",
-                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? "" : $": {child.Msg}")}",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Zfs",
-                    Gravity = DiagnosticResultGravity.Critical,
-                });
+                CreateResult(
+                    isOk: child.State.Equals("ONLINE", StringComparison.OrdinalIgnoreCase),
+                    id: id,
+                    errorCode: "CN0012",
+                    subContext: "Zfs",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Critical,
+                    descriptionKo: $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? "" : $": {child.Msg}")}",
+                    descriptionOk: $"ZFS pool '{poolName}' vdev '{child.Name}' is ONLINE",
+                    compliance: []);
             }
 
             // I/O errors on vdev
-            if (child.Read > 0 || child.Write > 0 || child.Checksum > 0)
-            {
-                result.Add(new DiagnosticResult
-                {
-                    Id = id,
-                    ErrorCode = "WN0025",
-                    Description = $"ZFS pool '{poolName}' vdev '{child.Name}' has I/O errors (read:{child.Read} write:{child.Write} cksum:{child.Checksum})",
-                    Context = DiagnosticResultContext.Node,
-                    SubContext = "Zfs",
-                    Gravity = DiagnosticResultGravity.Warning,
-                });
-            }
+            CreateResult(
+                isOk: child.Read == 0 && child.Write == 0 && child.Checksum == 0,
+                id: id,
+                errorCode: "WN0025",
+                subContext: "Zfs",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: $"ZFS pool '{poolName}' vdev '{child.Name}' has I/O errors (read:{child.Read} write:{child.Write} cksum:{child.Checksum})",
+                descriptionOk: $"ZFS pool '{poolName}' vdev '{child.Name}' has no I/O errors",
+                compliance: []);
 
             // Recurse into nested vdevs (mirrors, raidz groups)
-            CheckZfsChildren(result, id, poolName, child.Children);
+            CheckZfsChildren(id, poolName, child.Children);
         }
     }
 
@@ -998,32 +1013,35 @@ public partial class DiagnosticEngine
         // S.M.A.R.T. status: anything other than PASSED/OK indicates a failing or failed disk
         var disksAll = fetch.Disks;
 
-        _result.AddRange(disksAll.Where(a => a.Health != "PASSED" && a.Health != "OK")
-                                 .Select(a => new DiagnosticResult
-                                 {
-                                     Id = id,
-                                     ErrorCode = "WN0016",
-                                     Description = $"Disk '{a.DevPath}' S.M.A.R.T. status problem",
-                                     Context = DiagnosticResultContext.Node,
-                                     SubContext = "S.M.A.R.T.",
-                                     Gravity = DiagnosticResultGravity.Warning,
-                                 }));
+        CreateResultPerItem(
+            items: disksAll,
+            isItemOk: a => a.Health == "PASSED" || a.Health == "OK",
+            itemId: _ => id,
+            itemDescriptionKo: a => $"Disk '{a.DevPath}' S.M.A.R.T. status problem",
+            aggregatedIdOk: id,
+            aggregatedDescriptionOk: _ => "All disks report a healthy S.M.A.R.T. status",
+            errorCode: "WN0016",
+            subContext: "S.M.A.R.T.",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: []);
 
         // SSD wearout reported as N/A means the drive doesn't expose wear data — worth investigating
-        _result.AddRange(disksAll.Where(a => a.IsSsd && a.Wearout == "N/A")
-                                 .Select(a => new DiagnosticResult
-                                 {
-                                     Id = id,
-                                     ErrorCode = "WN0017",
-                                     Description = $"Disk ssd '{a.DevPath}' wearout not valid.",
-                                     Context = DiagnosticResultContext.Node,
-                                     SubContext = "SSD Wearout",
-                                     Gravity = DiagnosticResultGravity.Warning,
-                                 }));
+        CreateResultPerItem(
+            items: disksAll.Where(a => a.IsSsd).ToList(),
+            isItemOk: a => a.Wearout != "N/A",
+            itemId: _ => id,
+            itemDescriptionKo: a => $"Disk ssd '{a.DevPath}' wearout not valid.",
+            aggregatedIdOk: id,
+            aggregatedDescriptionOk: _ => "All SSDs expose valid wearout data",
+            errorCode: "WN0017",
+            subContext: "SSD Wearout",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: []);
 
         // SSD wearout percentage above threshold (100 - wearout = wear consumed)
-        CheckThreshold(_result,
-                       settings.Node.Smart.SsdWearout,
+        CheckThreshold(settings.Node.Smart.SsdWearout,
                        "WN0018",
                        DiagnosticResultContext.Node,
                        "SSD Wearout",
@@ -1058,84 +1076,88 @@ public partial class DiagnosticEngine
 
                                 if (tempGravity != DiagnosticResultGravity.Info)
                                 {
-                                    _result.Add(new DiagnosticResult
-                                    {
-                                        Id = id,
-                                        ErrorCode = tempGravity == DiagnosticResultGravity.Critical
-                                                        ? "CN0007"
-                                                        : "WN0019",
-                                        Description = $"Disk '{disk.DevPath}' temperature {temp}°C exceeds threshold",
-                                        Context = DiagnosticResultContext.Node,
-                                        SubContext = "S.M.A.R.T.",
-                                        Gravity = tempGravity,
-                                    });
+                                    CreateResult(
+                                        isOk: false,
+                                        id: id,
+                                        errorCode: tempGravity == DiagnosticResultGravity.Critical ? "CN0007" : "WN0019",
+                                        subContext: "S.M.A.R.T.",
+                                        context: DiagnosticResultContext.Node,
+                                        gravityKo: tempGravity,
+                                        descriptionKo: $"Disk '{disk.DevPath}' temperature {temp}°C exceeds threshold",
+                                        descriptionOk: "",
+                                        compliance: []);
                                 }
                             }
                             break;
 
                         // Reallocated sectors (ID 5) — non-zero = sectors remapped due to errors
                         case "5" when int.TryParse(attr.Raw?.Split(' ')[0], out var val5) && val5 > 0:
-                            _result.Add(new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WN0020",
-                                Description = $"Disk '{disk.DevPath}' has {val5} reallocated sector(s) — disk may be failing",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            });
+                            CreateResult(
+                                isOk: false,
+                                id: id,
+                                errorCode: "WN0020",
+                                subContext: "S.M.A.R.T.",
+                                context: DiagnosticResultContext.Node,
+                                gravityKo: DiagnosticResultGravity.Warning,
+                                descriptionKo: $"Disk '{disk.DevPath}' has {val5} reallocated sector(s) — disk may be failing",
+                                descriptionOk: "",
+                                compliance: []);
                             break;
 
                         // Current pending sectors (ID 197) — unstable sectors waiting to be remapped
                         case "197" when int.TryParse(attr.Raw?.Split(' ')[0], out var val197) && val197 > 0:
-                            _result.Add(new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "CN0008",
-                                Description = $"Disk '{disk.DevPath}' has {val197} pending sector(s) — imminent data loss risk",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            });
+                            CreateResult(
+                                isOk: false,
+                                id: id,
+                                errorCode: "CN0008",
+                                subContext: "S.M.A.R.T.",
+                                context: DiagnosticResultContext.Node,
+                                gravityKo: DiagnosticResultGravity.Critical,
+                                descriptionKo: $"Disk '{disk.DevPath}' has {val197} pending sector(s) — imminent data loss risk",
+                                descriptionOk: "",
+                                compliance: []);
                             break;
 
                         // Offline uncorrectable sectors (ID 198)
                         case "198" when int.TryParse(attr.Raw?.Split(' ')[0], out var val198) && val198 > 0:
-                            _result.Add(new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "CN0009",
-                                Description = $"Disk '{disk.DevPath}' has {val198} offline uncorrectable sector(s)",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Critical,
-                            });
+                            CreateResult(
+                                isOk: false,
+                                id: id,
+                                errorCode: "CN0009",
+                                subContext: "S.M.A.R.T.",
+                                context: DiagnosticResultContext.Node,
+                                gravityKo: DiagnosticResultGravity.Critical,
+                                descriptionKo: $"Disk '{disk.DevPath}' has {val198} offline uncorrectable sector(s)",
+                                descriptionOk: "",
+                                compliance: []);
                             break;
 
                         // UDMA CRC errors (ID 199) — cable or controller issue
                         case "199" when int.TryParse(attr.Raw?.Split(' ')[0], out var val199) && val199 > 0:
-                            _result.Add(new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WN0021",
-                                Description = $"Disk '{disk.DevPath}' has {val199} UDMA CRC error(s) — check cable/controller",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            });
+                            CreateResult(
+                                isOk: false,
+                                id: id,
+                                errorCode: "WN0021",
+                                subContext: "S.M.A.R.T.",
+                                context: DiagnosticResultContext.Node,
+                                gravityKo: DiagnosticResultGravity.Warning,
+                                descriptionKo: $"Disk '{disk.DevPath}' has {val199} UDMA CRC error(s) — check cable/controller",
+                                descriptionOk: "",
+                                compliance: []);
                             break;
 
                         // Reported uncorrectable errors (ID 187)
                         case "187" when int.TryParse(attr.Raw?.Split(' ')[0], out var val187) && val187 > 0:
-                            _result.Add(new DiagnosticResult
-                            {
-                                Id = id,
-                                ErrorCode = "WN0022",
-                                Description = $"Disk '{disk.DevPath}' has {val187} reported uncorrectable error(s)",
-                                Context = DiagnosticResultContext.Node,
-                                SubContext = "S.M.A.R.T.",
-                                Gravity = DiagnosticResultGravity.Warning,
-                            });
+                            CreateResult(
+                                isOk: false,
+                                id: id,
+                                errorCode: "WN0022",
+                                subContext: "S.M.A.R.T.",
+                                context: DiagnosticResultContext.Node,
+                                gravityKo: DiagnosticResultGravity.Warning,
+                                descriptionKo: $"Disk '{disk.DevPath}' has {val187} reported uncorrectable error(s)",
+                                descriptionOk: "",
+                                compliance: []);
                             break;
                     }
                 }
@@ -1146,21 +1168,22 @@ public partial class DiagnosticEngine
         #region Zfs
         // ZFS pool health: anything other than ONLINE means degraded/faulted pool
         var zfsList = fetch.ZfsList;
-        _result.AddRange(zfsList.Where(a => a.Health != "ONLINE")
-                                .Select(a => new DiagnosticResult
-                                {
-                                    Id = id,
-                                    ErrorCode = "CN0010",
-                                    Description = $"Zfs '{a.Name}' health problem {a.Health}",
-                                    Context = DiagnosticResultContext.Node,
-                                    SubContext = "Zfs",
-                                    Gravity = DiagnosticResultGravity.Critical,
-                                }));
+        CreateResultPerItem(
+            items: zfsList,
+            isItemOk: a => a.Health == "ONLINE",
+            itemId: _ => id,
+            itemDescriptionKo: a => $"Zfs '{a.Name}' health problem {a.Health}",
+            aggregatedIdOk: id,
+            aggregatedDescriptionOk: _ => "All ZFS pools are ONLINE",
+            errorCode: "CN0010",
+            subContext: "Zfs",
+            context: DiagnosticResultContext.Node,
+            gravityKo: DiagnosticResultGravity.Critical,
+            compliance: []);
 
         // ZFS pool usage above storage threshold
-        CheckThreshold(_result,
-                       settings.Storage.Threshold,
-                       "WN0023",
+        CheckThreshold(settings.Storage.Threshold,
+                       "WN0044",
                        DiagnosticResultContext.Storage,
                        "Zfs",
                        zfsList.Select(a => new ThresholdDataPoint(Convert.ToDouble(a.Alloc),
@@ -1179,22 +1202,22 @@ public partial class DiagnosticEngine
                 if (detail == null) { continue; }
 
                 // Pool-level errors string (e.g. "1 data errors, use '-v' for a list")
-                if (!string.IsNullOrWhiteSpace(detail.Errors)
-                    && !detail.Errors.Equals("No known data errors", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(detail.Errors))
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = "WN0024",
-                        Description = $"ZFS pool '{zfs.Name}' has errors: {detail.Errors}",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "Zfs",
-                        Gravity = DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: detail.Errors.Equals("No known data errors", StringComparison.OrdinalIgnoreCase),
+                        id: id,
+                        errorCode: "WN0024",
+                        subContext: "Zfs",
+                        context: DiagnosticResultContext.Node,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: $"ZFS pool '{zfs.Name}' has errors: {detail.Errors}",
+                        descriptionOk: $"ZFS pool '{zfs.Name}' has no known data errors",
+                        compliance: []);
                 }
 
                 // vdev state check — recurse through children
-                CheckZfsChildren(_result, id, zfs.Name, detail.Children);
+                CheckZfsChildren(id, zfs.Name, detail.Children);
             }
         }
         #endregion
@@ -1209,18 +1232,16 @@ public partial class DiagnosticEngine
                 var metaPct = (double)lv.MetadataUsed / lv.MetadataSize * 100.0;
                 if (metaPct >= 90)
                 {
-                    _result.Add(new DiagnosticResult
-                    {
-                        Id = id,
-                        ErrorCode = metaPct >= 95
-                                    ? "CN0013"
-                                    : "WN0026",
-
-                        Description = $"LVM-thin '{lv.Vg}/{lv.Lv}' metadata usage {metaPct:F1}% — metadata full causes data corruption",
-                        Context = DiagnosticResultContext.Node,
-                        SubContext = "LvmThin",
-                        Gravity = metaPct >= 95 ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,
-                    });
+                    CreateResult(
+                        isOk: false,
+                        id: id,
+                        errorCode: metaPct >= 95 ? "CN0013" : "WN0026",
+                        subContext: "LvmThin",
+                        context: DiagnosticResultContext.Node,
+                        gravityKo: metaPct >= 95 ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,
+                        descriptionKo: $"LVM-thin '{lv.Vg}/{lv.Lv}' metadata usage {metaPct:F1}% — metadata full causes data corruption",
+                        descriptionOk: "",
+                        compliance: []);
                 }
             }
         }
