@@ -53,6 +53,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_c,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.Cis.C_11,
+                ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.NistCsf.RC_RP_01,
+                ComplianceControls.Iso27017.CLD_6_3_1,
             ]);
 
         return hasCluster;
@@ -140,6 +144,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Dora.Art_10,
                 ComplianceControls.PciDss.R_10_2,
                 ComplianceControls.Gdpr.Art_32_1_d,
+                ComplianceControls.AgId.ABSC_5_2,
+                ComplianceControls.Cis.C_8,
+                ComplianceControls.NistCsf.DE_CM_01,
+                ComplianceControls.NistCsf.DE_CM_03,
+                ComplianceControls.Iso27017.CLD_12_4_5,
             ]);
     }
 
@@ -164,6 +173,12 @@ public partial class DiagnosticEngine
                 ComplianceControls.Dora.Art_11,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_c,
+                ComplianceControls.AgId.ABSC_10_1,
+                ComplianceControls.AgId.ABSC_10_3,
+                ComplianceControls.AgId.ABSC_10_4,
+                ComplianceControls.Cis.C_11,
+                ComplianceControls.NistCsf.PR_DS_11,
+                ComplianceControls.NistCsf.RC_RP_01,
             ]);
         if (backupList.Count == 0) { return; }
 
@@ -278,6 +293,11 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2.Art_21_f,
                     ComplianceControls.Dora.Art_10,
                     ComplianceControls.Gdpr.Art_32_1_d,
+                    ComplianceControls.AgId.ABSC_5_2,
+                    ComplianceControls.Cis.C_8,
+                    ComplianceControls.NistCsf.DE_CM_01,
+                    ComplianceControls.NistCsf.DE_CM_03,
+                    ComplianceControls.Iso27017.CLD_12_4_5,
                 ]);
         }
     }
@@ -321,6 +341,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_5_30,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Iso27017.CLD_6_3_1,
             ]);
 
         // Resilience / business continuity controls.
@@ -483,6 +505,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_5_15,
                 ComplianceControls.Nis2.Art_21_i,
                 ComplianceControls.Gdpr.Art_5_1_f,
+                ComplianceControls.AgId.ABSC_5_1,
+                ComplianceControls.NistCsf.ID_AM_02,
             ]);
     }
 
@@ -509,6 +533,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.PciDss.R_1_2,
                 ComplianceControls.Gdpr.Art_5_1_f,
+                ComplianceControls.AgId.ABSC_8_1,
+                ComplianceControls.Cis.C_12,
+                ComplianceControls.Cis.C_13,
+                ComplianceControls.NistCsf.PR_IR_01,
+                ComplianceControls.Iso27017.CLD_13_1_4,
             ]);
         if (!clusterFwOptions.Enable) { return; }
 
@@ -597,6 +626,11 @@ public partial class DiagnosticEngine
                     ComplianceControls.Dora.Art_10,
                     ComplianceControls.PciDss.R_10_2,
                     ComplianceControls.Gdpr.Art_32_1_d,
+                    ComplianceControls.AgId.ABSC_5_2,
+                    ComplianceControls.Cis.C_8,
+                    ComplianceControls.NistCsf.DE_CM_01,
+                    ComplianceControls.NistCsf.DE_CM_03,
+                    ComplianceControls.Iso27017.CLD_12_4_5,
                 ]);
         }
 
@@ -656,6 +690,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.PciDss.R_8_4_2,
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.AgId.ABSC_5_7,
+                ComplianceControls.Cis.C_6,
+                ComplianceControls.NistCsf.PR_AA_01,
+                ComplianceControls.NistCsf.PR_AA_03,
             ]);
 
         // Admin users without TFA — fetch ACLs once to find users with Administrator role
@@ -786,6 +824,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_16,
                 ComplianceControls.Nis2.Art_21_f,
                 ComplianceControls.Gdpr.Art_32_1_d,
+                ComplianceControls.Cis.C_5,
+                ComplianceControls.Cis.C_8,
+                ComplianceControls.NistCsf.DE_CM_03,
+                ComplianceControls.AgId.ABSC_5_2,
             ]);
 
         // Empty groups — no users assigned, usually leftover configuration

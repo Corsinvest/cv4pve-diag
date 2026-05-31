@@ -75,6 +75,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_16,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Iso27017.CLD_6_3_1,
             ]);
 
         // Storage usage above configured Warning/Critical thresholds
@@ -96,6 +98,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_16,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Iso27017.CLD_6_3_1,
             ]);
 
         #region Orphaned Images and Backups
@@ -258,6 +262,12 @@ public partial class DiagnosticEngine
                 ComplianceControls.Dora.Art_11,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_c,
+                ComplianceControls.AgId.ABSC_10_1,
+                ComplianceControls.AgId.ABSC_10_3,
+                ComplianceControls.AgId.ABSC_10_4,
+                ComplianceControls.Cis.C_11,
+                ComplianceControls.NistCsf.PR_DS_11,
+                ComplianceControls.NistCsf.RC_RP_01,
             ]);
         #endregion
 
@@ -291,6 +301,12 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_c,
                 ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_c,
+                ComplianceControls.AgId.ABSC_10_1,
+                ComplianceControls.AgId.ABSC_10_3,
+                ComplianceControls.AgId.ABSC_10_4,
+                ComplianceControls.Cis.C_11,
+                ComplianceControls.NistCsf.PR_DS_11,
+                ComplianceControls.NistCsf.RC_RP_01,
             ]);
         #endregion
 

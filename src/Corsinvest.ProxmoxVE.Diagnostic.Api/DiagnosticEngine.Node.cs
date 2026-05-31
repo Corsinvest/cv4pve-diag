@@ -208,6 +208,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso27001.A_8_16,
                     ComplianceControls.Dora.Art_12,
                     ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
                 ]);
             if (!item.IsOnline) { continue; }
 
@@ -265,6 +267,13 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nis2.Art_21_e,
                         ComplianceControls.PciDss.R_6_3,
                         ComplianceControls.Gdpr.Art_32_1_b,
+                        ComplianceControls.AgId.ABSC_2_3,
+                        ComplianceControls.AgId.ABSC_4_1,
+                        ComplianceControls.AgId.ABSC_4_4,
+                        ComplianceControls.Cis.C_7,
+                        ComplianceControls.NistCsf.PR_PS_02,
+                        ComplianceControls.NistCsf.ID_RA_01,
+                        ComplianceControls.Iso27017.CLD_9_5_2,
                     ]);
             }
             #endregion
@@ -408,6 +417,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Dora.Art_12,
                     ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
                 ]);
             #endregion
 
@@ -539,6 +550,10 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2.Art_21_c,
                     ComplianceControls.Dora.Art_12,
                     ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
                 ]);
             #endregion
 
@@ -617,6 +632,11 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nis2.Art_21_f,
                         ComplianceControls.PciDss.R_10_2,
                         ComplianceControls.Gdpr.Art_32_1_d,
+                        ComplianceControls.AgId.ABSC_5_2,
+                        ComplianceControls.Cis.C_8,
+                        ComplianceControls.NistCsf.DE_CM_01,
+                        ComplianceControls.NistCsf.DE_CM_03,
+                        ComplianceControls.Iso27017.CLD_12_4_5,
                     ]);
             }
             #endregion

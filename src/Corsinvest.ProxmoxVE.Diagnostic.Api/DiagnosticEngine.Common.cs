@@ -356,6 +356,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_f,
                 ComplianceControls.Dora.Art_10,
                 ComplianceControls.Gdpr.Art_32_1_d,
+                ComplianceControls.AgId.ABSC_5_2,
+                ComplianceControls.Cis.C_8,
+                ComplianceControls.NistCsf.DE_CM_01,
+                ComplianceControls.NistCsf.DE_CM_03,
+                ComplianceControls.Iso27017.CLD_12_4_5,
             ]);
     }
 

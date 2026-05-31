@@ -8,7 +8,7 @@
 
 cv4pve-diag can now produce **compliance-aware reports** alongside the usual diagnostic output. Diagnostic findings are tagged with the normative controls they satisfy — so when an admin user has no two-factor authentication, the same finding doubles as evidence of a gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2.
 
-- **40+ diagnostic checks** are mapped to compliance controls covering **ISO 27001:2022, NIS2, DORA and PCI DSS v4.0**. Additional standards (ISO 27017, GDPR, NIST CSF, CIS, AgID) are recognised internally for future extensions.
+- **40+ diagnostic checks** are mapped to compliance controls across **9 frameworks**: ISO 27001:2022, NIS2, DORA, PCI DSS v4.0, GDPR, AgID (Italian PA), ISO/IEC 27017 (cloud), CIS Controls v8 and NIST CSF 2.0. Each finding can carry several control ids — for example, the "admin user without two-factor authentication" finding now references controls across all 9 frameworks at once.
 - New `--compliance=<standard>` command-line option. When passed, the report is filtered to keep only the findings mapped to that standard, and a `ControlId` column is added so each finding shows the specific control identifier (e.g. `A.5.17`, `Art.21(j)`).
 - Works with every output format: Text, Markdown, HTML, JSON, Excel. The Excel header carries the selected standard so the file is self-describing.
 - New `IncludeOkResult` setting (top-level): when enabled, passing checks are also written to the report (as `Ok` results). Useful for **full audit-style reports** that need to prove a control was verified, not only that it was violated.

@@ -81,8 +81,11 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | **NIS2** (EU Directive 2022/2555) | Art. 21(c/d/e/f/h/i/j) |
 | **DORA** (EU Regulation 2022/2554) | Art. 9, 10, 11, 12 |
 | **PCI DSS v4.0** | 1.2, 4.2, 6.3, 7.2, 8.2, 8.4.2, 10.2 |
-
-Additional standards (ISO 27017, GDPR, NIST CSF, CIS, AgID) are recognised internally and can be added per check without further changes.
+| **GDPR** (EU Regulation 2016/679) | Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only |
+| **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
+| **ISO/IEC 27017:2015** | CLD.6.3.1, CLD.8.1.5, CLD.9.5.1/2, CLD.12.1.5, CLD.12.4.5, CLD.13.1.4 |
+| **CIS Controls v8** | CIS 3, 4, 5, 6, 7, 8, 10, 11, 12, 13 |
+| **NIST CSF 2.0** | ID.AM/RA, PR.AA/DS/IR/PS, DE.CM, RC.RP — relevant subcategories |
 
 ---
 
@@ -139,6 +142,84 @@ Additional standards (ISO 27017, GDPR, NIST CSF, CIS, AgID) are recognised inter
 | 8.2 | User identification and account lifecycle | Lifecycle, tokens |
 | 8.4.2 | MFA for all access into the cardholder data environment | TFA |
 | 10.2 | Audit logs for anomaly detection | Cluster log, NTP, firewall logging |
+
+### GDPR — EU Regulation 2016/679
+
+Only technical articles relevant to a virtualisation cluster. Procedural / organisational requirements (DPIA, breach notification, data subject rights, ...) are out of scope.
+
+| Article | Title | Where it appears |
+|---|---|---|
+| Art. 5(1)(f) | Integrity and confidentiality (security principle) | TFA, access privilege, certificates, firewall, account lifecycle, duplicate MAC |
+| Art. 32(1)(a) | Pseudonymisation and encryption of personal data | Certificates |
+| Art. 32(1)(b) | Confidentiality, integrity, availability and resilience of processing systems | HA, replication, single-node, storage/node availability, patch, CVE, disk cache integrity, TFA |
+| Art. 32(1)(c) | Timely restoration of availability after an incident | Backup (all areas), backup storage availability |
+| Art. 32(1)(d) | Regular testing of the effectiveness of security measures | Cluster log, task failures, NTP, services, metric server, user notification, firewall audit logging |
+
+### AgID — Misure minime ICT per le PA (Italian Public Administration baseline)
+
+Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation cluster.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| ABSC 2.3 | Authorised software list and EOL tracking | OS not maintained, PVE EOL, CVE |
+| ABSC 3.1 | Use secure standard configurations | Container privileged, raw lxc config |
+| ABSC 3.2 | Keep configurations aligned and up to date | Patch, version/kernel/package mismatch |
+| ABSC 4.1 / 4.4 | Vulnerability scanning and remediation | CVE, important updates |
+| ABSC 5.1 | Limit administrative privileges | ACL, container privileged, root@pam token privsep |
+| ABSC 5.2 | Track administrator actions | Cluster log, task history, firewall audit logging |
+| ABSC 5.7 | MFA for administrators | TFA (root@pam, admin, group, realm) |
+| ABSC 5.10 | Limit local authentication and credential lifetime | Local user expiration, API token expiration |
+| ABSC 8.1 | Defences against malware (network baseline) | Firewall, patch |
+| ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
+| ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
+
+### ISO/IEC 27017:2015 — Cloud-specific extensions
+
+Adds the CLD.* controls to ISO 27001. The base ISO 27001 controls are listed above.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| CLD.6.3.1 | Shared roles and responsibilities in cloud | HA, replication, single-node, NIC bond |
+| CLD.8.1.5 | Removal of cloud service customer assets | (declared, not currently mapped) |
+| CLD.9.5.1 / 9.5.2 | Segregation in virtual computing environments / VM hardening | Container isolation, CPU security flags, patch consistency |
+| CLD.12.1.5 | Administrator's operational security | Privileged ACL |
+| CLD.12.4.5 | Monitoring of cloud services | Cluster log, task failures, NTP, services, metric server |
+| CLD.13.1.4 | Alignment of security for virtual and physical networks | Firewall, duplicate MAC |
+
+### CIS Controls v8
+
+| Control | Title | Where it appears |
+|---|---|---|
+| CIS 3 | Data Protection | Certificates, disk cache integrity |
+| CIS 4 | Secure Configuration of Enterprise Assets | Container isolation |
+| CIS 5 | Account Management | Account lifecycle, user notifications |
+| CIS 6 | Access Control Management | TFA, ACL, container privileged |
+| CIS 7 | Continuous Vulnerability Management | Patch, CVE |
+| CIS 8 | Audit Log Management | Cluster log, task failures, NTP, firewall audit logging |
+| CIS 11 | Data Recovery | Backup, HA, replication, single-node |
+| CIS 12 | Network Infrastructure Management | Firewall, duplicate MAC |
+| CIS 13 | Network Monitoring and Defense | Firewall |
+
+### NIST CSF 2.0
+
+Subcategories chosen for relevance to virtualisation cluster diagnostics.
+
+| Subcategory | Title | Where it appears |
+|---|---|---|
+| ID.AM-02 | Software/services/systems inventory is maintained | Empty pools (asset/inventory cleanliness) |
+| ID.RA-01 | Asset vulnerabilities are identified and recorded | Patch, CVE |
+| PR.AA-01 | Identities and credentials are managed | TFA, account lifecycle |
+| PR.AA-03 | Users, services and hardware are authenticated | TFA |
+| PR.AA-05 | Access permissions and entitlements are managed | ACL, container privileged |
+| PR.DS-01 | Data-at-rest is protected | Disk cache integrity |
+| PR.DS-02 | Data-in-transit is protected | Certificates |
+| PR.DS-11 | Backups are conducted, protected and tested | Backup |
+| PR.IR-01 | Networks protected from unauthorized access | Firewall, duplicate MAC |
+| PR.IR-04 | Adequate resource capacity is maintained | HA, replication, single-node, storage availability |
+| PR.PS-02 | Software is maintained commensurate with risk | Patch, CVE |
+| DE.CM-01 | Networks and services are monitored | Cluster log, task failures, NTP, services |
+| DE.CM-03 | Personnel activity is monitored | Cluster log, task failures, user notification |
+| RC.RP-01 | Recovery procedures are in place and exercised | Backup, HA, replication, single-node |
 
 ---
 

@@ -137,6 +137,13 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nis2.Art_21_e,
                         ComplianceControls.PciDss.R_6_3,
                         ComplianceControls.Gdpr.Art_32_1_b,
+                        ComplianceControls.AgId.ABSC_2_3,
+                        ComplianceControls.AgId.ABSC_4_1,
+                        ComplianceControls.AgId.ABSC_4_4,
+                        ComplianceControls.Cis.C_7,
+                        ComplianceControls.NistCsf.PR_PS_02,
+                        ComplianceControls.NistCsf.ID_RA_01,
+                        ComplianceControls.Iso27017.CLD_9_5_2,
                     ]);
             }
             #endregion
@@ -318,6 +325,13 @@ public partial class DiagnosticEngine
                             ComplianceControls.Nis2.Art_21_e,
                             ComplianceControls.PciDss.R_6_3,
                             ComplianceControls.Gdpr.Art_32_1_b,
+                            ComplianceControls.AgId.ABSC_2_3,
+                            ComplianceControls.AgId.ABSC_4_1,
+                            ComplianceControls.AgId.ABSC_4_4,
+                            ComplianceControls.Cis.C_7,
+                            ComplianceControls.NistCsf.PR_PS_02,
+                            ComplianceControls.NistCsf.ID_RA_01,
+                            ComplianceControls.Iso27017.CLD_9_5_2,
                         ]);
                 }
                 #endregion
@@ -501,6 +515,10 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nis2.Art_21_c,
                         ComplianceControls.Dora.Art_12,
                         ComplianceControls.Gdpr.Art_32_1_b,
+                        ComplianceControls.Cis.C_11,
+                        ComplianceControls.NistCsf.PR_IR_04,
+                        ComplianceControls.NistCsf.RC_RP_01,
+                        ComplianceControls.Iso27017.CLD_6_3_1,
                     ]);
             }
             #endregion
@@ -609,6 +627,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_22,
                 ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.Gdpr.Art_5_1_f,
+                ComplianceControls.Cis.C_12,
+                ComplianceControls.NistCsf.PR_IR_01,
+                ComplianceControls.Iso27017.CLD_13_1_4,
             ]);
 
         // Template checks — config already pre-fetched

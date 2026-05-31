@@ -19,7 +19,7 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 
 > **Health checks and diagnostics for Proxmox VE** — analyzes your entire cluster in one run and tells you what is wrong.
 >
-> Runs **170+ built-in diagnostic checks on every scan** (cluster, nodes, storages, VMs, LXCs — see [docs/checks.md](docs/checks.md)) and tags **40+ findings against compliance controls** (ISO 27001, NIS2, DORA, PCI DSS — see [docs/compliance.md](docs/compliance.md)).
+> Runs **170+ built-in diagnostic checks on every scan** (cluster, nodes, storages, VMs, LXCs — see [docs/checks.md](docs/checks.md)) and tags **40+ findings against 9 compliance frameworks** (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ISO 27017, CIS Controls, NIST CSF — see [docs/compliance.md](docs/compliance.md)).
 >
 > **Single-node hosts** will see resilience findings (no HA / no replication / single-node topology) flagged on every run — by design, since a single node is **not compliant** with the business-continuity controls those checks map to. On lab / dev setups, use [ignore rules](docs/ignored-issues.md) to silence them. See [Single-node setups and compliance](docs/compliance.md#single-node-setups-and-compliance).
 
@@ -61,7 +61,7 @@ The cv4pve suite follows the Unix philosophy — each tool does one thing and do
 - **Performance tuning** — `MaxParallelRequests` and `ApiTimeout` for slow / high-latency clusters (see [docs/settings.md#performance-tuning](docs/settings.md#performance-tuning))
 - **Ignore rules** — suppress known/accepted issues by ErrorCode, Id, SubContext or Description (see [docs/ignored-issues.md](docs/ignored-issues.md))
 - **API token** support (Proxmox VE 6.2+)
-- **Compliance mapping** — 40+ findings tagged with ISO 27001, NIS2, DORA, PCI DSS controls; filter and add control ids to the report with `--compliance=<standard>` (see [docs/compliance.md](docs/compliance.md))
+- **Compliance mapping** — 40+ findings tagged across 9 frameworks (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ISO 27017, CIS Controls, NIST CSF); filter and add control ids to the report with `--compliance=<standard>` (see [docs/compliance.md](docs/compliance.md))
 - **CVE scanning (Proxmox VE only)** — optional NVD lookup for known vulnerabilities affecting the installed Proxmox VE version (see [docs/settings.md#cve-scanning](docs/settings.md#cve-scanning))
 
 ---
