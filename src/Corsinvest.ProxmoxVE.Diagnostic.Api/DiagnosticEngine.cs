@@ -40,6 +40,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // Storage names that are shared — used in CheckCommonAsync to build the correct lookup key.
     private readonly HashSet<string> _sharedStorageNames = new(StringComparer.OrdinalIgnoreCase);
 
+    // QEMU machine types available on each node, keyed by node name. Populated by FetchNodeDataAsync,
+    // consumed by CheckVmAsync (IG0016 outdated machine type). Empty list = node had no data or fetch failed.
+    private readonly Dictionary<string, IReadOnlyList<Helpers.NodeCapabilitiesQemuMachine>> _qemuMachinesByNode = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Analyze cluster by querying PVE API directly
     /// </summary>

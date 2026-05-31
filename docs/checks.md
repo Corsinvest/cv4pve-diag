@@ -175,6 +175,7 @@ This is the catalog of every check `cv4pve-diag` runs against a Proxmox VE clust
 | IG0007        | Hardware        | Info             | VM has virtio-rng device — verify this is intentional                                    |
 | IG0008        | Hardware        | Info             | VM has serial console configured — verify this is intentional                            |
 | IG0012        | Hardware        | Info             | Machine type not configured — QEMU will use default which may change across PVE upgrades |
+| IG0016        | Hardware        | Info             | Machine type pinned to an old version — newer version available on the node              |
 | WG0012        | Hardware        | Warning          | Passthrough configured — live migration and HA not possible                              |
 | CG0005        | HA              | Critical         | Disk is on non-shared storage but VM is managed by HA — live migration will fail         |
 | IG0015        | HA              | Info             | Guest is not managed by any HA resource — will not be restarted on node failure          |

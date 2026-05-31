@@ -8,6 +8,7 @@ using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Helpers;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -538,6 +539,38 @@ public partial class DiagnosticEngine
                     descriptionKo: "Machine type not set — QEMU will use the default, which may change across PVE upgrades",
                     descriptionOk: $"Machine type explicitly set to '{qemuMachine.Machine}'",
                     compliance: []);
+
+                // IG0016 — pinned machine type lags behind the latest available on the node.
+                // Skipped when the value is empty (IG0012 handles that), when the format isn't
+                // pc-<family>-<X.Y> (e.g. "pc-i440fx-latest", bare "q35", "windows"), or when the
+                // node's machine catalog couldn't be fetched. Pinning is the right thing to do for
+                // stability, but versions accumulate deprecated security/microcode behaviour and
+                // should be reviewed during planned maintenance windows.
+                if (TryParseMachineVersion(qemuMachine.Machine, out var family, out var current)
+                    && _qemuMachinesByNode.TryGetValue(item.Node, out var nodeMachines)
+                    && TryFindLatestVersion(nodeMachines, family, out var latest)
+                    && CompareMachineVersions(current, latest) < 0)
+                {
+                    CreateResult(
+                        isOk: false,
+                        id: id,
+                        errorCode: "IG0016",
+                        subContext: "Hardware",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: $"Machine type '{qemuMachine.Machine}' is outdated — latest available on node '{item.Node}' is '{family}-{latest}' (upgrade requires VM stop/start)",
+                        descriptionOk: "",
+                        compliance:
+                        [
+                            ComplianceControls.Iso27001.A_8_8,
+                            ComplianceControls.Nis2.Art_21_e,
+                            ComplianceControls.PciDss.R_6_3,
+                            ComplianceControls.Gdpr.Art_32_1_b,
+                            ComplianceControls.AgId.ABSC_2_3,
+                            ComplianceControls.Cis.C_7,
+                            ComplianceControls.NistCsf.PR_PS_02,
+                        ]);
+                }
             }
             #endregion
 
@@ -656,5 +689,54 @@ public partial class DiagnosticEngine
                 compliance: []);
             #endregion
         }
+    }
+
+    // IG0016 helpers — parse "pc-<family>-<version>" identifiers and rank versions
+    // numerically (so "8.10" sorts after "8.2"), tolerating optional pve-vendor suffixes
+    // (e.g. "pc-i440fx-8.0+pve0"). "pc-i440fx-latest", "q35" (no version) and similar
+    // intentional aliases return false and are skipped.
+
+    private static bool TryParseMachineVersion(string? machine, out string family, out string version)
+    {
+        family = "";
+        version = "";
+        if (string.IsNullOrWhiteSpace(machine)) { return false; }
+        var match = System.Text.RegularExpressions.Regex.Match(machine, @"^(?<family>[a-z][a-z0-9-]*?)-(?<ver>\d+(?:\.\d+)+)(?:\+[a-z0-9.+-]+)?$");
+        if (!match.Success) { return false; }
+        family = match.Groups["family"].Value;
+        version = match.Groups["ver"].Value;
+        return true;
+    }
+
+    private static bool TryFindLatestVersion(IEnumerable<Helpers.NodeCapabilitiesQemuMachine> machines,
+                                             string family,
+                                             out string latestVersion)
+    {
+        latestVersion = "";
+        string? best = null;
+        foreach (var m in machines)
+        {
+            if (string.IsNullOrWhiteSpace(m.Id)) { continue; }
+            if (!TryParseMachineVersion(m.Id, out var f, out var v)) { continue; }
+            if (!string.Equals(f, family, StringComparison.OrdinalIgnoreCase)) { continue; }
+            if (best == null || CompareMachineVersions(v, best) > 0) { best = v; }
+        }
+        if (best == null) { return false; }
+        latestVersion = best;
+        return true;
+    }
+
+    private static int CompareMachineVersions(string a, string b)
+    {
+        var pa = a.Split('.');
+        var pb = b.Split('.');
+        var len = Math.Max(pa.Length, pb.Length);
+        for (var i = 0; i < len; i++)
+        {
+            var ia = i < pa.Length && int.TryParse(pa[i], out var x) ? x : 0;
+            var ib = i < pb.Length && int.TryParse(pb[i], out var y) ? y : 0;
+            if (ia != ib) { return ia.CompareTo(ib); }
+        }
+        return 0;
     }
 }

@@ -6,7 +6,6 @@
 - [ ] **Large time difference between nodes** — extend NTP check to compare node times against each other, not just client; requires parallel node data fetch (current sequential fetch introduces artificial time skew between nodes)
 
 ### VM (QEMU)
-- [ ] **VM with outdated machine type** — `machine=` value is older than the latest available on the node (e.g. `pc-i440fx-6.2` when `pc-i440fx-8.2` is available); check via `nodes/{node}/capabilities/qemu/machines`
 
 ### Network
 

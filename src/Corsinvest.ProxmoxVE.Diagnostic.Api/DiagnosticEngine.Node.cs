@@ -10,6 +10,7 @@ using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Helpers;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -47,7 +48,8 @@ public partial class DiagnosticEngine
                                  IReadOnlyList<NodeTask> Tasks,
                                  IReadOnlyList<NodeDiskList> Disks,
                                  IReadOnlyList<NodeDiskZfs> ZfsList,
-                                 IReadOnlyList<NodeDiskLvmThin> LvmThinList);
+                                 IReadOnlyList<NodeDiskLvmThin> LvmThinList,
+                                 IReadOnlyList<NodeCapabilitiesQemuMachine> QemuMachines);
 
     private async Task<NodeFetchData> FetchNodeDataAsync(ClusterResource item)
     {
@@ -69,8 +71,13 @@ public partial class DiagnosticEngine
         var lvmThinListTask = settings.Node.NodeStorage.LvmThinMetadata
                                     ? api.Disks.Lvmthin.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"LVM-thin metadata on node '{node}'")
                                     : Task.FromResult<IReadOnlyList<NodeDiskLvmThin>>([]);
+        // GetAsync is provided by the temporary shim in Helpers/PveSdkShims.cs — remove the
+        // shim and this comment once cv4pve-api-dotnet > 9.2.0 ships the strong-typed extension.
+        var qemuMachinesTask = api.Capabilities.Qemu.Machines.GetAsync()
+                                  .ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"QEMU machines on node '{node}'");
         await Task.WhenAll(subscriptionTask, servicesTask, certificatesTask, replicationTask,
-                           aptUpdateTask, pciTask, tasksTask, disksListTask, zfsListTask, lvmThinListTask);
+                           aptUpdateTask, pciTask, tasksTask, disksListTask, zfsListTask, lvmThinListTask,
+                           qemuMachinesTask);
 
         return new NodeFetchData(item,
                                  subscriptionTask.Result,
@@ -82,7 +89,8 @@ public partial class DiagnosticEngine
                                  tasksTask.Result,
                                  disksListTask.Result,
                                  zfsListTask.Result,
-                                 lvmThinListTask.Result);
+                                 lvmThinListTask.Result,
+                                 qemuMachinesTask.Result);
     }
 
     private async Task CheckNodesAsync(bool hasCluster)
@@ -143,6 +151,13 @@ public partial class DiagnosticEngine
         // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
         var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);
         var nodeFetchData = nodeFetchResults.ToDictionary(r => r.Item.Node, r => r);
+
+        // Publish the per-node QEMU machine catalog so CheckVmAsync (IG0016) can consume it
+        // without re-fetching. Keyed by node name; nodes whose fetch failed get an empty list.
+        foreach (var (nodeName, fetch) in nodeFetchData)
+        {
+            _qemuMachinesByNode[nodeName] = fetch.QemuMachines;
+        }
 
         #region Cluster-wide version / kernel consistency
         // Compared once across all online nodes (not per node) — mixed versions/kernels after a partial upgrade
