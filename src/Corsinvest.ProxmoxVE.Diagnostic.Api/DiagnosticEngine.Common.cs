@@ -108,6 +108,9 @@ public partial class DiagnosticEngine
             ComplianceControls.Dora.Art_11,
             ComplianceControls.Dora.Art_12,
             ComplianceControls.Gdpr.Art_32_1_c,
+            ComplianceControls.Ens.MP_INFO_6,
+            ComplianceControls.Iso27018.A_12_3_1,
+            ComplianceControls.C5.OPS_21,
         ];
 
         // Check if this VM is covered by at least one enabled backup job (all, by vmid, or by pool)
@@ -301,6 +304,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_c,
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.Ens.OP_CONT_2,
+                ComplianceControls.C5.BCM_03,
+                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.C5.PI_02,
             ];
 
             if (_haVmIds.Count > 0)
@@ -357,6 +364,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Dora.Art_10,
                 ComplianceControls.Gdpr.Art_32_1_d,
                 ComplianceControls.AgId.ABSC_5_2,
+                ComplianceControls.Ens.OP_EXP_8,
+                ComplianceControls.Iso27018.A_12_4_1,
+                ComplianceControls.C5.OPS_09,
                 ComplianceControls.Cis.C_8,
                 ComplianceControls.NistCsf.DE_CM_01,
                 ComplianceControls.NistCsf.DE_CM_03,
@@ -462,6 +472,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_e,
             ComplianceControls.PciDss.R_1_2,
             ComplianceControls.Gdpr.Art_5_1_f,
+            ComplianceControls.Ens.MP_COM_1,
+            ComplianceControls.C5.KOS_01,
         ];
 
         CreateResult(

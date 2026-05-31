@@ -285,6 +285,239 @@ public static class ComplianceControls
     }
 
     /// <summary>
+    /// ENS — Esquema Nacional de Seguridad (Real Decreto 311/2022, Spain).
+    /// Control identifiers follow the official ENS taxonomy: op.* (operational framework),
+    /// mp.* (protection measures). Only the subset technically verifiable on a Proxmox VE
+    /// cluster is listed here.
+    /// </summary>
+    public static class Ens
+    {
+        /// <summary>op.acc.1 — Identification (unique user identity for every access).</summary>
+        public static readonly ComplianceMapping OP_ACC_1 =
+            new(ComplianceStandard.Ens, "op.acc.1", "Identification");
+
+        /// <summary>op.acc.2 — Access rights (least privilege, role-based).</summary>
+        public static readonly ComplianceMapping OP_ACC_2 =
+            new(ComplianceStandard.Ens, "op.acc.2", "Access rights");
+
+        /// <summary>op.acc.4 — Local access process (authentication mechanism, MFA on admin).</summary>
+        public static readonly ComplianceMapping OP_ACC_4 =
+            new(ComplianceStandard.Ens, "op.acc.4", "Local access process");
+
+        /// <summary>op.acc.5 — Remote access (segregated, controlled remote administration).</summary>
+        public static readonly ComplianceMapping OP_ACC_5 =
+            new(ComplianceStandard.Ens, "op.acc.5", "Remote access");
+
+        /// <summary>op.exp.1 — Inventory of assets.</summary>
+        public static readonly ComplianceMapping OP_EXP_1 =
+            new(ComplianceStandard.Ens, "op.exp.1", "Inventory of assets");
+
+        /// <summary>op.exp.2 — Security configuration (hardening baseline).</summary>
+        public static readonly ComplianceMapping OP_EXP_2 =
+            new(ComplianceStandard.Ens, "op.exp.2", "Security configuration");
+
+        /// <summary>op.exp.3 — Security configuration management (drift detection).</summary>
+        public static readonly ComplianceMapping OP_EXP_3 =
+            new(ComplianceStandard.Ens, "op.exp.3", "Security configuration management");
+
+        /// <summary>op.exp.4 — Maintenance and software updates (patch management).</summary>
+        public static readonly ComplianceMapping OP_EXP_4 =
+            new(ComplianceStandard.Ens, "op.exp.4", "Maintenance and software updates");
+
+        /// <summary>op.exp.5 — Change management.</summary>
+        public static readonly ComplianceMapping OP_EXP_5 =
+            new(ComplianceStandard.Ens, "op.exp.5", "Change management");
+
+        /// <summary>op.exp.8 — Activity log recording.</summary>
+        public static readonly ComplianceMapping OP_EXP_8 =
+            new(ComplianceStandard.Ens, "op.exp.8", "Activity log recording");
+
+        /// <summary>op.exp.9 — Incident management records.</summary>
+        public static readonly ComplianceMapping OP_EXP_9 =
+            new(ComplianceStandard.Ens, "op.exp.9", "Incident management records");
+
+        /// <summary>op.cont.2 — Continuity plan (HA / failover provisions).</summary>
+        public static readonly ComplianceMapping OP_CONT_2 =
+            new(ComplianceStandard.Ens, "op.cont.2", "Continuity plan");
+
+        /// <summary>op.cont.3 — Periodic test of continuity procedures.</summary>
+        public static readonly ComplianceMapping OP_CONT_3 =
+            new(ComplianceStandard.Ens, "op.cont.3", "Periodic continuity tests");
+
+        /// <summary>op.mon.1 — Intrusion detection / monitoring of system activity.</summary>
+        public static readonly ComplianceMapping OP_MON_1 =
+            new(ComplianceStandard.Ens, "op.mon.1", "System activity monitoring");
+
+        /// <summary>mp.com.1 — Secure communications perimeter (firewall, network segregation).</summary>
+        public static readonly ComplianceMapping MP_COM_1 =
+            new(ComplianceStandard.Ens, "mp.com.1", "Secure communications perimeter");
+
+        /// <summary>mp.com.2 — Protection of confidentiality in communications (encryption in transit).</summary>
+        public static readonly ComplianceMapping MP_COM_2 =
+            new(ComplianceStandard.Ens, "mp.com.2", "Protection of confidentiality in communications");
+
+        /// <summary>mp.info.6 — Backup copies of information.</summary>
+        public static readonly ComplianceMapping MP_INFO_6 =
+            new(ComplianceStandard.Ens, "mp.info.6", "Information backup");
+
+        /// <summary>mp.s.1 — Service protection (availability, isolation).</summary>
+        public static readonly ComplianceMapping MP_S_1 =
+            new(ComplianceStandard.Ens, "mp.s.1", "Service protection");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            OP_ACC_1, OP_ACC_2, OP_ACC_4, OP_ACC_5,
+            OP_EXP_1, OP_EXP_2, OP_EXP_3, OP_EXP_4, OP_EXP_5, OP_EXP_8, OP_EXP_9,
+            OP_CONT_2, OP_CONT_3,
+            OP_MON_1,
+            MP_COM_1, MP_COM_2,
+            MP_INFO_6,
+            MP_S_1,
+        ];
+    }
+
+    /// <summary>
+    /// C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).
+    /// Identifiers follow the official BSI taxonomy: OIS (organisation of information security),
+    /// HR (human resources), AM (asset management), PS (physical security), RB (regulatory/business),
+    /// IDM (identity / access management), KRY (cryptography), KOS (communication security),
+    /// PI (portability / interoperability), OPS (operations), BCM (business continuity management),
+    /// SIM (incident management), COM (compliance), INQ (investigation requests), DEV (development),
+    /// SSO (service supplier), POR (portability of customer data). Only the subset technically
+    /// verifiable on a Proxmox VE cluster is listed.
+    /// </summary>
+    public static class C5
+    {
+        /// <summary>IDM-01 — Policy for system and data access (least privilege, role separation).</summary>
+        public static readonly ComplianceMapping IDM_01 =
+            new(ComplianceStandard.C5, "IDM-01", "Policy for system and data access");
+
+        /// <summary>IDM-02 — User registration and approval workflow.</summary>
+        public static readonly ComplianceMapping IDM_02 =
+            new(ComplianceStandard.C5, "IDM-02", "User registration");
+
+        /// <summary>IDM-03 — Locking, deactivation and deletion of accounts (lifecycle).</summary>
+        public static readonly ComplianceMapping IDM_03 =
+            new(ComplianceStandard.C5, "IDM-03", "Account lifecycle");
+
+        /// <summary>IDM-08 — Authentication mechanisms (strong / multi-factor for privileged users).</summary>
+        public static readonly ComplianceMapping IDM_08 =
+            new(ComplianceStandard.C5, "IDM-08", "Authentication mechanisms");
+
+        /// <summary>IDM-09 — Authorisation mechanisms (role-based, least privilege).</summary>
+        public static readonly ComplianceMapping IDM_09 =
+            new(ComplianceStandard.C5, "IDM-09", "Authorisation mechanisms");
+
+        /// <summary>KRY-01 — Policy for the use of cryptography.</summary>
+        public static readonly ComplianceMapping KRY_01 =
+            new(ComplianceStandard.C5, "KRY-01", "Policy for use of cryptography");
+
+        /// <summary>KRY-03 — Encryption of data in transit (TLS configuration, certificate hygiene).</summary>
+        public static readonly ComplianceMapping KRY_03 =
+            new(ComplianceStandard.C5, "KRY-03", "Encryption of data in transit");
+
+        /// <summary>KOS-01 — Technical safeguards for the cloud network (firewalls, segregation).</summary>
+        public static readonly ComplianceMapping KOS_01 =
+            new(ComplianceStandard.C5, "KOS-01", "Technical safeguards for cloud network");
+
+        /// <summary>KOS-03 — Logging of communication-layer events (firewall log).</summary>
+        public static readonly ComplianceMapping KOS_03 =
+            new(ComplianceStandard.C5, "KOS-03", "Logging of communication events");
+
+        /// <summary>OPS-09 — Audit logging of administrative activity.</summary>
+        public static readonly ComplianceMapping OPS_09 =
+            new(ComplianceStandard.C5, "OPS-09", "Audit logging");
+
+        /// <summary>OPS-10 — Monitoring of audit logs and abnormal events.</summary>
+        public static readonly ComplianceMapping OPS_10 =
+            new(ComplianceStandard.C5, "OPS-10", "Monitoring of audit logs");
+
+        /// <summary>OPS-16 — Handling of vulnerabilities (scanning + remediation).</summary>
+        public static readonly ComplianceMapping OPS_16 =
+            new(ComplianceStandard.C5, "OPS-16", "Vulnerability handling");
+
+        /// <summary>OPS-18 — Patch management (timely application of security updates).</summary>
+        public static readonly ComplianceMapping OPS_18 =
+            new(ComplianceStandard.C5, "OPS-18", "Patch management");
+
+        /// <summary>OPS-21 — Backup of customer data (job existence, retention, restore tests).</summary>
+        public static readonly ComplianceMapping OPS_21 =
+            new(ComplianceStandard.C5, "OPS-21", "Backup of customer data");
+
+        /// <summary>OPS-23 — Storage of backups (separated, protected, available).</summary>
+        public static readonly ComplianceMapping OPS_23 =
+            new(ComplianceStandard.C5, "OPS-23", "Storage of backups");
+
+        /// <summary>BCM-01 — Top-level business continuity policy.</summary>
+        public static readonly ComplianceMapping BCM_01 =
+            new(ComplianceStandard.C5, "BCM-01", "Business continuity policy");
+
+        /// <summary>BCM-03 — Redundancy of system components (HA, replication).</summary>
+        public static readonly ComplianceMapping BCM_03 =
+            new(ComplianceStandard.C5, "BCM-03", "Redundancy of system components");
+
+        /// <summary>BCM-04 — Periodic testing of continuity arrangements.</summary>
+        public static readonly ComplianceMapping BCM_04 =
+            new(ComplianceStandard.C5, "BCM-04", "Periodic testing of continuity");
+
+        /// <summary>PI-02 — Hardening of virtualisation infrastructure (segregation, machine type, CPU flags).</summary>
+        public static readonly ComplianceMapping PI_02 =
+            new(ComplianceStandard.C5, "PI-02", "Hardening of virtualisation infrastructure");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            IDM_01, IDM_02, IDM_03, IDM_08, IDM_09,
+            KRY_01, KRY_03,
+            KOS_01, KOS_03,
+            OPS_09, OPS_10, OPS_16, OPS_18, OPS_21, OPS_23,
+            BCM_01, BCM_03, BCM_04,
+            PI_02,
+        ];
+    }
+
+    /// <summary>
+    /// ISO/IEC 27018:2019 — Code of practice for protection of Personally Identifiable Information
+    /// (PII) in public clouds acting as PII processors. Extends ISO 27001/27017 with PII-specific
+    /// controls. Only the subset technically verifiable on a Proxmox VE cluster is listed; many
+    /// 27018 controls are contractual/organisational and out of scope here.
+    /// </summary>
+    public static class Iso27018
+    {
+        /// <summary>A.9.4.2 — Secure log-on procedures for accounts that can access PII.</summary>
+        public static readonly ComplianceMapping A_9_4_2 =
+            new(ComplianceStandard.Iso27018, "A.9.4.2", "Secure log-on for PII access");
+
+        /// <summary>A.10.1.1 — Use of cryptography to protect PII in transit.</summary>
+        public static readonly ComplianceMapping A_10_1_1 =
+            new(ComplianceStandard.Iso27018, "A.10.1.1", "Cryptography for PII in transit");
+
+        /// <summary>A.12.1.4 — Separation of development, test and operational environments handling PII.</summary>
+        public static readonly ComplianceMapping A_12_1_4 =
+            new(ComplianceStandard.Iso27018, "A.12.1.4", "Separation of environments handling PII");
+
+        /// <summary>A.12.3.1 — Backup of PII data (existence, retention, restore-ability).</summary>
+        public static readonly ComplianceMapping A_12_3_1 =
+            new(ComplianceStandard.Iso27018, "A.12.3.1", "Backup of PII");
+
+        /// <summary>A.12.4.1 — Event logging for processing of PII.</summary>
+        public static readonly ComplianceMapping A_12_4_1 =
+            new(ComplianceStandard.Iso27018, "A.12.4.1", "Event logging for PII processing");
+
+        /// <summary>A.13.2.1 — Secure transfer of PII over networks.</summary>
+        public static readonly ComplianceMapping A_13_2_1 =
+            new(ComplianceStandard.Iso27018, "A.13.2.1", "Secure transfer of PII");
+
+        /// <summary>A.16.1.2 — Reporting of information-security events involving PII.</summary>
+        public static readonly ComplianceMapping A_16_1_2 =
+            new(ComplianceStandard.Iso27018, "A.16.1.2", "Reporting of PII-related events");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            A_9_4_2, A_10_1_1, A_12_1_4, A_12_3_1, A_12_4_1, A_13_2_1, A_16_1_2,
+        ];
+    }
+
+    /// <summary>
     /// ISO/IEC 27017:2015 — Security controls for cloud services.
     /// Only the cloud-specific CLD.* extensions to ISO 27001 are listed here;
     /// the base ISO 27001 controls are in <see cref="Iso27001"/>.
@@ -454,7 +687,7 @@ public static class ComplianceControls
     // ──────── Lookup ────────
 
     private static readonly FrozenDictionary<(ComplianceStandard, string), ComplianceMapping> _byKey =
-        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Iso27017.All, Cis.All, NistCsf.All }
+        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All }
             .SelectMany(x => x)
             .ToFrozenDictionary(m => (m.Standard, m.ControlId));
 

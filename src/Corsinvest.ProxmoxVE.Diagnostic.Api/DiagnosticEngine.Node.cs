@@ -167,6 +167,10 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_e,
             ComplianceControls.PciDss.R_6_3,
             ComplianceControls.Gdpr.Art_32_1_b,
+            ComplianceControls.Ens.OP_EXP_3,
+            ComplianceControls.C5.PI_02,
+            ComplianceControls.Ens.OP_EXP_4,
+            ComplianceControls.C5.OPS_18,
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
@@ -242,7 +246,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_8,
                 ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.PciDss.R_6_3,
-                ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.Ens.OP_EXP_4,
+                ComplianceControls.C5.OPS_18,
             ];
             if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
@@ -283,6 +288,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.PciDss.R_6_3,
                         ComplianceControls.Gdpr.Art_32_1_b,
                         ComplianceControls.AgId.ABSC_2_3,
+                        ComplianceControls.Ens.OP_EXP_4,
+                        ComplianceControls.C5.OPS_18,
                         ComplianceControls.AgId.ABSC_4_1,
                         ComplianceControls.AgId.ABSC_4_4,
                         ComplianceControls.Cis.C_7,
@@ -431,7 +438,6 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Dora.Art_12,
-                    ComplianceControls.Gdpr.Art_32_1_b,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.Iso27017.CLD_6_3_1,
                 ]);
@@ -497,6 +503,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.PciDss.R_4_2,
                 ComplianceControls.Gdpr.Art_32_1_a,
                 ComplianceControls.Gdpr.Art_5_1_f,
+                ComplianceControls.Ens.MP_COM_2,
+                ComplianceControls.Iso27018.A_10_1_1,
+                ComplianceControls.C5.KRY_03,
             ];
             CreateResultPerItem(
                 items: fetch.Certificates,
@@ -648,6 +657,9 @@ public partial class DiagnosticEngine
                         ComplianceControls.PciDss.R_10_2,
                         ComplianceControls.Gdpr.Art_32_1_d,
                         ComplianceControls.AgId.ABSC_5_2,
+                        ComplianceControls.Ens.OP_EXP_8,
+                        ComplianceControls.Iso27018.A_12_4_1,
+                        ComplianceControls.C5.OPS_09,
                         ComplianceControls.Cis.C_8,
                         ComplianceControls.NistCsf.DE_CM_01,
                         ComplianceControls.NistCsf.DE_CM_03,

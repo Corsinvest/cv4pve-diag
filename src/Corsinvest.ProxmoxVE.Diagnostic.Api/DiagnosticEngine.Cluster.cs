@@ -57,6 +57,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.PR_IR_04,
                 ComplianceControls.NistCsf.RC_RP_01,
                 ComplianceControls.Iso27017.CLD_6_3_1,
+                ComplianceControls.Ens.OP_CONT_2,
+                ComplianceControls.C5.BCM_03,
+                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.C5.PI_02,
             ]);
 
         return hasCluster;
@@ -76,6 +80,11 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_f,
             ComplianceControls.Dora.Art_10,
             ComplianceControls.Gdpr.Art_32_1_d,
+            ComplianceControls.Ens.OP_EXP_8,
+            ComplianceControls.Iso27018.A_12_4_1,
+            ComplianceControls.C5.OPS_09,
+            ComplianceControls.Ens.OP_MON_1,
+            ComplianceControls.C5.OPS_10,
         ];
 
         // IC0018 — no metric server configured at all.
@@ -145,6 +154,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.PciDss.R_10_2,
                 ComplianceControls.Gdpr.Art_32_1_d,
                 ComplianceControls.AgId.ABSC_5_2,
+                ComplianceControls.Ens.OP_EXP_8,
+                ComplianceControls.Iso27018.A_12_4_1,
+                ComplianceControls.C5.OPS_09,
                 ComplianceControls.Cis.C_8,
                 ComplianceControls.NistCsf.DE_CM_01,
                 ComplianceControls.NistCsf.DE_CM_03,
@@ -174,6 +186,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Dora.Art_12,
                 ComplianceControls.Gdpr.Art_32_1_c,
                 ComplianceControls.AgId.ABSC_10_1,
+                ComplianceControls.Ens.MP_INFO_6,
+                ComplianceControls.Iso27018.A_12_3_1,
+                ComplianceControls.C5.OPS_21,
                 ComplianceControls.AgId.ABSC_10_3,
                 ComplianceControls.AgId.ABSC_10_4,
                 ComplianceControls.Cis.C_11,
@@ -201,11 +216,6 @@ public partial class DiagnosticEngine
         // Backup compliance controls — reused for WC0002/WC0017/WC0018/IC0012.
         ComplianceMapping[] backupControls =
         [
-            ComplianceControls.Iso27001.A_8_13,
-            ComplianceControls.Nis2.Art_21_c,
-            ComplianceControls.Dora.Art_11,
-            ComplianceControls.Dora.Art_12,
-            ComplianceControls.Gdpr.Art_32_1_c,
         ];
 
         // Backup jobs without retention policy — storage will fill up indefinitely
@@ -294,6 +304,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Dora.Art_10,
                     ComplianceControls.Gdpr.Art_32_1_d,
                     ComplianceControls.AgId.ABSC_5_2,
+                    ComplianceControls.Ens.OP_EXP_8,
+                    ComplianceControls.Iso27018.A_12_4_1,
+                    ComplianceControls.C5.OPS_09,
                     ComplianceControls.Cis.C_8,
                     ComplianceControls.NistCsf.DE_CM_01,
                     ComplianceControls.NistCsf.DE_CM_03,
@@ -348,10 +361,11 @@ public partial class DiagnosticEngine
         // Resilience / business continuity controls.
         ComplianceMapping[] resilienceControls =
         [
-            ComplianceControls.Iso27001.A_5_30,
             ComplianceControls.Nis2.Art_21_c,
-            ComplianceControls.Dora.Art_12,
-            ComplianceControls.Gdpr.Art_32_1_b,
+            ComplianceControls.Ens.OP_CONT_2,
+            ComplianceControls.C5.BCM_03,
+            ComplianceControls.Ens.MP_S_1,
+            ComplianceControls.C5.PI_02,
         ];
 
         // HA service in error state — the resource is not running and will not be recovered automatically
@@ -421,6 +435,10 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_c,
             ComplianceControls.Dora.Art_12,
             ComplianceControls.Gdpr.Art_32_1_b,
+            ComplianceControls.Ens.OP_CONT_2,
+            ComplianceControls.C5.BCM_03,
+            ComplianceControls.Ens.MP_S_1,
+            ComplianceControls.C5.PI_02,
         ];
 
         // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
@@ -506,6 +524,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2.Art_21_i,
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.AgId.ABSC_5_1,
+                ComplianceControls.Ens.OP_ACC_2,
+                ComplianceControls.C5.IDM_09,
                 ComplianceControls.NistCsf.ID_AM_02,
             ]);
     }
@@ -532,8 +552,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_20,
                 ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.PciDss.R_1_2,
-                ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.AgId.ABSC_8_1,
+                ComplianceControls.Ens.MP_COM_1,
+                ComplianceControls.C5.KOS_01,
                 ComplianceControls.Cis.C_12,
                 ComplianceControls.Cis.C_13,
                 ComplianceControls.NistCsf.PR_IR_01,
@@ -544,10 +565,6 @@ public partial class DiagnosticEngine
         // Firewall / network security controls.
         ComplianceMapping[] firewallControls =
         [
-            ComplianceControls.Iso27001.A_8_20,
-            ComplianceControls.Nis2.Art_21_e,
-            ComplianceControls.PciDss.R_1_2,
-            ComplianceControls.Gdpr.Art_5_1_f,
         ];
 
         // Inbound and outbound policies should be DROP — ACCEPT allows unmatched traffic through
@@ -627,6 +644,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.PciDss.R_10_2,
                     ComplianceControls.Gdpr.Art_32_1_d,
                     ComplianceControls.AgId.ABSC_5_2,
+                    ComplianceControls.Ens.OP_EXP_8,
+                    ComplianceControls.Iso27018.A_12_4_1,
+                    ComplianceControls.C5.OPS_09,
                     ComplianceControls.Cis.C_8,
                     ComplianceControls.NistCsf.DE_CM_01,
                     ComplianceControls.NistCsf.DE_CM_03,
@@ -691,6 +711,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.Gdpr.Art_32_1_b,
                 ComplianceControls.AgId.ABSC_5_7,
+                ComplianceControls.Ens.OP_ACC_4,
+                ComplianceControls.Iso27018.A_9_4_2,
+                ComplianceControls.C5.IDM_08,
                 ComplianceControls.Cis.C_6,
                 ComplianceControls.NistCsf.PR_AA_01,
                 ComplianceControls.NistCsf.PR_AA_03,
@@ -708,7 +731,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Iso27001.A_8_2,
             ComplianceControls.Nis2.Art_21_i,
             ComplianceControls.PciDss.R_7_2,
-            ComplianceControls.Gdpr.Art_5_1_f,
+            ComplianceControls.Ens.OP_ACC_2,
+            ComplianceControls.C5.IDM_09,
         ];
         // TFA controls (WC0007, WC0013, IC0011): aligned with CC0004.
         ComplianceMapping[] tfaControls =
@@ -720,6 +744,9 @@ public partial class DiagnosticEngine
             ComplianceControls.PciDss.R_8_4_2,
             ComplianceControls.Gdpr.Art_5_1_f,
             ComplianceControls.Gdpr.Art_32_1_b,
+            ComplianceControls.Ens.OP_ACC_4,
+            ComplianceControls.Iso27018.A_9_4_2,
+            ComplianceControls.C5.IDM_08,
         ];
         // Account / identity lifecycle (WC0006, WC0016, IC0005, IC0006).
         ComplianceMapping[] accountLifecycleControls =
@@ -729,6 +756,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_d,
             ComplianceControls.PciDss.R_8_2,
             ComplianceControls.Gdpr.Art_5_1_f,
+            ComplianceControls.Ens.OP_ACC_1,
+            ComplianceControls.C5.IDM_01,
         ];
 
         // ACL Administrator role assigned at root path '/' — too permissive, prefer scoped permissions
@@ -828,6 +857,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_8,
                 ComplianceControls.NistCsf.DE_CM_03,
                 ComplianceControls.AgId.ABSC_5_2,
+                ComplianceControls.Ens.OP_EXP_8,
+                ComplianceControls.Iso27018.A_12_4_1,
+                ComplianceControls.C5.OPS_09,
             ]);
 
         // Empty groups — no users assigned, usually leftover configuration

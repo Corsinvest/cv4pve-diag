@@ -139,6 +139,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.PciDss.R_6_3,
                         ComplianceControls.Gdpr.Art_32_1_b,
                         ComplianceControls.AgId.ABSC_2_3,
+                        ComplianceControls.Ens.OP_EXP_4,
+                        ComplianceControls.C5.OPS_18,
                         ComplianceControls.AgId.ABSC_4_1,
                         ComplianceControls.AgId.ABSC_4_4,
                         ComplianceControls.Cis.C_7,
@@ -322,17 +324,6 @@ public partial class DiagnosticEngine
                         descriptionOk: $"CPU type '{cpuType}' has all Spectre/Meltdown/MDS mitigation flags configured",
                         compliance:
                         [
-                            ComplianceControls.Iso27001.A_8_8,
-                            ComplianceControls.Nis2.Art_21_e,
-                            ComplianceControls.PciDss.R_6_3,
-                            ComplianceControls.Gdpr.Art_32_1_b,
-                            ComplianceControls.AgId.ABSC_2_3,
-                            ComplianceControls.AgId.ABSC_4_1,
-                            ComplianceControls.AgId.ABSC_4_4,
-                            ComplianceControls.Cis.C_7,
-                            ComplianceControls.NistCsf.PR_PS_02,
-                            ComplianceControls.NistCsf.ID_RA_01,
-                            ComplianceControls.Iso27017.CLD_9_5_2,
                         ]);
                 }
                 #endregion
@@ -382,7 +373,9 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_8_13,
                     ComplianceControls.Nis2.Art_21_c,
-                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.MP_INFO_6,
+                    ComplianceControls.Iso27018.A_12_3_1,
+                    ComplianceControls.C5.OPS_21,
                 ];
 
                 // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
@@ -565,10 +558,11 @@ public partial class DiagnosticEngine
                             ComplianceControls.Iso27001.A_8_8,
                             ComplianceControls.Nis2.Art_21_e,
                             ComplianceControls.PciDss.R_6_3,
-                            ComplianceControls.Gdpr.Art_32_1_b,
                             ComplianceControls.AgId.ABSC_2_3,
                             ComplianceControls.Cis.C_7,
                             ComplianceControls.NistCsf.PR_PS_02,
+                            ComplianceControls.Ens.OP_EXP_4,
+                            ComplianceControls.C5.OPS_18,
                         ]);
                 }
             }
@@ -658,7 +652,6 @@ public partial class DiagnosticEngine
             [
                 ComplianceControls.Iso27001.A_8_20,
                 ComplianceControls.Iso27001.A_8_22,
-                ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.Cis.C_12,
                 ComplianceControls.NistCsf.PR_IR_01,

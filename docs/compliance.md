@@ -83,7 +83,10 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | **PCI DSS v4.0** | 1.2, 4.2, 6.3, 7.2, 8.2, 8.4.2, 10.2 |
 | **GDPR** (EU Regulation 2016/679) | Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only |
 | **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
+| **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/4/5, op.exp.1/2/3/4/5/8/9, op.cont.2/3, op.mon.1, mp.com.1/2, mp.info.6, mp.s.1 |
+| **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) | IDM-01/02/03/08/09, KRY-01/03, KOS-01/03, OPS-09/10/16/18/21/23, BCM-01/03/04, PI-02 |
 | **ISO/IEC 27017:2015** | CLD.6.3.1, CLD.8.1.5, CLD.9.5.1/2, CLD.12.1.5, CLD.12.4.5, CLD.13.1.4 |
+| **ISO/IEC 27018:2019** — PII in public clouds | A.9.4.2, A.10.1.1, A.12.1.4, A.12.3.1, A.12.4.1, A.13.2.1, A.16.1.2 |
 | **CIS Controls v8** | CIS 3, 4, 5, 6, 7, 8, 10, 11, 12, 13 |
 | **NIST CSF 2.0** | ID.AM/RA, PR.AA/DS/IR/PS, DE.CM, RC.RP — relevant subcategories |
 
@@ -172,6 +175,71 @@ Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation clu
 | ABSC 8.1 | Defences against malware (network baseline) | Firewall, patch |
 | ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
 | ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
+
+### ENS — Esquema Nacional de Seguridad (Spanish Public Administration baseline, Real Decreto 311/2022)
+
+Subset of ENS Annex II controls verifiable on a Proxmox VE cluster. Identifiers follow the official taxonomy: `op.*` operational framework, `mp.*` protection measures.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| op.acc.1 | Identification | Account lifecycle, user expiration, API token expiration |
+| op.acc.2 | Access rights | ACL, container privileged, root@pam token privsep |
+| op.acc.4 | Local access process | TFA (root@pam, admins, group, realm) |
+| op.acc.5 | Remote access | (declared, available for future remote-admin checks) |
+| op.exp.1 | Inventory of assets | (declared, supports future inventory checks) |
+| op.exp.2 | Security configuration | Container privileged, raw lxc config, hardening |
+| op.exp.3 | Security configuration management | Patch consistency across nodes, version/kernel mismatch |
+| op.exp.4 | Maintenance and software updates | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| op.exp.5 | Change management | (declared) |
+| op.exp.8 | Activity log recording | Cluster log, task history, firewall audit logging, metric server |
+| op.exp.9 | Incident management records | (declared) |
+| op.cont.2 | Continuity plan | HA, replication, single-node, HA guest checks |
+| op.cont.3 | Periodic continuity tests | (declared) |
+| op.mon.1 | System activity monitoring | Metric server (IC0018/IC0019) |
+| mp.com.1 | Secure communications perimeter | Cluster/node firewall, guest firewall, malware-defence baseline |
+| mp.com.2 | Protection of confidentiality in communications | Certificates (expired / expiring), TLS |
+| mp.info.6 | Information backup | All backup checks, backup storage availability, disk cache integrity |
+| mp.s.1 | Service protection | HA, single-node, container isolation |
+
+### C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020)
+
+Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE cluster.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| IDM-01 | Policy for system and data access | (declared, supports future ACL-policy checks) |
+| IDM-02 | User registration | (declared) |
+| IDM-03 | Account lifecycle | (declared) |
+| IDM-08 | Authentication mechanisms | TFA (root@pam, admins, group, realm) |
+| IDM-09 | Authorisation mechanisms | ACL, container privileged, root@pam token privsep |
+| KRY-01 | Policy for use of cryptography | (declared) |
+| KRY-03 | Encryption of data in transit | Certificates (expired / expiring), TLS |
+| KOS-01 | Technical safeguards for cloud network | Cluster/node firewall, guest firewall, malware-defence baseline |
+| KOS-03 | Logging of communication events | (declared) |
+| OPS-09 | Audit logging | Cluster log, task history, firewall audit logging, metric server |
+| OPS-10 | Monitoring of audit logs | Metric server (IC0018/IC0019) |
+| OPS-16 | Vulnerability handling | (declared, complements OPS-18) |
+| OPS-18 | Patch management | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| OPS-21 | Backup of customer data | All backup checks, backup storage availability, disk cache integrity |
+| OPS-23 | Storage of backups | (declared) |
+| BCM-01 | Business continuity policy | (declared) |
+| BCM-03 | Redundancy of system components | HA, replication, single-node, HA guest checks |
+| BCM-04 | Periodic testing of continuity | (declared) |
+| PI-02 | Hardening of virtualisation infrastructure | Container isolation, single-node, service protection |
+
+### ISO/IEC 27018:2019 — PII in public clouds
+
+Subset of ISO 27018 controls applicable at the infrastructure layer. Many ISO 27018 controls are contractual / organisational (consent, transparency, return of PII) and are out of scope for an infrastructure-level diagnostic tool.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| A.9.4.2 | Secure log-on for PII access | TFA (root@pam, admins, group, realm) |
+| A.10.1.1 | Cryptography for PII in transit | Certificates (expired / expiring), TLS |
+| A.12.1.4 | Separation of environments handling PII | (declared) |
+| A.12.3.1 | Backup of PII | All backup checks |
+| A.12.4.1 | Event logging for PII processing | Cluster log, task history, firewall audit logging, metric server |
+| A.13.2.1 | Secure transfer of PII | (declared, overlaps with A.10.1.1) |
+| A.16.1.2 | Reporting of PII-related events | (declared) |
 
 ### ISO/IEC 27017:2015 — Cloud-specific extensions
 

@@ -38,4 +38,13 @@ public enum ComplianceStandard
 
     /// <summary>AgID — Misure minime di sicurezza ICT per le Pubbliche Amministrazioni (Italy).</summary>
     AgId,
+
+    /// <summary>ENS — Esquema Nacional de Seguridad (Spain, Real Decreto 311/2022).</summary>
+    Ens,
+
+    /// <summary>C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).</summary>
+    C5,
+
+    /// <summary>ISO/IEC 27018:2019 — Protection of PII in public clouds.</summary>
+    Iso27018,
 }
