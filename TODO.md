@@ -82,9 +82,8 @@ The 12 current frameworks (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ENS, BSI 
 
 ### Tests for compliance
 
-Today the xUnit suite (66 tests) does not cover the compliance layer. Worth adding:
+The xUnit suite covers the catalog structure (no duplicates, no empty titles, round-trip lookup, every declared standard has ≥1 control). Still worth adding:
 
-- [ ] **Catalog integrity** — no duplicate `(Standard, ControlId)`; every declared standard has ≥1 control; no empty `ControlTitle`; lookup by `(standard, id)` round-trips for every entry.
 - [ ] **Mapping reachability** — every `ComplianceMapping` referenced in any `DiagnosticEngine.*.cs` exists in the catalog (caught at compile-time today, but a runtime test guards against reflection-driven dynamic lookups in the future).
 - [ ] **`--compliance` filter** — running with `--compliance=Iso27001` on a snapshot fixture produces only findings whose `Compliance` list contains an `Iso27001` mapping; the report includes a `ControlId` column.
 - [ ] **`IncludeOkResult` behaviour** — with the flag off the output has zero `Gravity = Ok` entries; with it on every check that ran emits exactly one `Ok` when the condition holds.
