@@ -53,6 +53,7 @@ This is the catalog of every check `cv4pve-diag` runs against a Proxmox VE clust
 | WC0017 | Backup      | Warning  | Enabled backup job has no schedule — will never run                      |
 | IC0012 | Backup      | Info     | Backup job is disabled                                                   |
 | WC0018 | Backup      | Warning  | Recent vzdump task ended with non-OK status                              |
+| WC0019 | Backup      | Warning  | Two or more enabled backup jobs run on the same storage at the same schedule (I/O contention) |
 | IC0013 | Firewall    | Info     | Cluster firewall has enabled rules but none configure logging            |
 | IC0014 | Firewall    | Info     | Cluster firewall has 10+ disabled rules — stale configuration            |
 | IC0015 | Log         | Info     | 10+ error-level entries in the cluster journal                           |
@@ -60,6 +61,8 @@ This is the catalog of every check `cv4pve-diag` runs against a Proxmox VE clust
 | IC0017 | Topology    | Info     | Cluster has a single node — HA / quorum / replication ineffective        |
 | IC0018 | Metrics     | Info     | No external metric server configured — only volatile RRD data            |
 | IC0019 | Metrics     | Info     | Metric servers exist but every one of them is disabled                   |
+| IC0020 | Pool        | Info     | Pool has members but no ACL entry at `/pool/<id>` — not used as privilege boundary |
+| IC0021 | Access      | Info     | API token has no comment — purpose / owner cannot be attributed at audit time |
 | WC0011 | Version     | Warning  | Online nodes run different Proxmox VE versions                           |
 | WC0012 | Version     | Warning  | Online nodes run different kernel versions                               |
 
@@ -91,6 +94,7 @@ This is the catalog of every check `cv4pve-diag` runs against a Proxmox VE clust
 | WN0012        | Update           | Warning          | Security/important packages available for update                               |
 | WN0013        | Reboot           | Warning          | Running kernel differs from installed kernel                                   |
 | WN0014        | NTP              | Warning          | Node time is out of sync with NTP                                              |
+| WN0045        | NTP              | Warning          | Node clock drifts > 5s from another cluster node (corosync / HA / log correlation risk) |
 | IN0002        | IOMMU            | Info             | IOMMU disabled — PCI passthrough will not work                                 |
 | IN0003        | Consolidation    | Info             | Node CPU and RAM utilization both below threshold — consider consolidating VMs |
 | WN0015        | CPUCompatibility | Warning          | Nodes have different x86-64 feature levels — live migration may fail           |

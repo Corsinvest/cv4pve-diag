@@ -23,6 +23,10 @@ Two new observability checks fill a gap on long-term monitoring evidence:
 - `IC0018` — No external metric server configured on the cluster. Without an InfluxDB / Graphite metric server, long-term monitoring relies only on the volatile per-node RRD, which is reset on reboot — auditors typically require persistent historical data for incident investigation.
 - `IC0019` — Metric servers exist but every one of them is disabled — same effect as `IC0018`, but worth surfacing separately because the fix is just toggling the existing configuration on.
 - `IG0016` — VM has a machine type pinned to an old version while the node already offers a newer one (e.g. `pc-i440fx-6.2` while `pc-i440fx-9.2` is available). Pinning is correct for stability, but old machine versions accumulate deprecated CPU / microcode behaviour and miss QEMU bug-fixes; tagged against the patch-management controls. Upgrade requires a VM stop/start.
+- `IC0020` — Pool with members but no ACL entry at `/pool/<id>`. The pool exists as an organisational tag but is not used as a privilege boundary, which is the point of pools.
+- `IC0021` — API token without a comment. Without a comment the token's purpose / owner cannot be attributed at audit time, making safe revocation impossible.
+- `WC0019` — Two or more enabled backup jobs run on the same storage at the same systemd-calendar schedule, causing I/O contention and longer overall runtime.
+- `WN0045` — Node clock drifts more than 5 seconds from another cluster node. Even when each node looks fine vs NTP, mutual drift is a frequent silent cause of corosync token retransmits, HA fencing instability and broken log correlation.
 
 In addition, a wider set of **pre-existing checks now also carries compliance tags** (TFA on transitive admins, account lifecycle, firewall logging, certificate management, PVE patch level, container privileged-access checks, …) — the diagnostic logic and codes are unchanged, but findings now reference the relevant ISO 27001 / NIS2 / DORA / PCI DSS controls. The full mapping per area is in [docs/compliance.md](docs/compliance.md); the full list of checks is in [docs/checks.md](docs/checks.md).
 

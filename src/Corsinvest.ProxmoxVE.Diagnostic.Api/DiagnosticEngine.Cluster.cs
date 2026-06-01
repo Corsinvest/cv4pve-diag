@@ -296,6 +296,31 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: backupControls);
 
+        // WC0019 — multiple enabled backup jobs run on the same schedule against the same storage,
+        // causing I/O contention and longer job runtime. Schedule is the systemd-calendar string
+        // (e.g. "daily 02:00", "mon..fri 03:00") trimmed and compared case-insensitively. Jobs
+        // with no schedule are skipped (WC0017 already flags those).
+        var overlapGroups = backupList
+            .Where(a => a.Enabled
+                        && !string.IsNullOrWhiteSpace(a.Schedule)
+                        && !string.IsNullOrWhiteSpace(a.Storage))
+            .GroupBy(a => (Storage: a.Storage,
+                           Schedule: a.Schedule.Trim().ToLowerInvariant()))
+            .Where(g => g.Count() > 1)
+            .ToList();
+        CreateResultPerItem(
+            items: overlapGroups.SelectMany(g => g.Select(job => (Job: job, Group: g.ToList()))).ToList(),
+            isItemOk: _ => false,
+            itemId: x => $"cluster/backup/{x.Job.Id}",
+            itemDescriptionKo: x => $"Backup job '{x.Job.Id}' overlaps on storage '{x.Job.Storage}' at schedule '{x.Job.Schedule}' with: {string.Join(", ", x.Group.Where(j => j.Id != x.Job.Id).Select(j => j.Id))}",
+            aggregatedIdOk: "cluster/backup",
+            aggregatedDescriptionOk: _ => "No enabled backup jobs overlap on the same storage and schedule",
+            errorCode: "WC0019",
+            subContext: "Backup",
+            context: DiagnosticResultContext.Cluster,
+            gravityKo: DiagnosticResultGravity.Warning,
+            compliance: backupControls);
+
         // Cluster-wide task feed — used here for recent backup failures and below for task error rate.
         var clusterTasks = (await client.Cluster.Tasks.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster task feed")).ToList();
 

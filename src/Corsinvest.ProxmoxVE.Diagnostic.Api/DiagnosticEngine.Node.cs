@@ -750,6 +750,53 @@ public partial class DiagnosticEngine
                         ComplianceControls.Iso27017.CLD_12_4_5,
                     ]);
             }
+
+            // WN0045 — time drift between cluster nodes. Even when each node looks fine vs the
+            // diag client, clocks can have drifted from each other (typical sign: corosync token
+            // retransmits, HA fencing instability, broken Kerberos/LDAP, replayable log timestamps).
+            // Compare this node's UTC time against the maximum delta among the other online nodes.
+            if (hasCluster && nodeUtcTime > 0)
+            {
+                var otherUtcTimes = nodeCompareData
+                    .Where(kv => kv.Key != item.Node && kv.Value.UtcTime > 0)
+                    .Select(kv => kv.Value.UtcTime)
+                    .ToList();
+                if (otherUtcTimes.Count > 0)
+                {
+                    var maxDrift = otherUtcTimes.Max(t => Math.Abs(nodeUtcTime - t));
+                    CreateResult(
+                        isOk: maxDrift <= 5,
+                        id: id,
+                        errorCode: "WN0045",
+                        subContext: "NTP",
+                        context: DiagnosticResultContext.Node,
+                        gravityKo: DiagnosticResultGravity.Warning,
+                        descriptionKo: $"Node clock drifts up to {maxDrift}s from other cluster nodes — corosync/HA and log correlation may be affected",
+                        descriptionOk: $"Node clock within {maxDrift}s of other cluster nodes",
+                        compliance:
+                        [
+                            ComplianceControls.Iso27001.A_8_15,
+                            ComplianceControls.Iso27001.A_8_16,
+                            ComplianceControls.Nis2.Art_21_f,
+                            ComplianceControls.Dora.Art_10,
+                            ComplianceControls.PciDss.R_10_2,
+                            ComplianceControls.Gdpr.Art_32_1_d,
+                            ComplianceControls.AgId.ABSC_5_2,
+                            ComplianceControls.Ens.OP_EXP_8,
+                            ComplianceControls.Ens.OP_MON_1,
+                            ComplianceControls.C5.OPS_09,
+                            ComplianceControls.C5.OPS_10,
+                            ComplianceControls.Soc2.CC7_2,
+                            ComplianceControls.Nist80053.AU_12,
+                            ComplianceControls.Nist80053.SI_4,
+                            ComplianceControls.Iso27018.A_12_4_1,
+                            ComplianceControls.Cis.C_8,
+                            ComplianceControls.NistCsf.DE_CM_01,
+                            ComplianceControls.NistCsf.DE_CM_03,
+                            ComplianceControls.Iso27017.CLD_12_4_5,
+                        ]);
+                }
+            }
             #endregion
 
             #region IOMMU

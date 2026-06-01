@@ -3,7 +3,6 @@
 ## Checks to Implement
 
 ### Node
-- [ ] **Large time difference between nodes** — extend NTP check to compare node times against each other, not just client; requires parallel node data fetch (current sequential fetch introduces artificial time skew between nodes)
 
 ### VM (QEMU)
 
@@ -44,7 +43,6 @@
 - [ ] **Ceph health not OK** — `ceph health` returns WARN or ERR
 
 ### Cluster (API)
-- [ ] **Datacenter backup jobs overlap** — multiple jobs scheduled at same time targeting same storage
 - [ ] **Backup history anomaly** — read vzdump task logs for the last N days (configurable), compute per-VM average duration and size, warn when latest backup deviates significantly (duration too long, size drop too large). Requires reading task logs via `nodes/{node}/tasks?typefilter=vzdump` + log content per task.
 
 ---
