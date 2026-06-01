@@ -326,6 +326,21 @@ public partial class DiagnosticEngine
                         descriptionOk: $"CPU type '{cpuType}' has all Spectre/Meltdown/MDS mitigation flags configured",
                         compliance:
                         [
+                            ComplianceControls.Iso27001.A_8_8,
+                            ComplianceControls.Nis2.Art_21_e,
+                            ComplianceControls.PciDss.R_6_3,
+                            ComplianceControls.Gdpr.Art_32_1_b,
+                            ComplianceControls.AgId.ABSC_2_3,
+                            ComplianceControls.AgId.ABSC_4_1,
+                            ComplianceControls.AgId.ABSC_4_4,
+                            ComplianceControls.Ens.OP_EXP_4,
+                            ComplianceControls.C5.OPS_18,
+                            ComplianceControls.Soc2.CC7_1,
+                            ComplianceControls.Nist80053.SI_2,
+                            ComplianceControls.Iso27017.CLD_9_5_2,
+                            ComplianceControls.Cis.C_7,
+                            ComplianceControls.NistCsf.PR_PS_02,
+                            ComplianceControls.NistCsf.ID_RA_01,
                         ]);
                 }
                 #endregion
@@ -375,11 +390,21 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_8_13,
                     ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Dora.Art_11,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Gdpr.Art_32_1_c,
+                    ComplianceControls.AgId.ABSC_10_1,
+                    ComplianceControls.AgId.ABSC_10_3,
+                    ComplianceControls.AgId.ABSC_10_4,
                     ComplianceControls.Ens.MP_INFO_6,
-                    ComplianceControls.Nist80053.CP_9,
-                    ComplianceControls.Soc2.A1_2,
-                    ComplianceControls.Iso27018.A_12_3_1,
                     ComplianceControls.C5.OPS_21,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_9,
+                    ComplianceControls.Iso27018.A_12_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_DS_11,
+                    ComplianceControls.NistCsf.RC_RP_01,
                 ];
 
                 // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
@@ -513,10 +538,16 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nis2.Art_21_c,
                         ComplianceControls.Dora.Art_12,
                         ComplianceControls.Gdpr.Art_32_1_b,
+                        ComplianceControls.Ens.OP_CONT_2,
+                        ComplianceControls.Ens.MP_S_1,
+                        ComplianceControls.C5.BCM_03,
+                        ComplianceControls.Soc2.A1_1,
+                        ComplianceControls.Soc2.A1_2,
+                        ComplianceControls.Nist80053.CP_10,
+                        ComplianceControls.Iso27017.CLD_6_3_1,
                         ComplianceControls.Cis.C_11,
                         ComplianceControls.NistCsf.PR_IR_04,
                         ComplianceControls.NistCsf.RC_RP_01,
-                        ComplianceControls.Iso27017.CLD_6_3_1,
                     ]);
             }
             #endregion
@@ -562,13 +593,18 @@ public partial class DiagnosticEngine
                             ComplianceControls.Iso27001.A_8_8,
                             ComplianceControls.Nis2.Art_21_e,
                             ComplianceControls.PciDss.R_6_3,
+                            ComplianceControls.Gdpr.Art_32_1_b,
                             ComplianceControls.AgId.ABSC_2_3,
+                            ComplianceControls.AgId.ABSC_4_1,
+                            ComplianceControls.AgId.ABSC_4_4,
+                            ComplianceControls.Ens.OP_EXP_4,
+                            ComplianceControls.C5.OPS_18,
+                            ComplianceControls.Soc2.CC7_1,
+                            ComplianceControls.Nist80053.SI_2,
+                            ComplianceControls.Iso27017.CLD_9_5_2,
                             ComplianceControls.Cis.C_7,
                             ComplianceControls.NistCsf.PR_PS_02,
-                            ComplianceControls.Ens.OP_EXP_4,
-                            ComplianceControls.Nist80053.SI_2,
-                            ComplianceControls.Soc2.CC7_1,
-                            ComplianceControls.C5.OPS_18,
+                            ComplianceControls.NistCsf.ID_RA_01,
                         ]);
                 }
             }
@@ -658,10 +694,18 @@ public partial class DiagnosticEngine
             [
                 ComplianceControls.Iso27001.A_8_20,
                 ComplianceControls.Iso27001.A_8_22,
+                ComplianceControls.Nis2.Art_21_e,
+                ComplianceControls.PciDss.R_1_2,
                 ComplianceControls.Gdpr.Art_5_1_f,
-                ComplianceControls.Cis.C_12,
-                ComplianceControls.NistCsf.PR_IR_01,
+                ComplianceControls.AgId.ABSC_8_1,
+                ComplianceControls.Ens.MP_COM_1,
+                ComplianceControls.C5.KOS_01,
+                ComplianceControls.Soc2.CC6_6,
+                ComplianceControls.Nist80053.SC_7,
                 ComplianceControls.Iso27017.CLD_13_1_4,
+                ComplianceControls.Cis.C_12,
+                ComplianceControls.Cis.C_13,
+                ComplianceControls.NistCsf.PR_IR_01,
             ]);
 
         // Template checks — config already pre-fetched

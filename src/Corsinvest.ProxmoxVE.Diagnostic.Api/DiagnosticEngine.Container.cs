@@ -60,14 +60,18 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2.Art_21_i,
                     ComplianceControls.PciDss.R_7_2,
                     ComplianceControls.Gdpr.Art_5_1_f,
+                    ComplianceControls.AgId.ABSC_5_1,
                     ComplianceControls.Ens.OP_ACC_2,
-                    ComplianceControls.Nist80053.AC_6,
-                    ComplianceControls.Soc2.CC6_3,
-                    ComplianceControls.C5.IDM_09,
                     ComplianceControls.Ens.MP_S_1,
-                    ComplianceControls.Nist80053.CP_10,
-                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.C5.IDM_09,
                     ComplianceControls.C5.PI_02,
+                    ComplianceControls.Soc2.CC6_3,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Nist80053.AC_6,
+                    ComplianceControls.Nist80053.CP_10,
+                    ComplianceControls.Cis.C_6,
+                    ComplianceControls.NistCsf.PR_AA_05,
+                    ComplianceControls.NistCsf.ID_AM_02,
                 ];
 
                 #region Nesting without keyctl

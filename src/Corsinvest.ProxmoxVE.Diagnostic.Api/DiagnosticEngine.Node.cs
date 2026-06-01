@@ -167,14 +167,21 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_e,
             ComplianceControls.PciDss.R_6_3,
             ComplianceControls.Gdpr.Art_32_1_b,
+            ComplianceControls.AgId.ABSC_2_3,
+            ComplianceControls.AgId.ABSC_4_1,
+            ComplianceControls.AgId.ABSC_4_4,
             ComplianceControls.Ens.OP_EXP_3,
-            ComplianceControls.Nist80053.CM_2,
-            ComplianceControls.Soc2.CC8_1,
-            ComplianceControls.C5.PI_02,
             ComplianceControls.Ens.OP_EXP_4,
-            ComplianceControls.Nist80053.SI_2,
-            ComplianceControls.Soc2.CC7_1,
+            ComplianceControls.C5.PI_02,
             ComplianceControls.C5.OPS_18,
+            ComplianceControls.Soc2.CC8_1,
+            ComplianceControls.Soc2.CC7_1,
+            ComplianceControls.Nist80053.CM_2,
+            ComplianceControls.Nist80053.SI_2,
+            ComplianceControls.Iso27017.CLD_9_5_2,
+            ComplianceControls.Cis.C_7,
+            ComplianceControls.NistCsf.PR_PS_02,
+            ComplianceControls.NistCsf.ID_RA_01,
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
@@ -229,10 +236,19 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Iso27001.A_8_16,
+                    ComplianceControls.Nis2.Art_21_c,
                     ComplianceControls.Dora.Art_12,
                     ComplianceControls.Gdpr.Art_32_1_b,
-                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
                     ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
                 ]);
             if (!item.IsOnline) { continue; }
 
@@ -250,10 +266,18 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_8_8,
                 ComplianceControls.Nis2.Art_21_e,
                 ComplianceControls.PciDss.R_6_3,
+                ComplianceControls.Gdpr.Art_32_1_b,
+                ComplianceControls.AgId.ABSC_2_3,
+                ComplianceControls.AgId.ABSC_4_1,
+                ComplianceControls.AgId.ABSC_4_4,
                 ComplianceControls.Ens.OP_EXP_4,
-                ComplianceControls.Nist80053.SI_2,
-                ComplianceControls.Soc2.CC7_1,
                 ComplianceControls.C5.OPS_18,
+                ComplianceControls.Soc2.CC7_1,
+                ComplianceControls.Nist80053.SI_2,
+                ComplianceControls.Iso27017.CLD_9_5_2,
+                ComplianceControls.Cis.C_7,
+                ComplianceControls.NistCsf.PR_PS_02,
+                ComplianceControls.NistCsf.ID_RA_01,
             ];
             if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
@@ -347,7 +371,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: "Nodes hosts configuration not equal",
                     descriptionOk: "Node /etc/hosts matches the rest of the cluster",
-                    compliance: []);
+                    compliance: patchConsistencyControls);
 
                 CreateResult(
                     isOk: otherNodesData.All(od => dns.IsEqual(od.Dns)),
@@ -358,7 +382,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: "Nodes DNS not equal",
                     descriptionOk: "Node DNS configuration matches the rest of the cluster",
-                    compliance: []);
+                    compliance: patchConsistencyControls);
 
                 CreateResult(
                     isOk: otherNodesData.All(od => timezone == od.Timezone),
@@ -369,7 +393,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: "Nodes Timezone not equal",
                     descriptionOk: $"Node timezone ({timezone}) matches the rest of the cluster",
-                    compliance: []);
+                    compliance: patchConsistencyControls);
 
                 // APT repository sources must be identical across nodes to ensure consistent upgrades.
                 // Compare the enabled URIs from all repository files — order-insensitive.
@@ -389,7 +413,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: "Nodes APT repositories not equal — inconsistent package sources may cause upgrade problems",
                     descriptionOk: "Node APT repositories match the rest of the cluster",
-                    compliance: []);
+                    compliance: patchConsistencyControls);
 
                 // MTU mismatch on physical NICs between nodes can cause packet fragmentation,
                 // corosync instability and live migration failures.
@@ -411,7 +435,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: $"NIC MTU mismatch with other nodes: {string.Join(", ", mtuMismatchesList)}",
                     descriptionOk: "Node NIC MTUs match the rest of the cluster",
-                    compliance: []);
+                    compliance: patchConsistencyControls);
             }
             #endregion
 
@@ -428,7 +452,16 @@ public partial class DiagnosticEngine
                 subContext: "Network",
                 context: DiagnosticResultContext.Node,
                 gravityKo: DiagnosticResultGravity.Warning,
-                compliance: []);
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Iso27001.A_8_16,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                ]);
 
             // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
             CreateResultPerItem(
@@ -445,9 +478,19 @@ public partial class DiagnosticEngine
                 compliance:
                 [
                     ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Nis2.Art_21_c,
                     ComplianceControls.Dora.Art_12,
-                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
                     ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
                 ]);
             #endregion
 
@@ -495,10 +538,25 @@ public partial class DiagnosticEngine
                 gravityKo: DiagnosticResultGravity.Warning,
                 compliance:
                 [
+                    ComplianceControls.Iso27001.A_8_15,
                     ComplianceControls.Iso27001.A_8_16,
                     ComplianceControls.Nis2.Art_21_f,
                     ComplianceControls.Dora.Art_10,
+                    ComplianceControls.PciDss.R_10_2,
                     ComplianceControls.Gdpr.Art_32_1_d,
+                    ComplianceControls.AgId.ABSC_5_2,
+                    ComplianceControls.Ens.OP_EXP_8,
+                    ComplianceControls.Ens.OP_MON_1,
+                    ComplianceControls.C5.OPS_09,
+                    ComplianceControls.C5.OPS_10,
+                    ComplianceControls.Soc2.CC7_2,
+                    ComplianceControls.Nist80053.AU_12,
+                    ComplianceControls.Nist80053.SI_4,
+                    ComplianceControls.Iso27018.A_12_4_1,
+                    ComplianceControls.Cis.C_8,
+                    ComplianceControls.NistCsf.DE_CM_01,
+                    ComplianceControls.NistCsf.DE_CM_03,
+                    ComplianceControls.Iso27017.CLD_12_4_5,
                 ]);
             #endregion
 
@@ -511,11 +569,15 @@ public partial class DiagnosticEngine
                 ComplianceControls.PciDss.R_4_2,
                 ComplianceControls.Gdpr.Art_32_1_a,
                 ComplianceControls.Gdpr.Art_5_1_f,
+                ComplianceControls.AgId.ABSC_13_1,
                 ComplianceControls.Ens.MP_COM_2,
-                ComplianceControls.Nist80053.SC_8,
-                ComplianceControls.Soc2.CC6_7,
-                ComplianceControls.Iso27018.A_10_1_1,
                 ComplianceControls.C5.KRY_03,
+                ComplianceControls.Soc2.CC6_7,
+                ComplianceControls.Nist80053.SC_8,
+                ComplianceControls.Nist80053.SC_13,
+                ComplianceControls.Iso27018.A_10_1_1,
+                ComplianceControls.Cis.C_3,
+                ComplianceControls.NistCsf.PR_DS_02,
             ];
             CreateResultPerItem(
                 items: fetch.Certificates,
@@ -584,10 +646,16 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2.Art_21_c,
                     ComplianceControls.Dora.Art_12,
                     ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
-                    ComplianceControls.Iso27017.CLD_6_3_1,
                 ]);
             #endregion
 
@@ -664,14 +732,18 @@ public partial class DiagnosticEngine
                         ComplianceControls.Iso27001.A_8_15,
                         ComplianceControls.Iso27001.A_8_16,
                         ComplianceControls.Nis2.Art_21_f,
+                        ComplianceControls.Dora.Art_10,
                         ComplianceControls.PciDss.R_10_2,
                         ComplianceControls.Gdpr.Art_32_1_d,
                         ComplianceControls.AgId.ABSC_5_2,
                         ComplianceControls.Ens.OP_EXP_8,
-                        ComplianceControls.Nist80053.AU_12,
-                        ComplianceControls.Soc2.CC7_2,
-                        ComplianceControls.Iso27018.A_12_4_1,
+                        ComplianceControls.Ens.OP_MON_1,
                         ComplianceControls.C5.OPS_09,
+                        ComplianceControls.C5.OPS_10,
+                        ComplianceControls.Soc2.CC7_2,
+                        ComplianceControls.Nist80053.AU_12,
+                        ComplianceControls.Nist80053.SI_4,
+                        ComplianceControls.Iso27018.A_12_4_1,
                         ComplianceControls.Cis.C_8,
                         ComplianceControls.NistCsf.DE_CM_01,
                         ComplianceControls.NistCsf.DE_CM_03,
@@ -909,7 +981,18 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: $"CPU level mismatch: minimum is {minLevel?.Name}, maximum is {maxLevel?.Name}. Nodes at minimum level: {string.Join(", ", lowerNodes)}. Use cpu type '{minLevel?.Name}' for safe live migration.",
                     descriptionOk: $"All online nodes share the same x86-64 feature level ({minLevel?.Name})",
-                    compliance: []);
+                    compliance:
+                    [
+                        ComplianceControls.Iso27001.A_5_30,
+                        ComplianceControls.Dora.Art_12,
+                        ComplianceControls.Ens.OP_CONT_2,
+                        ComplianceControls.Ens.OP_EXP_3,
+                        ComplianceControls.C5.PI_02,
+                        ComplianceControls.Soc2.CC8_1,
+                        ComplianceControls.Nist80053.CM_2,
+                        ComplianceControls.Iso27017.CLD_6_3_1,
+                        ComplianceControls.NistCsf.PR_IR_04,
+                    ]);
             }
         }
         #endregion
@@ -1025,6 +1108,24 @@ public partial class DiagnosticEngine
                          nodeWeightedLoad);
     }
 
+    // Data-integrity / storage-health controls — used for ZFS, SMART, LVM-thin metadata.
+    // Subset of the RESIL family that focuses on disk-level integrity rather than full HA.
+    private static readonly ComplianceMapping[] _storageIntegrityControls =
+    [
+        ComplianceControls.Iso27001.A_5_30,
+        ComplianceControls.Iso27001.A_8_16,
+        ComplianceControls.Dora.Art_12,
+        ComplianceControls.Gdpr.Art_32_1_b,
+        ComplianceControls.Ens.MP_S_1,
+        ComplianceControls.C5.BCM_03,
+        ComplianceControls.Soc2.A1_2,
+        ComplianceControls.Nist80053.CP_10,
+        ComplianceControls.Iso27017.CLD_6_3_1,
+        ComplianceControls.Cis.C_11,
+        ComplianceControls.NistCsf.PR_IR_04,
+        ComplianceControls.NistCsf.PR_DS_11,
+    ];
+
     private void CheckZfsChildren(string id,
                                   string poolName,
                                   IEnumerable<NodeDiskZfsDetail.Child> children)
@@ -1043,7 +1144,7 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Critical,
                     descriptionKo: $"ZFS pool '{poolName}' vdev '{child.Name}' is {child.State}{(string.IsNullOrWhiteSpace(child.Msg) ? "" : $": {child.Msg}")}",
                     descriptionOk: $"ZFS pool '{poolName}' vdev '{child.Name}' is ONLINE",
-                    compliance: []);
+                    compliance: _storageIntegrityControls);
             }
 
             // I/O errors on vdev
@@ -1056,7 +1157,7 @@ public partial class DiagnosticEngine
                 gravityKo: DiagnosticResultGravity.Warning,
                 descriptionKo: $"ZFS pool '{poolName}' vdev '{child.Name}' has I/O errors (read:{child.Read} write:{child.Write} cksum:{child.Checksum})",
                 descriptionOk: $"ZFS pool '{poolName}' vdev '{child.Name}' has no I/O errors",
-                compliance: []);
+                compliance: _storageIntegrityControls);
 
             // Recurse into nested vdevs (mirrors, raidz groups)
             CheckZfsChildren(id, poolName, child.Children);
@@ -1083,7 +1184,7 @@ public partial class DiagnosticEngine
             subContext: "S.M.A.R.T.",
             context: DiagnosticResultContext.Node,
             gravityKo: DiagnosticResultGravity.Warning,
-            compliance: []);
+            compliance: _storageIntegrityControls);
 
         // SSD wearout reported as N/A means the drive doesn't expose wear data — worth investigating
         CreateResultPerItem(
@@ -1144,7 +1245,7 @@ public partial class DiagnosticEngine
                                         gravityKo: tempGravity,
                                         descriptionKo: $"Disk '{disk.DevPath}' temperature {temp}°C exceeds threshold",
                                         descriptionOk: "",
-                                        compliance: []);
+                                        compliance: _storageIntegrityControls);
                                 }
                             }
                             break;
@@ -1160,7 +1261,7 @@ public partial class DiagnosticEngine
                                 gravityKo: DiagnosticResultGravity.Warning,
                                 descriptionKo: $"Disk '{disk.DevPath}' has {val5} reallocated sector(s) — disk may be failing",
                                 descriptionOk: "",
-                                compliance: []);
+                                compliance: _storageIntegrityControls);
                             break;
 
                         // Current pending sectors (ID 197) — unstable sectors waiting to be remapped
@@ -1174,7 +1275,7 @@ public partial class DiagnosticEngine
                                 gravityKo: DiagnosticResultGravity.Critical,
                                 descriptionKo: $"Disk '{disk.DevPath}' has {val197} pending sector(s) — imminent data loss risk",
                                 descriptionOk: "",
-                                compliance: []);
+                                compliance: _storageIntegrityControls);
                             break;
 
                         // Offline uncorrectable sectors (ID 198)
@@ -1188,7 +1289,7 @@ public partial class DiagnosticEngine
                                 gravityKo: DiagnosticResultGravity.Critical,
                                 descriptionKo: $"Disk '{disk.DevPath}' has {val198} offline uncorrectable sector(s)",
                                 descriptionOk: "",
-                                compliance: []);
+                                compliance: _storageIntegrityControls);
                             break;
 
                         // UDMA CRC errors (ID 199) — cable or controller issue
@@ -1202,7 +1303,7 @@ public partial class DiagnosticEngine
                                 gravityKo: DiagnosticResultGravity.Warning,
                                 descriptionKo: $"Disk '{disk.DevPath}' has {val199} UDMA CRC error(s) — check cable/controller",
                                 descriptionOk: "",
-                                compliance: []);
+                                compliance: _storageIntegrityControls);
                             break;
 
                         // Reported uncorrectable errors (ID 187)
@@ -1216,7 +1317,7 @@ public partial class DiagnosticEngine
                                 gravityKo: DiagnosticResultGravity.Warning,
                                 descriptionKo: $"Disk '{disk.DevPath}' has {val187} reported uncorrectable error(s)",
                                 descriptionOk: "",
-                                compliance: []);
+                                compliance: _storageIntegrityControls);
                             break;
                     }
                 }
@@ -1238,7 +1339,7 @@ public partial class DiagnosticEngine
             subContext: "Zfs",
             context: DiagnosticResultContext.Node,
             gravityKo: DiagnosticResultGravity.Critical,
-            compliance: []);
+            compliance: _storageIntegrityControls);
 
         // ZFS pool usage above storage threshold
         CheckThreshold(settings.Storage.Threshold,
@@ -1272,7 +1373,7 @@ public partial class DiagnosticEngine
                         gravityKo: DiagnosticResultGravity.Warning,
                         descriptionKo: $"ZFS pool '{zfs.Name}' has errors: {detail.Errors}",
                         descriptionOk: $"ZFS pool '{zfs.Name}' has no known data errors",
-                        compliance: []);
+                        compliance: _storageIntegrityControls);
                 }
 
                 // vdev state check — recurse through children
@@ -1300,7 +1401,7 @@ public partial class DiagnosticEngine
                         gravityKo: metaPct >= 95 ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,
                         descriptionKo: $"LVM-thin '{lv.Vg}/{lv.Lv}' metadata usage {metaPct:F1}% — metadata full causes data corruption",
                         descriptionOk: "",
-                        compliance: []);
+                        compliance: _storageIntegrityControls);
                 }
             }
         }
