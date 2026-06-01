@@ -4,13 +4,52 @@ This is the catalog of every check `cv4pve-diag` runs against a Proxmox VE clust
 
 ## Reading the tables
 
-- **Code** — short alphanumeric identifier. The first letter encodes severity (`C` = Critical, `W` = Warning, `I` = Info), the second the area (`C` = Cluster, `N` = Node, `S` = Storage, `G` = Guest). Use this code with [ignore rules](ignored-issues.md) to suppress specific findings.
+- **Code** — short alphanumeric identifier, structured as `<Severity><Area><NNNN>` (see [Code nomenclature](#code-nomenclature) below). Use this code with [ignore rules](ignored-issues.md) to suppress specific findings.
 - **SubContext** — a finer-grained classifier surfaced in the JSON output and Excel report.
 - **Gravity** — the severity emitted when the check fails. Some threshold checks (CPU, memory, PSI, disk usage, …) can emit either Warning or Critical depending on the value.
 
-> Checks tagged with compliance controls (ISO 27001 / NIS2 / DORA / PCI DSS) attach the mapping to the finding. See [compliance.md](compliance.md).
+> Checks tagged with compliance controls (ISO 27001 / NIS2 / DORA / PCI DSS, …) attach the mapping to the finding. See [compliance.md](compliance.md).
 
 > With `IncludeOkResult: true` in [settings.md](settings.md#including-ok-results), every check also emits an Ok result when it passes — useful for full audit reports.
+
+### Code nomenclature
+
+Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters followed by a four-digit sequence number.
+
+**First letter — Severity:**
+
+| Letter | Meaning  | When it's used |
+|---|---|---|
+| **`C`** | Critical | The condition blocks normal operation or risks data loss (e.g. quorum lost, disk failing, certificate expired). |
+| **`W`** | Warning  | The condition is incorrect or risky but the cluster is still functioning (e.g. firewall off, no backup retention, NIC down). |
+| **`I`** | Info     | The condition is suboptimal, informative, or a best-practice violation (e.g. no metric server, pool without ACL, snapshot count). |
+
+**Second letter — Area:**
+
+| Letter | Meaning  | Scope |
+|---|---|---|
+| **`C`** | Cluster  | Cluster-wide concerns: HA, quorum, backup jobs, ACL, TFA, firewall options, cluster log. |
+| **`N`** | Node     | Per-node: subscription, NTP, services, disks (SMART/ZFS/LVM-thin), replication state, kernel/PVE version. |
+| **`S`** | Storage  | Per-storage: reachability, usage threshold, orphans, thin overcommit. |
+| **`G`** | Guest    | Per-VM/CT: agent, config hygiene, hardware, snapshots, backup coverage, OS support. |
+
+**Sequence number** — Four digits assigned in the order a check was introduced inside its `<Severity><Area>` family. Numbers are stable: once a code is published it never changes meaning, even if the check itself is removed (codes are not reused).
+
+**Examples:**
+
+| Code | Severity | Area | Reading |
+|---|---|---|---|
+| `CC0001` | Critical | Cluster | First Critical-Cluster check (quorum lost). |
+| `CN0010` | Critical | Node | Tenth Critical-Node check (ZFS pool not ONLINE). |
+| `WG0017` | Warning  | Guest   | 17th Warning-Guest check (no vzdump backup configured). |
+| `WS0001` | Warning  | Storage | First Warning-Storage check (storage usage above threshold). |
+| `IC0017` | Info     | Cluster | 17th Info-Cluster check (single-node topology). |
+| `IG0016` | Info     | Guest   | 16th Info-Guest check (machine type outdated). |
+| `WN0045` | Warning  | Node    | 45th Warning-Node check (cross-node clock drift). |
+
+A few additional codes do not follow the `<Severity><Area>` scheme:
+
+- **`ApiError`** — emitted by the engine itself when an API call fails (see [Meta codes](#meta-codes) below).
 
 ---
 
