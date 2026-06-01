@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-06-01
+
 ### Compliance reporting
 
 cv4pve-diag can now produce **compliance-aware reports** alongside the usual diagnostic output. Diagnostic findings are tagged with the normative controls they satisfy — so when an admin user has no two-factor authentication, the same finding doubles as evidence of a gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2.
