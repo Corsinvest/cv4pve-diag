@@ -168,6 +168,8 @@ public partial class DiagnosticEngine
             ComplianceControls.PciDss.R_6_3,
             ComplianceControls.Gdpr.Art_32_1_b,
             ComplianceControls.Ens.OP_EXP_4,
+            ComplianceControls.Nist80053.SI_2,
+            ComplianceControls.Soc2.CC7_1,
             ComplianceControls.C5.OPS_18,
         ];
 

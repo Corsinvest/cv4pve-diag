@@ -70,14 +70,15 @@ Compliance mapping for Ceph checks should reuse the existing resilience / data-p
 
 ### Additional standards
 
-The 12 current frameworks (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, ISO 27017, ISO 27018, CIS, NIST CSF) cover most EU + US-private scenarios. Sector-specific or country-specific standards to consider when there is concrete demand:
+The 14 current frameworks (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, SOC 2, NIST 800-53, ISO 27017, ISO 27018, CIS, NIST CSF) cover EU general/PA/cloud + US private + governmental subset. Further standards to consider only on concrete customer demand:
 
-- [ ] **HIPAA Security Rule** (US healthcare) — large overlap with NIST CSF; mostly procedural. Map to data-at-rest / data-in-transit / access control checks.
+- [ ] **HIPAA Security Rule** (US healthcare) — large overlap with NIST CSF / SOC 2; mostly procedural. Map to data-at-rest / data-in-transit / access control checks.
 - [ ] **HDS** (Hébergeur de Données de Santé, FR) — French healthcare hosting baseline.
 - [ ] **ANSSI SecNumCloud** (FR) — French sovereign-cloud certification.
 - [ ] **TISAX** — automotive industry baseline (VDA ISA).
 - [ ] **HITRUST CSF** — health-IT US.
 - [ ] **FedRAMP** — US federal cloud authorisation baseline.
+- [ ] **CMMC** (US DoD supplier) — subset of NIST 800-171; only for DoD subcontractors.
 - [ ] **BSI IT-Grundschutz** (Germany) — fine-grained module catalogue; only a small subset is automatable.
 
 ### Tests for compliance

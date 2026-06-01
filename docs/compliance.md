@@ -85,6 +85,8 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
 | **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/4/5, op.exp.1/2/3/4/5/8/9, op.cont.2/3, op.mon.1, mp.com.1/2, mp.info.6, mp.s.1 |
 | **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) | IDM-01/02/03/08/09, KRY-01/03, KOS-01/03, OPS-09/10/16/18/21/23, BCM-01/03/04, PI-02 |
+| **SOC 2** — AICPA Trust Services Criteria (2017 + 2022) | CC6.1/2/3/6/7/8, CC7.1/2/3, CC8.1, A1.1/2/3, C1.1/2 |
+| **NIST SP 800-53 rev.5** — Moderate baseline subset | AC-2/3/6, AU-2/6/12, CM-2/6/7, CP-9/10, IA-2/5, SC-7/8/13, SI-2/4/5 |
 | **ISO/IEC 27017:2015** | CLD.6.3.1, CLD.8.1.5, CLD.9.5.1/2, CLD.12.1.5, CLD.12.4.5, CLD.13.1.4 |
 | **ISO/IEC 27018:2019** — PII in public clouds | A.9.4.2, A.10.1.1, A.12.1.4, A.12.3.1, A.12.4.1, A.13.2.1, A.16.1.2 |
 | **CIS Controls v8** | CIS 3, 4, 5, 6, 7, 8, 10, 11, 12, 13 |
@@ -226,6 +228,54 @@ Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE clust
 | BCM-03 | Redundancy of system components | HA, replication, single-node, HA guest checks |
 | BCM-04 | Periodic testing of continuity | (declared) |
 | PI-02 | Hardening of virtualisation infrastructure | Container isolation, single-node, service protection |
+
+### SOC 2 — AICPA Trust Services Criteria (2017 + 2022 revision)
+
+Subset of TSC criteria verifiable on a Proxmox VE cluster. Categories: CC = Common Criteria, A = Availability, C = Confidentiality.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| CC6.1 | Logical access security | TFA (root@pam, admins, group, realm) |
+| CC6.2 | Authentication and authorization | Account lifecycle, user expiration, API token expiration |
+| CC6.3 | Access request authorization | ACL, container privileged, root@pam token privsep |
+| CC6.6 | Boundary protection | Cluster/node firewall, guest firewall, malware-defence baseline |
+| CC6.7 | Information transmission controls | Certificates (expired / expiring), TLS |
+| CC6.8 | Malicious software prevention | (declared, overlaps with patch/firewall checks) |
+| CC7.1 | Vulnerability and configuration monitoring | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| CC7.2 | System monitoring | Cluster log, task history, firewall audit logging, metric server (IC0018/IC0019) |
+| CC7.3 | Security event evaluation | (declared, supports future incident-detection checks) |
+| CC8.1 | Change management | Patch consistency across nodes, version/kernel mismatch, container raw config |
+| A1.1 | Capacity planning | HA, single-node, container isolation |
+| A1.2 | Backup and recovery infrastructure | HA, replication, single-node, all backup checks |
+| A1.3 | Recovery plan testing | (declared) |
+| C1.1 | Confidential information management | (declared, overlaps with backup/PII checks) |
+| C1.2 | Confidential information disposal | (declared) |
+
+### NIST SP 800-53 rev.5 — Moderate baseline subset
+
+Subset of NIST 800-53 rev.5 controls verifiable on a Proxmox VE cluster. Families used: AC (Access Control), AU (Audit), CM (Configuration Management), CP (Contingency Planning), IA (Identification and Authentication), SC (System and Communications Protection), SI (System and Information Integrity).
+
+| Control | Title | Where it appears |
+|---|---|---|
+| AC-2 | Account management | Account lifecycle, user expiration, API token expiration |
+| AC-3 | Access enforcement | (declared, supports future ACL-policy checks) |
+| AC-6 | Least privilege | ACL, container privileged, root@pam token privsep |
+| AU-2 | Event logging | (declared) |
+| AU-6 | Audit record review | (declared) |
+| AU-12 | Audit record generation | Cluster log, task history, firewall audit logging, metric server |
+| CM-2 | Baseline configuration | Patch consistency across nodes, version/kernel mismatch |
+| CM-6 | Configuration settings | Container privileged, raw lxc config, hardening |
+| CM-7 | Least functionality | (declared) |
+| CP-9 | System backup | All backup checks, backup storage availability, disk cache integrity |
+| CP-10 | System recovery and reconstitution | HA, replication, single-node, HA guest checks |
+| IA-2 | Identification and authentication | TFA (root@pam, admins, group, realm); account identity |
+| IA-5 | Authenticator management | (declared, overlaps with certificate / token checks) |
+| SC-7 | Boundary protection | Cluster/node firewall, guest firewall |
+| SC-8 | Transmission confidentiality and integrity | Certificates (expired / expiring), TLS |
+| SC-13 | Cryptographic protection | (declared, overlaps with SC-8) |
+| SI-2 | Flaw remediation | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| SI-4 | System monitoring | Metric server (IC0018/IC0019) |
+| SI-5 | Security alerts and advisories | (declared, supports future CVE-feed checks) |
 
 ### ISO/IEC 27018:2019 — PII in public clouds
 

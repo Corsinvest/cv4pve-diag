@@ -140,6 +140,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.Gdpr.Art_32_1_b,
                         ComplianceControls.AgId.ABSC_2_3,
                         ComplianceControls.Ens.OP_EXP_4,
+                        ComplianceControls.Nist80053.SI_2,
+                        ComplianceControls.Soc2.CC7_1,
                         ComplianceControls.C5.OPS_18,
                         ComplianceControls.AgId.ABSC_4_1,
                         ComplianceControls.AgId.ABSC_4_4,
@@ -374,6 +376,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso27001.A_8_13,
                     ComplianceControls.Nis2.Art_21_c,
                     ComplianceControls.Ens.MP_INFO_6,
+                    ComplianceControls.Nist80053.CP_9,
+                    ComplianceControls.Soc2.A1_2,
                     ComplianceControls.Iso27018.A_12_3_1,
                     ComplianceControls.C5.OPS_21,
                 ];
@@ -562,6 +566,8 @@ public partial class DiagnosticEngine
                             ComplianceControls.Cis.C_7,
                             ComplianceControls.NistCsf.PR_PS_02,
                             ComplianceControls.Ens.OP_EXP_4,
+                            ComplianceControls.Nist80053.SI_2,
+                            ComplianceControls.Soc2.CC7_1,
                             ComplianceControls.C5.OPS_18,
                         ]);
                 }

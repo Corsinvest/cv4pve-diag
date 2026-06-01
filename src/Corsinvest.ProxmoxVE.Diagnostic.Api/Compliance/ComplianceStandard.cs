@@ -47,4 +47,10 @@ public enum ComplianceStandard
 
     /// <summary>ISO/IEC 27018:2019 — Protection of PII in public clouds.</summary>
     Iso27018,
+
+    /// <summary>SOC 2 (AICPA Trust Services Criteria, 2017 + 2022 revision).</summary>
+    Soc2,
+
+    /// <summary>NIST SP 800-53 rev.5 — Security and Privacy Controls (Moderate baseline subset).</summary>
+    Nist80053,
 }

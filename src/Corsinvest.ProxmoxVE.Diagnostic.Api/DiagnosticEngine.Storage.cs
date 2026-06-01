@@ -255,6 +255,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_32_1_c,
                 ComplianceControls.AgId.ABSC_10_1,
                 ComplianceControls.Ens.MP_INFO_6,
+                ComplianceControls.Nist80053.CP_9,
+                ComplianceControls.Soc2.A1_2,
                 ComplianceControls.Iso27018.A_12_3_1,
                 ComplianceControls.C5.OPS_21,
                 ComplianceControls.AgId.ABSC_10_3,

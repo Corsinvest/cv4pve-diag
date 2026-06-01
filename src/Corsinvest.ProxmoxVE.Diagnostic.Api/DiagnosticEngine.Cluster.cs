@@ -58,8 +58,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.RC_RP_01,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.Ens.OP_CONT_2,
+                ComplianceControls.Nist80053.CP_10,
+                ComplianceControls.Soc2.A1_2,
                 ComplianceControls.C5.BCM_03,
                 ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Soc2.A1_1,
                 ComplianceControls.C5.PI_02,
             ]);
 
@@ -81,9 +84,12 @@ public partial class DiagnosticEngine
             ComplianceControls.Dora.Art_10,
             ComplianceControls.Gdpr.Art_32_1_d,
             ComplianceControls.Ens.OP_EXP_8,
+            ComplianceControls.Nist80053.AU_12,
+            ComplianceControls.Soc2.CC7_2,
             ComplianceControls.Iso27018.A_12_4_1,
             ComplianceControls.C5.OPS_09,
             ComplianceControls.Ens.OP_MON_1,
+            ComplianceControls.Nist80053.SI_4,
             ComplianceControls.C5.OPS_10,
         ];
 
@@ -155,6 +161,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_32_1_d,
                 ComplianceControls.AgId.ABSC_5_2,
                 ComplianceControls.Ens.OP_EXP_8,
+                ComplianceControls.Nist80053.AU_12,
+                ComplianceControls.Soc2.CC7_2,
                 ComplianceControls.Iso27018.A_12_4_1,
                 ComplianceControls.C5.OPS_09,
                 ComplianceControls.Cis.C_8,
@@ -187,6 +195,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_32_1_c,
                 ComplianceControls.AgId.ABSC_10_1,
                 ComplianceControls.Ens.MP_INFO_6,
+                ComplianceControls.Nist80053.CP_9,
+                ComplianceControls.Soc2.A1_2,
                 ComplianceControls.Iso27018.A_12_3_1,
                 ComplianceControls.C5.OPS_21,
                 ComplianceControls.AgId.ABSC_10_3,
@@ -305,6 +315,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Gdpr.Art_32_1_d,
                     ComplianceControls.AgId.ABSC_5_2,
                     ComplianceControls.Ens.OP_EXP_8,
+                    ComplianceControls.Nist80053.AU_12,
+                    ComplianceControls.Soc2.CC7_2,
                     ComplianceControls.Iso27018.A_12_4_1,
                     ComplianceControls.C5.OPS_09,
                     ComplianceControls.Cis.C_8,
@@ -363,8 +375,11 @@ public partial class DiagnosticEngine
         [
             ComplianceControls.Nis2.Art_21_c,
             ComplianceControls.Ens.OP_CONT_2,
+            ComplianceControls.Nist80053.CP_10,
+            ComplianceControls.Soc2.A1_2,
             ComplianceControls.C5.BCM_03,
             ComplianceControls.Ens.MP_S_1,
+            ComplianceControls.Soc2.A1_1,
             ComplianceControls.C5.PI_02,
         ];
 
@@ -436,8 +451,11 @@ public partial class DiagnosticEngine
             ComplianceControls.Dora.Art_12,
             ComplianceControls.Gdpr.Art_32_1_b,
             ComplianceControls.Ens.OP_CONT_2,
+            ComplianceControls.Nist80053.CP_10,
+            ComplianceControls.Soc2.A1_2,
             ComplianceControls.C5.BCM_03,
             ComplianceControls.Ens.MP_S_1,
+            ComplianceControls.Soc2.A1_1,
             ComplianceControls.C5.PI_02,
         ];
 
@@ -525,6 +543,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.AgId.ABSC_5_1,
                 ComplianceControls.Ens.OP_ACC_2,
+                ComplianceControls.Nist80053.AC_6,
+                ComplianceControls.Soc2.CC6_3,
                 ComplianceControls.C5.IDM_09,
                 ComplianceControls.NistCsf.ID_AM_02,
             ]);
@@ -554,6 +574,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.PciDss.R_1_2,
                 ComplianceControls.AgId.ABSC_8_1,
                 ComplianceControls.Ens.MP_COM_1,
+                ComplianceControls.Nist80053.SC_7,
+                ComplianceControls.Soc2.CC6_6,
                 ComplianceControls.C5.KOS_01,
                 ComplianceControls.Cis.C_12,
                 ComplianceControls.Cis.C_13,
@@ -645,6 +667,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Gdpr.Art_32_1_d,
                     ComplianceControls.AgId.ABSC_5_2,
                     ComplianceControls.Ens.OP_EXP_8,
+                    ComplianceControls.Nist80053.AU_12,
+                    ComplianceControls.Soc2.CC7_2,
                     ComplianceControls.Iso27018.A_12_4_1,
                     ComplianceControls.C5.OPS_09,
                     ComplianceControls.Cis.C_8,
@@ -712,6 +736,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_32_1_b,
                 ComplianceControls.AgId.ABSC_5_7,
                 ComplianceControls.Ens.OP_ACC_4,
+                ComplianceControls.Nist80053.IA_2,
+                ComplianceControls.Soc2.CC6_1,
                 ComplianceControls.Iso27018.A_9_4_2,
                 ComplianceControls.C5.IDM_08,
                 ComplianceControls.Cis.C_6,
@@ -732,6 +758,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2.Art_21_i,
             ComplianceControls.PciDss.R_7_2,
             ComplianceControls.Ens.OP_ACC_2,
+            ComplianceControls.Nist80053.AC_6,
+            ComplianceControls.Soc2.CC6_3,
             ComplianceControls.C5.IDM_09,
         ];
         // TFA controls (WC0007, WC0013, IC0011): aligned with CC0004.
@@ -745,6 +773,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Gdpr.Art_5_1_f,
             ComplianceControls.Gdpr.Art_32_1_b,
             ComplianceControls.Ens.OP_ACC_4,
+            ComplianceControls.Nist80053.IA_2,
+            ComplianceControls.Soc2.CC6_1,
             ComplianceControls.Iso27018.A_9_4_2,
             ComplianceControls.C5.IDM_08,
         ];
@@ -757,6 +787,8 @@ public partial class DiagnosticEngine
             ComplianceControls.PciDss.R_8_2,
             ComplianceControls.Gdpr.Art_5_1_f,
             ComplianceControls.Ens.OP_ACC_1,
+            ComplianceControls.Nist80053.IA_2,
+            ComplianceControls.Soc2.CC6_2,
             ComplianceControls.C5.IDM_01,
         ];
 
@@ -858,6 +890,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.DE_CM_03,
                 ComplianceControls.AgId.ABSC_5_2,
                 ComplianceControls.Ens.OP_EXP_8,
+                ComplianceControls.Nist80053.AU_12,
+                ComplianceControls.Soc2.CC7_2,
                 ComplianceControls.Iso27018.A_12_4_1,
                 ComplianceControls.C5.OPS_09,
             ]);

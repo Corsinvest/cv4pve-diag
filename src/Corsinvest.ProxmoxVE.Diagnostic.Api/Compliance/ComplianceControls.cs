@@ -476,6 +476,181 @@ public static class ComplianceControls
     }
 
     /// <summary>
+    /// SOC 2 — AICPA Trust Services Criteria (2017 + 2022 revision).
+    /// Categories: CC = Common Criteria, A = Availability, C = Confidentiality, PI = Processing Integrity, P = Privacy.
+    /// Only the subset technically verifiable on a Proxmox VE cluster is listed.
+    /// </summary>
+    public static class Soc2
+    {
+        /// <summary>CC6.1 — Logical access security software and infrastructure.</summary>
+        public static readonly ComplianceMapping CC6_1 =
+            new(ComplianceStandard.Soc2, "CC6.1", "Logical access security");
+
+        /// <summary>CC6.2 — Authentication and authorization of internal and external users.</summary>
+        public static readonly ComplianceMapping CC6_2 =
+            new(ComplianceStandard.Soc2, "CC6.2", "Authentication and authorization");
+
+        /// <summary>CC6.3 — Authorization for access requests, additions and modifications.</summary>
+        public static readonly ComplianceMapping CC6_3 =
+            new(ComplianceStandard.Soc2, "CC6.3", "Access request authorization");
+
+        /// <summary>CC6.6 — Logical access security measures to protect against threats from sources outside system boundaries.</summary>
+        public static readonly ComplianceMapping CC6_6 =
+            new(ComplianceStandard.Soc2, "CC6.6", "Boundary protection");
+
+        /// <summary>CC6.7 — Restrict the transmission, movement and removal of information.</summary>
+        public static readonly ComplianceMapping CC6_7 =
+            new(ComplianceStandard.Soc2, "CC6.7", "Information transmission controls");
+
+        /// <summary>CC6.8 — Prevent or detect and act upon introduction of unauthorized or malicious software.</summary>
+        public static readonly ComplianceMapping CC6_8 =
+            new(ComplianceStandard.Soc2, "CC6.8", "Malicious software prevention");
+
+        /// <summary>CC7.1 — Detection of new vulnerabilities and configuration changes.</summary>
+        public static readonly ComplianceMapping CC7_1 =
+            new(ComplianceStandard.Soc2, "CC7.1", "Vulnerability and configuration monitoring");
+
+        /// <summary>CC7.2 — Monitoring of system components and operation for anomalies.</summary>
+        public static readonly ComplianceMapping CC7_2 =
+            new(ComplianceStandard.Soc2, "CC7.2", "System monitoring");
+
+        /// <summary>CC7.3 — Evaluation of security events to determine response.</summary>
+        public static readonly ComplianceMapping CC7_3 =
+            new(ComplianceStandard.Soc2, "CC7.3", "Security event evaluation");
+
+        /// <summary>CC8.1 — Change management process for infrastructure and software.</summary>
+        public static readonly ComplianceMapping CC8_1 =
+            new(ComplianceStandard.Soc2, "CC8.1", "Change management");
+
+        /// <summary>A1.1 — Capacity planning and management to meet availability commitments.</summary>
+        public static readonly ComplianceMapping A1_1 =
+            new(ComplianceStandard.Soc2, "A1.1", "Capacity planning");
+
+        /// <summary>A1.2 — Environmental protections, software, data backup and recovery infrastructure.</summary>
+        public static readonly ComplianceMapping A1_2 =
+            new(ComplianceStandard.Soc2, "A1.2", "Backup and recovery infrastructure");
+
+        /// <summary>A1.3 — Recovery plan testing.</summary>
+        public static readonly ComplianceMapping A1_3 =
+            new(ComplianceStandard.Soc2, "A1.3", "Recovery plan testing");
+
+        /// <summary>C1.1 — Identification and maintenance of confidential information.</summary>
+        public static readonly ComplianceMapping C1_1 =
+            new(ComplianceStandard.Soc2, "C1.1", "Confidential information management");
+
+        /// <summary>C1.2 — Disposal of confidential information.</summary>
+        public static readonly ComplianceMapping C1_2 =
+            new(ComplianceStandard.Soc2, "C1.2", "Confidential information disposal");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            CC6_1, CC6_2, CC6_3, CC6_6, CC6_7, CC6_8,
+            CC7_1, CC7_2, CC7_3,
+            CC8_1,
+            A1_1, A1_2, A1_3,
+            C1_1, C1_2,
+        ];
+    }
+
+    /// <summary>
+    /// NIST SP 800-53 rev.5 — Security and Privacy Controls for Information Systems.
+    /// Subset of the Moderate baseline that is technically verifiable on a Proxmox VE cluster.
+    /// Identifiers follow the official family-numeric format (e.g. AC-2, AU-12, SC-7). Families used here:
+    /// AC (Access Control), AU (Audit and Accountability), CM (Configuration Management),
+    /// CP (Contingency Planning), IA (Identification and Authentication),
+    /// SC (System and Communications Protection), SI (System and Information Integrity).
+    /// </summary>
+    public static class Nist80053
+    {
+        /// <summary>AC-2 — Account management (account lifecycle, disabled accounts, tokens).</summary>
+        public static readonly ComplianceMapping AC_2 =
+            new(ComplianceStandard.Nist80053, "AC-2", "Account management");
+
+        /// <summary>AC-3 — Access enforcement (authorisation policy in effect).</summary>
+        public static readonly ComplianceMapping AC_3 =
+            new(ComplianceStandard.Nist80053, "AC-3", "Access enforcement");
+
+        /// <summary>AC-6 — Least privilege.</summary>
+        public static readonly ComplianceMapping AC_6 =
+            new(ComplianceStandard.Nist80053, "AC-6", "Least privilege");
+
+        /// <summary>AU-2 — Event logging (what events to capture).</summary>
+        public static readonly ComplianceMapping AU_2 =
+            new(ComplianceStandard.Nist80053, "AU-2", "Event logging");
+
+        /// <summary>AU-6 — Audit record review, analysis and reporting.</summary>
+        public static readonly ComplianceMapping AU_6 =
+            new(ComplianceStandard.Nist80053, "AU-6", "Audit record review");
+
+        /// <summary>AU-12 — Audit record generation by system components.</summary>
+        public static readonly ComplianceMapping AU_12 =
+            new(ComplianceStandard.Nist80053, "AU-12", "Audit record generation");
+
+        /// <summary>CM-2 — Baseline configuration of the system.</summary>
+        public static readonly ComplianceMapping CM_2 =
+            new(ComplianceStandard.Nist80053, "CM-2", "Baseline configuration");
+
+        /// <summary>CM-6 — Configuration settings (hardening baselines applied).</summary>
+        public static readonly ComplianceMapping CM_6 =
+            new(ComplianceStandard.Nist80053, "CM-6", "Configuration settings");
+
+        /// <summary>CM-7 — Least functionality (disable unneeded services and ports).</summary>
+        public static readonly ComplianceMapping CM_7 =
+            new(ComplianceStandard.Nist80053, "CM-7", "Least functionality");
+
+        /// <summary>CP-9 — System backup.</summary>
+        public static readonly ComplianceMapping CP_9 =
+            new(ComplianceStandard.Nist80053, "CP-9", "System backup");
+
+        /// <summary>CP-10 — System recovery and reconstitution (HA, replication).</summary>
+        public static readonly ComplianceMapping CP_10 =
+            new(ComplianceStandard.Nist80053, "CP-10", "System recovery and reconstitution");
+
+        /// <summary>IA-2 — Identification and authentication of organisational users (MFA on privileged accounts).</summary>
+        public static readonly ComplianceMapping IA_2 =
+            new(ComplianceStandard.Nist80053, "IA-2", "Identification and authentication");
+
+        /// <summary>IA-5 — Authenticator management (passwords / tokens / certificates lifecycle).</summary>
+        public static readonly ComplianceMapping IA_5 =
+            new(ComplianceStandard.Nist80053, "IA-5", "Authenticator management");
+
+        /// <summary>SC-7 — Boundary protection (firewall, network segregation).</summary>
+        public static readonly ComplianceMapping SC_7 =
+            new(ComplianceStandard.Nist80053, "SC-7", "Boundary protection");
+
+        /// <summary>SC-8 — Transmission confidentiality and integrity (TLS).</summary>
+        public static readonly ComplianceMapping SC_8 =
+            new(ComplianceStandard.Nist80053, "SC-8", "Transmission confidentiality and integrity");
+
+        /// <summary>SC-13 — Cryptographic protection (certificates, ciphers).</summary>
+        public static readonly ComplianceMapping SC_13 =
+            new(ComplianceStandard.Nist80053, "SC-13", "Cryptographic protection");
+
+        /// <summary>SI-2 — Flaw remediation (patch management).</summary>
+        public static readonly ComplianceMapping SI_2 =
+            new(ComplianceStandard.Nist80053, "SI-2", "Flaw remediation");
+
+        /// <summary>SI-4 — System monitoring (intrusion detection, anomaly).</summary>
+        public static readonly ComplianceMapping SI_4 =
+            new(ComplianceStandard.Nist80053, "SI-4", "System monitoring");
+
+        /// <summary>SI-5 — Security alerts, advisories and directives (CVE awareness).</summary>
+        public static readonly ComplianceMapping SI_5 =
+            new(ComplianceStandard.Nist80053, "SI-5", "Security alerts and advisories");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            AC_2, AC_3, AC_6,
+            AU_2, AU_6, AU_12,
+            CM_2, CM_6, CM_7,
+            CP_9, CP_10,
+            IA_2, IA_5,
+            SC_7, SC_8, SC_13,
+            SI_2, SI_4, SI_5,
+        ];
+    }
+
+    /// <summary>
     /// ISO/IEC 27018:2019 — Code of practice for protection of Personally Identifiable Information
     /// (PII) in public clouds acting as PII processors. Extends ISO 27001/27017 with PII-specific
     /// controls. Only the subset technically verifiable on a Proxmox VE cluster is listed; many
@@ -687,7 +862,7 @@ public static class ComplianceControls
     // ──────── Lookup ────────
 
     private static readonly FrozenDictionary<(ComplianceStandard, string), ComplianceMapping> _byKey =
-        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All }
+        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Soc2.All, Nist80053.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All }
             .SelectMany(x => x)
             .ToFrozenDictionary(m => (m.Standard, m.ControlId));
 
