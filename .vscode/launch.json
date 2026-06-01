@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (console)",
+            "name": "cv4pve-diag (Parm.Parm)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -15,9 +15,43 @@
             "stopAtEntry": false
         },
         {
+            "name": "cv4pve-diag (help)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net10.0/cv4pve-diag.dll",
+            "args": [
+                "--help"
+            ],
+            "cwd": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "cv4pve-diag (custom args)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/bin/Debug/net10.0/cv4pve-diag.dll",
+            "args": [
+                "${input:cliArgs}"
+            ],
+            "cwd": "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cliArgs",
+            "type": "promptString",
+            "description": "CLI arguments (e.g. --host=pve.local --api-token=... execute)",
+            "default": "--help"
         }
     ]
 }

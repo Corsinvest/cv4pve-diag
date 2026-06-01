@@ -6,9 +6,9 @@
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
+using Corsinvest.ProxmoxVE.Api.Shared.Models.Node;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Vm;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
-using Corsinvest.ProxmoxVE.Diagnostic.Api.Helpers;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -751,7 +751,7 @@ public partial class DiagnosticEngine
         return true;
     }
 
-    private static bool TryFindLatestVersion(IEnumerable<Helpers.NodeCapabilitiesQemuMachine> machines,
+    private static bool TryFindLatestVersion(IEnumerable<NodeCapabilitiesQemuMachine> machines,
                                              string family,
                                              out string latestVersion)
     {
