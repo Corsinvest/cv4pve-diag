@@ -83,4 +83,11 @@ public class Settings
     /// </summary>
     public SettingsCve Cve { get; set; } = new();
 
+    /// <summary>
+    /// When true, every diagnostic check that uses CreateResult / CreateResultPerItem
+    /// also emits an Ok result on success (Gravity = Ok). Useful for full audit-style
+    /// reports where you need to prove that controls were verified, not only violated.
+    /// When false (default), output is identical to the legacy mode — only failures appear.
+    /// </summary>
+    public bool IncludeOkResult { get; set; }
 }

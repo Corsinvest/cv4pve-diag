@@ -8,6 +8,7 @@ using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Shared.Utils;
 using Corsinvest.ProxmoxVE.Diagnostic.Api;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 using System.Text.Json;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using System.Diagnostics;
@@ -24,9 +25,9 @@ internal class OutputEngine
                                          string? ignoredIssuesFile,
                                          OutputType output,
                                          bool showIgnoredIssues,
-                                         string? outputFile)
+                                         string? outputFile,
+                                         ComplianceStandard? compliance)
     {
-
         var settings = !string.IsNullOrWhiteSpace(settingsFile)
                           ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile!))
                           : new Settings();
@@ -35,12 +36,34 @@ internal class OutputEngine
                                 ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(ignoredIssuesFile!))
                                 : [];
 
+        // Infer the output format from the file extension when the user passed --output-file
+        // but left --output on its default (Text). Keeps the CLI feeling natural:
+        // '--output-file=report.xlsx' alone produces a real Excel file instead of an ASCII table
+        // saved with the wrong extension.
+        if (output == OutputType.Text && !string.IsNullOrWhiteSpace(outputFile))
+        {
+            output = Path.GetExtension(outputFile).ToLowerInvariant() switch
+            {
+                ".xlsx" => OutputType.Excel,
+                ".html" or ".htm" => OutputType.Html,
+                ".json" => OutputType.Json,
+                ".md" => OutputType.Markdown,
+                _ => output,
+            };
+        }
+
         var duration = Stopwatch.StartNew();
         using var httpClient = new HttpClient();
         var result = await new DiagnosticEngine(client, settings!, httpClient).AnalyzeAsync(ignoredIssues!);
         duration.Stop();
 
-        if (!string.IsNullOrWhiteSpace(outputFile)) { File.Delete(outputFile!); }
+        // When --compliance is passed, keep only findings mapped to that standard.
+        if (compliance.HasValue)
+        {
+            result = [.. result.Where(r => r.Compliance.Any(m => m.Standard == compliance.Value))];
+        }
+
+        if (!string.IsNullOrWhiteSpace(outputFile)) { File.Delete(outputFile); }
 
         if (output == OutputType.Excel)
         {
@@ -53,18 +76,28 @@ internal class OutputEngine
             CreateExcel(result,
                         string.Join(",", (await client.GetResourcesAsync(ClusterResourceType.Node)).Select(a => a.Node)),
                         duration.Elapsed,
-                        outputFile);
+                        outputFile,
+                        compliance);
         }
         else
         {
-            CreateTable(result, output, showIgnoredIssues, outputFile);
+            CreateTable(result, output, showIgnoredIssues, outputFile, compliance);
         }
     }
+
+    /// <summary>
+    /// Comma-separated list of ControlId values matching the selected standard.
+    /// </summary>
+    private static string FormatControlIds(DiagnosticResult result, ComplianceStandard standard)
+        => string.Join(", ", result.Compliance
+                                   .Where(m => m.Standard == standard)
+                                   .Select(m => m.ControlId));
 
     private static void CreateTable(IEnumerable<DiagnosticResult> result,
                                     OutputType output,
                                     bool showIgnoredIssues,
-                                    string? outputFile)
+                                    string? outputFile,
+                                    ComplianceStandard? compliance)
     {
         var tabOutput = output switch
         {
@@ -79,36 +112,32 @@ internal class OutputEngine
         var rows = result.OrderByDescending(a => a.Gravity)
                          .ThenBy(a => a.Context)
                          .ThenBy(a => a.SubContext)
-                         .Select(a => showIgnoredIssues
-                            ? new object[]
-                            {
-                                a.Id,
-                                a.ErrorCode,
-                                a.Description,
-                                a.Context,
-                                a.SubContext,
-                                a.Gravity,
-                                a.IsIgnoredIssue ? "X" : ""
-                            }
-                            :
-                            [
-                                a.Id,
-                                a.ErrorCode,
-                                a.Description,
-                                a.Context,
-                                a.SubContext,
-                                a.Gravity
-                            ]);
+                         .Select(a =>
+                         {
+                             var baseRow = new List<object>
+                             {
+                                 a.Id,
+                                 a.ErrorCode,
+                                 a.Description,
+                                 a.Context,
+                                 a.SubContext,
+                                 a.Gravity,
+                             };
+                             if (compliance.HasValue) { baseRow.Add(FormatControlIds(a, compliance.Value)); }
+                             if (showIgnoredIssues) { baseRow.Add(a.IsIgnoredIssue ? "X" : ""); }
+                             return baseRow.ToArray();
+                         });
 
-        var columns = showIgnoredIssues
-                        ? new[] { "Id", "Code", "Description", "Context", "SubContext", "Gravity", "IgnoredIssue" }
-                        : ["Id", "Code", "Description", "Context", "SubContext", "Gravity"];
+        var columnList = new List<string> { "Id", "Code", "Description", "Context", "SubContext", "Gravity" };
+        if (compliance.HasValue) { columnList.Add("ControlId"); }
+        if (showIgnoredIssues) { columnList.Add("IgnoredIssue"); }
+        var columns = columnList.ToArray();
 
         var data = TableGenerator.To(columns, rows, tabOutput);
 
         if (!string.IsNullOrWhiteSpace(outputFile))
         {
-            File.WriteAllText(outputFile!, data);
+            File.WriteAllText(outputFile, data);
         }
         else
         {
@@ -116,7 +145,11 @@ internal class OutputEngine
         }
     }
 
-    public static void CreateExcel(IEnumerable<DiagnosticResult> data, string nodes, TimeSpan elapsed, string fileName)
+    public static void CreateExcel(IEnumerable<DiagnosticResult> data,
+                                   string nodes,
+                                   TimeSpan elapsed,
+                                   string fileName,
+                                   ComplianceStandard? compliance)
     {
         using var workbook = new XLWorkbook();
 
@@ -150,6 +183,7 @@ internal class OutputEngine
         AddKV("Duration:", $"{elapsed.TotalSeconds:F1}s");
         AddKV("Application:", $"cv4pve-diag v{typeof(OutputEngine).Assembly.GetName().Version?.ToString(3)}");
         AddKV("Nodes:", nodes);
+        if (compliance.HasValue) { AddKV("Compliance:", compliance.Value.ToString()); }
         row++;
 
         ws.Cell(row, 1).Value = "Generated by";
@@ -165,7 +199,11 @@ internal class OutputEngine
         ws.Column(1).Width = 20;
         ws.Column(2).Width = 60;
 
-        var table = ws.Cell(row, 1)
+        IXLTable table;
+        if (compliance.HasValue)
+        {
+            var std = compliance.Value;
+            table = ws.Cell(row, 1)
                       .InsertTable(data.Select(a => new
                       {
                           a.Id,
@@ -174,14 +212,36 @@ internal class OutputEngine
                           a.SubContext,
                           a.Description,
                           a.Gravity,
-                          IsIgnoredIssue = a.IsIgnoredIssue ? "X" : ""
+                          ControlId = FormatControlIds(a, std),
+                          IsIgnoredIssue = a.IsIgnoredIssue ? "X" : "",
                       }), true);
+        }
+        else
+        {
+            table = ws.Cell(row, 1)
+                      .InsertTable(data.Select(a => new
+                      {
+                          a.Id,
+                          a.ErrorCode,
+                          a.Context,
+                          a.SubContext,
+                          a.Description,
+                          a.Gravity,
+                          IsIgnoredIssue = a.IsIgnoredIssue ? "X" : "",
+                      }), true);
+        }
 
         table.AutoFilter.IsEnabled = true;
-        var fileds = table.Fields.ToList();
-        fileds[1].HeaderCell.Value = "Error Code";
-        fileds[3].HeaderCell.Value = "Sub Context";
-        fileds[6].HeaderCell.Value = "Ignored Issue";
+        var fields = table.Fields.ToList();
+        fields[1].HeaderCell.Value = "Error Code";
+        fields[3].HeaderCell.Value = "Sub Context";
+        // Last column is always IsIgnoredIssue; rename for display.
+        fields[^1].HeaderCell.Value = "Ignored Issue";
+        if (compliance.HasValue)
+        {
+            // Zero-indexed: 6 = ControlId.
+            fields[6].HeaderCell.Value = "Control Id";
+        }
 
         ws.Columns().AdjustToContents();
 

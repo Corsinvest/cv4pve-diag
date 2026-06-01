@@ -4,8 +4,54 @@
 
 ## [Unreleased]
 
-### Resilience
+## [2.4.0] — 2026-06-01
 
+### Compliance reporting
+
+cv4pve-diag can now produce **compliance-aware reports** alongside the usual diagnostic output. Diagnostic findings are tagged with the normative controls they satisfy — so when an admin user has no two-factor authentication, the same finding doubles as evidence of a gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2.
+
+- **40+ diagnostic checks** are mapped to compliance controls across **14 frameworks**: ISO 27001:2022, NIS2, DORA, PCI DSS v4.0, GDPR, AgID (Italian PA), ENS (Spanish PA, RD 311/2022), BSI C5:2020 (German cloud baseline), SOC 2 (AICPA Trust Services Criteria), NIST SP 800-53 rev.5 (Moderate baseline subset), ISO/IEC 27017 (cloud), ISO/IEC 27018 (PII in cloud), CIS Controls v8 and NIST CSF 2.0. Each finding can carry several control ids — for example, the "admin user without two-factor authentication" finding now references controls across most frameworks at once.
+- New `--compliance=<standard>` command-line option. When passed, the report is filtered to keep only the findings mapped to that standard, and a `ControlId` column is added so each finding shows the specific control identifier (e.g. `A.5.17`, `Art.21(j)`).
+- Works with every output format: Text, Markdown, HTML, JSON, Excel. The Excel header carries the selected standard so the file is self-describing.
+- New `IncludeOkResult` setting (top-level): when enabled, passing checks are also written to the report (as `Ok` results). Useful for **full audit-style reports** that need to prove a control was verified, not only that it was violated.
+- Full explanation, list of standards, control catalog and disclaimer in the new [docs/compliance.md](docs/compliance.md).
+
+> **Important:** the compliance mapping is **technical and informative only** — it covers the subset of each standard that can be verified from the Proxmox VE state. It does not replace a formal audit. See the disclaimer in `docs/compliance.md` for full scope and limits.
+
+### New diagnostic checks
+
+Two new observability checks fill a gap on long-term monitoring evidence:
+
+- `IC0018` — No external metric server configured on the cluster. Without an InfluxDB / Graphite metric server, long-term monitoring relies only on the volatile per-node RRD, which is reset on reboot — auditors typically require persistent historical data for incident investigation.
+- `IC0019` — Metric servers exist but every one of them is disabled — same effect as `IC0018`, but worth surfacing separately because the fix is just toggling the existing configuration on.
+- `IG0016` — VM has a machine type pinned to an old version while the node already offers a newer one (e.g. `pc-i440fx-6.2` while `pc-i440fx-9.2` is available). Pinning is correct for stability, but old machine versions accumulate deprecated CPU / microcode behaviour and miss QEMU bug-fixes; tagged against the patch-management controls. Upgrade requires a VM stop/start.
+- `IC0020` — Pool with members but no ACL entry at `/pool/<id>`. The pool exists as an organisational tag but is not used as a privilege boundary, which is the point of pools.
+- `IC0021` — API token without a comment. Without a comment the token's purpose / owner cannot be attributed at audit time, making safe revocation impossible.
+- `WC0019` — Two or more enabled backup jobs run on the same storage at the same systemd-calendar schedule, causing I/O contention and longer overall runtime.
+- `WN0045` — Node clock drifts more than 5 seconds from another cluster node. Even when each node looks fine vs NTP, mutual drift is a frequent silent cause of corosync token retransmits, HA fencing instability and broken log correlation.
+
+In addition, a wider set of **pre-existing checks now also carries compliance tags** (TFA on transitive admins, account lifecycle, firewall logging, certificate management, PVE patch level, container privileged-access checks, …) — the diagnostic logic and codes are unchanged, but findings now reference the relevant ISO 27001 / NIS2 / DORA / PCI DSS controls. The full mapping per area is in [docs/compliance.md](docs/compliance.md); the full list of checks is in [docs/checks.md](docs/checks.md).
+
+### Reporting & output
+
+- **`--compliance=<standard>`** (see above) adds the `ControlId` column to every report format.
+- **Output format inferred from `--output-file` extension**: passing `--output-file=report.xlsx` (or `.html` / `.json` / `.md`) now produces the matching format automatically, even without an explicit `--output`. Previously the file would be saved with the wrong content for the extension.
+- **Excel report** header now includes the selected compliance standard, when applicable.
+
+### Documentation
+
+The README has been restructured around the most common reading paths. Long content has moved into dedicated docs so the README stays scannable:
+
+- New [docs/checks.md](docs/checks.md) — full catalog of every diagnostic check with code, description and severity.
+- New [docs/settings.md](docs/settings.md) — full `settings.json` reference with field-by-field defaults, performance tuning recipes and CVE scanning configuration.
+- New [docs/compliance.md](docs/compliance.md) — what the compliance mapping is, list of standards and controls, `--compliance` CLI usage, and the audit disclaimer.
+- New [docs/ignored-issues.md](docs/ignored-issues.md) — full guide to suppressing accepted findings.
+
+### Fixes
+
+- **Error code collision fixed (`WG0025`)**: the code was incorrectly used both for the per-VM/CT CPU threshold check and for "HA guest has no replication job". The HA replication check now has its own code (`WG0043`). Ignore rules referencing `WG0025` for HA replication need to be updated — `WG0025` from now on means only CPU threshold breach.
+- **Error code collision fixed (`WN0023`)**: the code was used both for "TLS certificate expires within 30 days" and for "ZFS pool disk usage above threshold". The ZFS pool usage check now uses the new `WN0044` code. Ignore rules referencing `WN0023` for ZFS pool usage need to be updated — `WN0023` from now on means only certificate expiration warning.
+- **Cross-node checks skipped on single-node setups** (`CN0001`, `CN0002`, `WN0005`, `WN0006`, `WN0007`, `WN0008`, `WN0009`): these checks compare a node against its peers. On a host with no peers they are now skipped entirely instead of emitting empty / vacuously-true results. Single-node compliance gaps are already surfaced by `IC0017`, `IC0002`, `IC0003`.
 - All remaining cluster fetches are now resilient: a failing call (access, HA, replication, firewall options/rules, pools, status, log, tasks, RRD) no longer aborts the analysis. The affected check is skipped and a `WG0042` Warning is recorded, consistently with what was already in place for per-node and per-guest fetches.
 
 ### New checks
@@ -34,7 +80,7 @@
 
 **Per guest:**
 - `IG0015` — Running guest is not covered by any HA resource.
-- `WG0025` — HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data.
+- `WG0043` — HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data. (Originally landed as `WG0025`; reassigned to fix a code collision — see *Fixes* above.)
 
 ### CVE checks
 

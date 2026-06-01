@@ -9,6 +9,7 @@ using Corsinvest.ProxmoxVE.Api.Console.Helpers;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
 using Corsinvest.ProxmoxVE.Diagnostic;
 using Corsinvest.ProxmoxVE.Diagnostic.Api;
+using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 using Microsoft.Extensions.Logging;
 
 var settingsFileName = "settings.json";
@@ -29,6 +30,10 @@ var optOutput = app.AddOption<OutputType>("--output|-o", "Type output");
 optOutput.DefaultValueFactory = (_) => OutputType.Text;
 
 var optOutputFile = app.AddOption<string>("--output-file", "Output file name");
+
+var optCompliance = app.AddOption<ComplianceStandard?>("--compliance",
+    "Add the Compliance column to the output, showing mappings for the selected standard only (Iso27001, Nis2, Dora, PciDss, …). Omit the flag to hide the column.");
+
 
 app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
    .SetAction((_) =>
@@ -55,6 +60,7 @@ app.AddCommand("execute", "Execute diagnostic and print result to console")
                                         action.GetValue(optIgnoredIssuesFile),
                                         action.GetValue(optOutput),
                                         action.GetValue(optShowIgnoredIssues),
-                                        action.GetValue(optOutputFile)));
+                                        action.GetValue(optOutputFile),
+                                        action.GetValue(optCompliance)));
 
 return await app.ExecuteAppAsync(args, loggerFactory.CreateLogger<Program>());
