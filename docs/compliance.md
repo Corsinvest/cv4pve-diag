@@ -47,9 +47,45 @@ When you pass `--compliance=<standard>` on the `execute` command, two things hap
 1. The output is **filtered**: only findings that have at least one mapping for the selected standard are kept.
 2. A `ControlId` column is **added** to the report (or to the Excel `Summary` sheet), listing the control identifiers of that standard for each finding (comma-separated when more than one).
 
-Accepted values match the [Standards supported](#standards-supported) list — for example: `Iso27001`, `Nis2`, `Dora`, `PciDss`, `Iso27017`, `Gdpr`, `NistCsf`, `Cis`, `AgId`.
+Accepted values match the [Standards supported](#standards-supported) list — the full set is:
 
-Omit the flag (default) to get the legacy output: no filter applied, no `ControlId` column.
+| CLI value | Standard |
+|---|---|
+| `Iso27001` | ISO/IEC 27001:2022 |
+| `Nis2` | EU NIS2 Directive |
+| `Dora` | EU DORA |
+| `PciDss` | PCI DSS v4.0 |
+| `Gdpr` | GDPR (technical security of processing) |
+| `AgId` | AgID Misure minime ICT (Italian PA) |
+| `Ens` | Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
+| `C5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) |
+| `Soc2` | AICPA Trust Services Criteria (SOC 2) |
+| `Nist80053` | NIST SP 800-53 rev.5 (Moderate baseline subset) |
+| `Iso27017` | ISO/IEC 27017:2015 (cloud) |
+| `Iso27018` | ISO/IEC 27018:2019 (PII in cloud) |
+| `Cis` | CIS Controls v8 |
+| `NistCsf` | NIST Cybersecurity Framework 2.0 |
+
+Values are matched case-insensitively. Omit the flag (default) to get the legacy output: no filter applied, no `ControlId` column.
+
+### Output format auto-inference
+
+When `--output` is not specified but `--output-file` is, the format is inferred from the file extension:
+
+| Extension | Output format |
+|---|---|
+| `.xlsx` | Excel |
+| `.html` / `.htm` | Html |
+| `.json` | Json |
+| `.md` | Markdown |
+| anything else | Text (default) |
+
+This lets you produce auditor-ready reports without spelling out `--output`:
+
+```bash
+cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
+  --compliance=Soc2 --output-file=soc2-evidence.xlsx execute
+```
 
 ### Examples
 
