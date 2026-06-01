@@ -834,6 +834,9 @@ public partial class DiagnosticEngine
             // Reads vzdump task logs for the last N days, computes per-VM average duration and size,
             // and warns when the latest backup deviates significantly.
             // Requires: using Corsinvest.ProxmoxVE.Api.Shared.Utils;
+            // NOTE on codes: when activated, allocate fresh WN slots (last in use is WN0045) — the
+            // codes commented below were drafted before the catalog reached its current state and
+            // would collide with WN0034 (bond redundancy).
             //
             //if (settings.BackupHistory.Enabled)
             //{
@@ -865,7 +868,7 @@ public partial class DiagnosticEngine
             //            _result.Add(new DiagnosticResult
             //            {
             //                Id          = $"{id}/backup-duration/{vmGroup.Key}",
-            //                ErrorCode   = "WN0034",
+            //                ErrorCode   = "WN00XX-duration",   // allocate at implementation time
             //                Context     = DiagnosticResultContext.Node,
             //                SubContext  = "Backup",
             //                Gravity     = DiagnosticResultGravity.Warning,
@@ -878,7 +881,7 @@ public partial class DiagnosticEngine
             //            _result.Add(new DiagnosticResult
             //            {
             //                Id          = $"{id}/backup-size/{vmGroup.Key}",
-            //                ErrorCode   = "WN0035",
+            //                ErrorCode   = "WN00XX-size",       // allocate at implementation time
             //                Context     = DiagnosticResultContext.Node,
             //                SubContext  = "Backup",
             //                Gravity     = DiagnosticResultGravity.Warning,
