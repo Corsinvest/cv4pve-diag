@@ -7,11 +7,43 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln",
+                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build-all",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "test",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "test",
+                "${workspaceFolder}/tests/Corsinvest.ProxmoxVE.Diagnostic.Api.Tests/Corsinvest.ProxmoxVE.Diagnostic.Api.Tests.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         },
         {
             "label": "publish",
@@ -19,7 +51,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln",
+                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -31,9 +63,9 @@
             "type": "process",
             "args": [
                 "watch",
-                "run",
                 "--project",
-                "${workspaceFolder}/Corsinvest.ProxmoxVE.Diagnostic.sln"
+                "${workspaceFolder}/src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj",
+                "run"
             ],
             "problemMatcher": "$msCompile"
         }
