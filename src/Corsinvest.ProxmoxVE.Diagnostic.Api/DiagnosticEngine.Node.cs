@@ -1097,14 +1097,16 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0)
+        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
+        // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
+        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(settings.Node.Rrd.Pressure.Cpu,
                            "WN0031",
                            DiagnosticResultContext.Node,
                            "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome) * 100,
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
                                                    0d,
                                                    id,
                                                    $"PSI CPU some (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
@@ -1118,7 +1120,7 @@ public partial class DiagnosticEngine
                            "WN0032",
                            DiagnosticResultContext.Node,
                            "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull) * 100,
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
                                                    0d,
                                                    id,
                                                    $"PSI I/O full (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
@@ -1132,7 +1134,7 @@ public partial class DiagnosticEngine
                            "WN0033",
                            DiagnosticResultContext.Node,
                            "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull) * 100,
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
                                                    0d,
                                                    id,
                                                    $"PSI Memory full (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
