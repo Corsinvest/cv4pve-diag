@@ -93,6 +93,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | IC0012 | Backup      | Info     | Backup job is disabled                                                   |
 | WC0018 | Backup      | Warning  | Recent vzdump task ended with non-OK status                              |
 | WC0019 | Backup      | Warning  | Two or more enabled backup jobs run on the same storage at the same schedule (I/O contention) |
+| WC0020 | Permissions | Info/Warning | Account cannot see part of the cluster — Info for a reduced analysis scope, Warning when missing backup privileges would make other checks report the opposite of the truth |
 | IC0013 | Firewall    | Info     | Cluster firewall has enabled rules but none configure logging            |
 | IC0014 | Firewall    | Info     | Cluster firewall has 10+ disabled rules — stale configuration            |
 | IC0015 | Log         | Info     | 10+ error-level entries in the cluster journal                           |
@@ -104,6 +105,21 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | IC0021 | Access      | Info     | API token has no comment — purpose / owner cannot be attributed at audit time |
 | WC0011 | Version     | Warning  | Online nodes run different Proxmox VE versions                           |
 | WC0012 | Version     | Warning  | Online nodes run different kernel versions                               |
+
+> [!NOTE]
+> **Backup checks and privileges.** `WG0019`, `WG0020` and `WS0003` read the backup files listed by
+> each storage. Proxmox requires both `Datastore.AllocateSpace` (on the storage) and `VM.Backup` (on
+> the guest) to include a backup volume in that listing — `Datastore.Audit` alone is enough to call
+> the endpoint but not to see the volumes, and PVE filters them out silently rather than returning
+> an error. The `PVEAuditor` role does not grant either privilege.
+>
+> When they are missing, `WC0020` is reported as a **Warning** and the three backup checks are
+> skipped, instead of flagging every guest as having no backups.
+>
+> The other privileges (`VM.Audit`, `Datastore.Audit`, `Sys.Audit`, `Pool.Audit`) are reported as
+> **Info**: an account restricted to part of the cluster is a legitimate configuration, so the
+> finding states what the analysis covers rather than reporting a fault. See the permissions section
+> in the README.
 
 </details>
 
