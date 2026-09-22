@@ -90,10 +90,62 @@ All binaries on the [Releases page](https://github.com/Corsinvest/cv4pve-diag/re
 | Permission | Purpose | Scope |
 |------------|---------|-------|
 | **VM.Audit** | Read VM/CT configuration and status | Virtual machines |
-| **Datastore.Audit** | Check storage capacity and content | Storage systems |
+| **Datastore.Audit** | Check storage capacity, list disk images | Storage systems |
 | **Pool.Audit** | Access pool information | Resource pools |
 | **Sys.Audit** | Node system information, services, disks | Cluster nodes |
 | **Sys.Modify** | APT repositories, available updates and installed package versions | Cluster nodes |
+| **Datastore.AllocateSpace** | List backup files — see the note below | Storage systems |
+| **VM.Backup** | List backup files — see the note below | Virtual machines |
+
+cv4pve-diag verifies these at startup and reports **`WC0020`** for each one the account does not
+hold, saying what the analysis will not cover without it. Restricting an account to part of the
+cluster is perfectly valid — that case is reported as **Info**, simply stating the scope. Only the
+backup privileges raise a **Warning**, because without them other checks report the opposite of the
+truth rather than just less (see below).
+
+> [!IMPORTANT]
+> **`PVEAuditor` alone is not enough to see backups.**
+>
+> The built-in `PVEAuditor` role grants only the `*.Audit` privileges, so the backup checks
+> (`WG0019`, `WG0020`, `WS0003`) will report **"No recent backups found!"** for every guest even when
+> backups exist and are perfectly healthy.
+>
+> This is not a permission *error* you would notice: listing a storage's contents succeeds with
+> `200 OK`, but Proxmox filters out every backup volume the user may not access, returning an empty
+> list. From the outside it is indistinguishable from a guest that genuinely has no backups.
+>
+> Proxmox requires **both** `Datastore.AllocateSpace` (on the storage) and `VM.Backup` (on the guest)
+> to list a backup volume — see [`check_volume_access`](https://github.com/proxmox/pve-storage/blob/master/src/PVE/Storage.pm).
+> Note that these are more than read-only: `VM.Backup` also permits *starting* backups, and
+> `Datastore.AllocateSpace` permits *allocating* space.
+>
+> To grant them on top of `PVEAuditor`:
+>
+> ```bash
+> # a custom role with the two extra privileges
+> pveum role add CV4PVEDiagBackup --privs "Datastore.AllocateSpace,VM.Backup"
+> pveum acl modify /storage --users cv4pve@pam --roles CV4PVEDiagBackup
+> pveum acl modify /vms     --users cv4pve@pam --roles CV4PVEDiagBackup
+> ```
+>
+> If you prefer to keep the account strictly read-only, that is a valid choice — just be aware the
+> backup checks cannot work, and treat their findings as unreliable.
+
+> [!NOTE]
+> **Why missing privileges are hard to notice.** Proxmox answers a request the caller is only partly
+> entitled to by *filtering the response*, not by failing it. `/cluster/resources` drops the guests,
+> storages and pools you cannot audit; a storage listing drops the backup volumes you cannot access.
+> Both return `200 OK`, so from the outside a filtered result is indistinguishable from a genuinely
+> empty one — a guest missing `VM.Audit` simply does not appear in the report at all.
+>
+> That is why cv4pve-diag checks privileges up front rather than relying on API errors. Privileges
+> that *do* fail loudly, such as `Sys.Modify` for the APT checks, are reported as `WG0042` when the
+> call fails and need no pre-check.
+>
+> **To analyze the whole cluster, grant the privileges on the roots** (`/vms`, `/storage`, `/nodes`,
+> `/pool`) or on `/`. An ACL on individual guests or storages is equally valid — it simply scopes the
+> analysis to those objects. cv4pve-diag reports that scope as `WC0020` (Info) so the report says
+> what it covers, since PVE itself gives no indication that anything was left out.
 
 </details>
 

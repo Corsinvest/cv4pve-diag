@@ -54,6 +54,11 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
         try
         {
+            // First: PVE filters /cluster/resources by what the caller may audit, so a missing
+            // privilege removes guests or storages from the analysis with no error to notice.
+            // Report that before anything reads the (possibly incomplete) resource list.
+            await CheckPermissionsAsync();
+
             IReadOnlyList<ClusterResource> allResources;
             try
             {
