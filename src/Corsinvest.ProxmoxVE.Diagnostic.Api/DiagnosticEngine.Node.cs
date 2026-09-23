@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.RegularExpressions;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
@@ -364,7 +365,7 @@ public partial class DiagnosticEngine
                     compliance: patchConsistencyControls);
 
                 CreateResult(
-                    isOk: otherNodesData.All(od => string.Concat(hosts) == string.Concat(od.Hosts)),
+                    isOk: otherNodesData.All(od => HostsEntries(hosts).SetEquals(HostsEntries(od.Hosts))),
                     id: id,
                     errorCode: "WN0005",
                     subContext: "Hosts",
@@ -502,19 +503,18 @@ public partial class DiagnosticEngine
             // Skip on single-node setups: no peer to compare to.
             if (onlineNodes.Count(a => a.Node != item.Node) > 0)
             {
-                var packagesMatch = onlineNodes.Where(a => a.Node != item.Node)
-                    .All(a => !nodeCompareData.TryGetValue(a.Node, out var otherPkgData)
-                              || aptVersions.All(pkg => otherPkgData.AptVersions.Any(o => o.Version == pkg.Version
-                                                                                           && o.Title == pkg.Title
-                                                                                           && o.Package == pkg.Package)));
+                var packageDifferences = onlineNodes.Where(a => a.Node != item.Node && nodeCompareData.ContainsKey(a.Node))
+                                                    .SelectMany(a => PackageVersionDifferences(aptVersions, nodeCompareData[a.Node].AptVersions)
+                                                                        .Select(d => $"{d} on '{a.Node}'"))
+                                                    .ToList();
                 CreateResult(
-                    isOk: packagesMatch,
+                    isOk: packageDifferences.Count == 0,
                     id: id,
                     errorCode: "CN0002",
                     subContext: "PackageVersions",
                     context: DiagnosticResultContext.Node,
                     gravityKo: DiagnosticResultGravity.Critical,
-                    descriptionKo: "Nodes package version not equal",
+                    descriptionKo: $"Nodes package version not equal: {string.Join(", ", packageDifferences)}",
                     descriptionOk: "Node package versions match the rest of the cluster",
                     compliance: patchConsistencyControls);
             }
@@ -693,25 +693,23 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Reboot required
-            // If the running kernel release differs from the installed package version, a reboot is needed
-            if (nodeStatus?.CurrentKernel != null && !string.IsNullOrWhiteSpace(nodeStatus.Kversion))
+            // A kernel newer than the running one is installed: it only takes effect after a reboot.
+            // Both kversion and current-kernel describe the running kernel, so they cannot tell this;
+            // the installed kernel images come from the package list.
+            var runningKernel = nodeStatus?.CurrentKernel?.Release ?? "";
+            if (!string.IsNullOrWhiteSpace(runningKernel))
             {
-                // Kversion contains the full uname string; CurrentKernel.Release is the running kernel
-                // Compare the running kernel release against the installed kversion string
-                var runningKernel = nodeStatus.CurrentKernel?.Release ?? "";
-                if (!string.IsNullOrWhiteSpace(runningKernel))
-                {
-                    CreateResult(
-                        isOk: nodeStatus.Kversion.Contains(runningKernel),
-                        id: id,
-                        errorCode: "WN0013",
-                        subContext: "Reboot",
-                        context: DiagnosticResultContext.Node,
-                        gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: $"Node requires reboot: running kernel '{runningKernel}' differs from installed '{nodeStatus.Kversion}'",
-                        descriptionOk: $"Node is running the latest installed kernel ({runningKernel})",
-                        compliance: patchControls);
-                }
+                var newerKernel = NewerInstalledKernel(runningKernel, aptVersions.Select(a => a.Package));
+                CreateResult(
+                    isOk: newerKernel == null,
+                    id: id,
+                    errorCode: "WN0013",
+                    subContext: "Reboot",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"Node requires reboot: running kernel '{runningKernel}' but newer kernel '{newerKernel}' is installed",
+                    descriptionOk: $"Node is running the latest installed kernel ({runningKernel})",
+                    compliance: patchControls);
             }
             #endregion
 
@@ -1499,6 +1497,51 @@ public partial class DiagnosticEngine
             }
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Packages installed on both nodes with a different version, as "package X vs Y". Kernel image
+    /// packages are left out: each kernel version is its own package, and old kernels kept on one
+    /// node only are normal (the running and newest kernel are checked by WN0013).
+    /// </summary>
+    internal static List<string> PackageVersionDifferences(IEnumerable<NodeAptVersion> mine, IEnumerable<NodeAptVersion> other)
+    {
+        var otherByPackage = other.Where(a => !string.IsNullOrWhiteSpace(a.Package))
+                                  .GroupBy(a => a.Package)
+                                  .ToDictionary(g => g.Key, g => g.First().Version);
+        return [.. mine.Where(a => !string.IsNullOrWhiteSpace(a.Package) && !_kernelImagePackage.IsMatch(a.Package))
+                       .Where(a => otherByPackage.TryGetValue(a.Package, out var v) && v != a.Version)
+                       .Select(a => $"{a.Package} {a.Version} vs {otherByPackage[a.Package]}")
+                       .Distinct()
+                       .Order()];
+    }
+
+    /// <summary>
+    /// Entries of an /etc/hosts file, normalised for comparison: comments and blank lines dropped,
+    /// whitespace collapsed. Two files with the same entries differ only cosmetically.
+    /// </summary>
+    internal static HashSet<string> HostsEntries(IEnumerable<string> lines)
+        => [.. lines.Select(l => (l ?? "").Split('#')[0])
+                    .Select(l => string.Join(' ', l.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)))
+                    .Where(l => l.Length > 0)];
+
+    // Kernel image packages: proxmox-kernel-6.8.12-43-pve-signed, proxmox-kernel-6.2.16-19-pve, pve-kernel-5.15.158-2-pve.
+    private static readonly Regex _kernelImagePackage = new(@"^(?:proxmox|pve)-kernel-(\d+\.\d+\.\d+-\d+)-pve(?:-signed)?$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The newest installed kernel image newer than the running one (e.g. <c>6.8.12-43-pve</c>),
+    /// or null when the node already runs the newest. <paramref name="runningKernel"/> is the
+    /// uname release (<c>6.8.12-20-pve</c>). A kernel pinned with proxmox-boot-tool is not visible here.
+    /// </summary>
+    internal static string? NewerInstalledKernel(string runningKernel, IEnumerable<string> installedPackages)
+    {
+        var running = runningKernel.EndsWith("-pve", StringComparison.Ordinal) ? runningKernel[..^4] : runningKernel;
+        var newest = installedPackages.Select(p => _kernelImagePackage.Match(p ?? ""))
+                                      .Where(m => m.Success)
+                                      .Select(m => m.Groups[1].Value)
+                                      .OrderDescending(Comparer<string>.Create(DebianVersion.Compare))
+                                      .FirstOrDefault();
+        return newest != null && DebianVersion.Compare(newest, running) > 0 ? $"{newest}-pve" : null;
     }
 
     /// <summary>

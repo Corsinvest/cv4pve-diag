@@ -21,6 +21,14 @@
 - `WN0010` (network card not active) no longer reports spare ports that are not used by any bridge or bond and have no IP address: being down is normal for them.
 - The analysis no longer stops halfway when a storage, a node or a guest does not answer (for example a slow backup server): the missing part is reported as `WG0042` and the rest of the report is produced.
 - When the backups on a storage cannot be read, the backup checks (`WG0019`, `WG0020`) are skipped for the guests of that node instead of reporting "No recent backups found!".
+- `CG0006` and `WG0041` now see the raw `lxc.*` settings of a container: a privileged container with AppArmor disabled (`lxc.apparmor.profile: unconfined`) was reported as safe.
+- `WN0013` now reports when a node must be rebooted to run a newer installed kernel. Before, it never did.
+- `CN0002` (package versions differ) no longer raises a Critical alarm when a node only keeps some old kernels installed; the message now lists the packages that really differ.
+- `WN0005` (hosts files differ) no longer reports files that differ only in comments or spaces.
+- VMs without a CPU type set use the old `kvm64` model: `IG0004` and `WG0037` now check them too.
+- `WG0012` (passthrough) no longer reports SPICE USB redirection, which does not block migration.
+- `IG0002` now reports IDE and SATA disks even when the SCSI controller is VirtIO.
+- README: the example output is now real output of the current version (it showed wrong codes, such as `WS0001` for orphaned images and `WS0003` for storage usage, and results the tool cannot produce). The number of findings tagged with compliance controls is corrected to 100+.
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

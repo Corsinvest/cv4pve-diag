@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.RegularExpressions;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
@@ -196,23 +197,22 @@ public partial class DiagnosticEngine
                     descriptionOk: $"SCSI controller is VirtIO ({qc.ScsiHw})",
                     compliance: []);
 
-                // IG0002 is only meaningful when the SCSI HW is NOT VirtIO; otherwise individual disks
-                // riding on a non-VirtIO controller would be misreported.
-                if (!scsiHwIsVirtIO)
-                {
-                    CreateResultPerItem(
-                        items: config.Disks.ToList(),
-                        isItemOk: a => a.Id.StartsWith(VirtioPrefix),
-                        itemId: _ => id,
-                        itemDescriptionKo: a => $"For more performance switch '{a.Id}' hdd to VirtIO",
-                        aggregatedIdOk: id,
-                        aggregatedDescriptionOk: _ => "All disks use the VirtIO bus",
-                        errorCode: "IG0002",
-                        subContext: "VirtIO",
-                        context: DiagnosticResultContext.Qemu,
-                        gravityKo: DiagnosticResultGravity.Info,
-                        compliance: []);
-                }
+                // IDE and SATA disks are emulated and slow whatever the controller; SCSI disks are
+                // only as fast as the controller they ride on. Other entries (efidisk, tpmstate) are
+                // not data disks and are left out.
+                CreateResultPerItem(
+                    items: config.Disks.Where(a => IsDiskBus(a.Id)).ToList(),
+                    isItemOk: a => a.Id.StartsWith(VirtioPrefix)
+                                   || (a.Id.StartsWith("scsi", StringComparison.OrdinalIgnoreCase) && scsiHwIsVirtIO),
+                    itemId: _ => id,
+                    itemDescriptionKo: a => $"For more performance switch '{a.Id}' hdd to VirtIO",
+                    aggregatedIdOk: id,
+                    aggregatedDescriptionOk: _ => "All disks use the VirtIO bus",
+                    errorCode: "IG0002",
+                    subContext: "VirtIO",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    compliance: []);
             }
 
             // VirtIO network driver has lower CPU overhead and higher throughput than e1000/rtl8139
@@ -253,7 +253,7 @@ public partial class DiagnosticEngine
             #region CPU Type
             if (config is VmConfigQemu qemuConfig)
             {
-                var cpuType = qemuConfig.Cpu?.Split(',')[0].Trim().ToLower();
+                var cpuType = CpuTypeOf(qemuConfig.Cpu);
 
                 // "host" exposes all physical CPU features to the guest but prevents live migration
                 // between nodes with different CPU models. Only relevant in a multi-node cluster.
@@ -289,26 +289,22 @@ public partial class DiagnosticEngine
 
                 // "kvm64" is a very old baseline lacking AVX, SSE4 and other modern extensions.
                 // x86-64-v2 is the minimum recommended for current Linux/Windows guests.
-                // We only flag explicit "kvm64" — if Cpu is unset, the cluster default applies and we cannot know it.
-                if (!string.IsNullOrWhiteSpace(cpuType))
-                {
-                    CreateResult(
-                        isOk: cpuType != CpuTypeKvm64,
-                        id: id,
-                        errorCode: "IG0004",
-                        subContext: "CPU",
-                        context: DiagnosticResultContext.Qemu,
-                        gravityKo: DiagnosticResultGravity.Info,
-                        descriptionKo: "CPU type 'kvm64' is outdated, consider x86-64-v2 or higher for better performance",
-                        descriptionOk: $"CPU type '{cpuType}' is not the outdated kvm64 baseline",
-                        compliance: []);
-                }
+                // An unset cpu is kvm64 too (see CpuTypeOf).
+                CreateResult(
+                    isOk: cpuType != CpuTypeKvm64,
+                    id: id,
+                    errorCode: "IG0004",
+                    subContext: "CPU",
+                    context: DiagnosticResultContext.Qemu,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: "CPU type 'kvm64' is outdated, consider x86-64-v2 or higher for better performance",
+                    descriptionOk: $"CPU type '{cpuType}' is not the outdated kvm64 baseline",
+                    compliance: []);
 
                 #region CPU security flags
                 // When cpu type is not 'host', security mitigations flags are not inherited automatically.
                 // Missing flags expose guests to Spectre/Meltdown/MDS variants.
-                if (!string.IsNullOrWhiteSpace(cpuType)
-                    && !cpuType.Equals(CpuTypeHost, StringComparison.OrdinalIgnoreCase))
+                if (!cpuType.Equals(CpuTypeHost, StringComparison.OrdinalIgnoreCase))
                 {
                     var cpuFlags = qemuConfig.Cpu ?? "";
                     var missingFlags = _cpuSecurityFlags
@@ -631,9 +627,9 @@ public partial class DiagnosticEngine
 
             #region USB/PCI passthrough
             // USB or PCI passthrough binds the VM to a specific node — prevents live migration and HA failover
-            var passthroughKeys = config.ExtensionData?.Keys
-                .Where(k => k.StartsWith("usb", StringComparison.OrdinalIgnoreCase)
-                         || k.StartsWith("hostpci", StringComparison.OrdinalIgnoreCase))
+            var passthroughKeys = config.ExtensionData?
+                .Where(kv => IsHostPassthrough(kv.Key, kv.Value?.ToString()))
+                .Select(kv => kv.Key)
                 .ToList() ?? [];
 
             CreateResult(
@@ -782,4 +778,34 @@ public partial class DiagnosticEngine
         }
         return 0;
     }
+
+    /// <summary>
+    /// CPU model of a VM from its <c>cpu</c> option (<c>host</c>, <c>x86-64-v2-AES,flags=+aes</c>,
+    /// <c>cputype=kvm64</c>). No <c>cpu</c> option means qemu-server's default, kvm64:
+    /// x86-64-v2-AES is only what the GUI pre-fills for new VMs.
+    /// </summary>
+    internal static string CpuTypeOf(string? cpu)
+    {
+        var type = (cpu ?? "").Split(',')[0].Trim().ToLowerInvariant();
+        if (type.StartsWith("cputype=", StringComparison.Ordinal)) { type = type["cputype=".Length..]; }
+        return type.Length == 0 ? CpuTypeKvm64 : type;
+    }
+
+    /// <summary>
+    /// A config entry that ties the VM to the host hardware: <c>hostpciN</c>, or <c>usbN</c> passing a
+    /// host device. SPICE USB redirection (<c>usbN: spice</c>) forwards the viewer's devices and does
+    /// not block migration.
+    /// </summary>
+    internal static bool IsHostPassthrough(string key, string? value)
+    {
+        if (key.StartsWith("hostpci", StringComparison.OrdinalIgnoreCase)) { return true; }
+        if (!Regex.IsMatch(key, @"^usb\d+$", RegexOptions.IgnoreCase)) { return false; }
+
+        var device = (value ?? "").Split(',')[0].Trim();
+        if (device.StartsWith("host=", StringComparison.OrdinalIgnoreCase)) { device = device["host=".Length..]; }
+        return !device.Equals("spice", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Disk buses that carry data disks; efidisk / tpmstate / unused entries are not.
+    internal static bool IsDiskBus(string id) => Regex.IsMatch(id ?? "", @"^(ide|sata|scsi|virtio)\d+$", RegexOptions.IgnoreCase);
 }

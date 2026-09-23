@@ -132,14 +132,14 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WN0003        | EOL              | Warning          | Installed PVE version has reached end of life                                  |
 | WN0004        | Subscription     | Warning          | Node has no active Proxmox VE subscription                                     |
 | CN0001        | Version          | Critical         | Nodes in cluster have different PVE versions                                   |
-| WN0005        | Hosts            | Warning          | `/etc/hosts` content differs between nodes                                     |
+| WN0005        | Hosts            | Warning          | `/etc/hosts` entries differ between nodes (comments and spacing ignored)       |
 | WN0006        | DNS              | Warning          | DNS configuration differs between nodes                                        |
 | WN0007        | Timezone         | Warning          | Timezone differs between nodes                                                 |
 | WN0008        | AptRepositories  | Warning          | APT repository sources differ between nodes                                    |
 | WN0009        | Network          | Warning          | Physical NIC MTU differs between nodes                                         |
 | WN0010        | Network          | Warning          | Physical NIC in use (bridge, bond, VLAN or own IP) is down                     |
 | WN0034        | Network          | Warning          | Bond has fewer than two slaves — no link redundancy                            |
-| CN0002        | PackageVersions  | Critical         | Nodes have different package versions installed                                |
+| CN0002        | PackageVersions  | Critical         | A package installed on both nodes has a different version (old kernels ignored) |
 | WN0011        | Service          | Warning          | A required system service is not running                                       |
 | CN0003        | Certificates     | Critical         | TLS certificate has expired                                                    |
 | WN0023        | Certificates     | Warning          | TLS certificate expires within 30 days                                         |
@@ -147,7 +147,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | CN0004        | Replication      | Critical         | Replication job has errors                                                     |
 | IN0001        | Update           | Info             | Packages available for update                                                  |
 | WN0012        | Update           | Warning          | Security/important packages available for update                               |
-| WN0013        | Reboot           | Warning          | Running kernel differs from installed kernel                                   |
+| WN0013        | Reboot           | Warning          | A newer kernel is installed than the one running — reboot needed               |
 | WN0014        | NTP              | Warning          | Node time is out of sync with NTP                                              |
 | WN0045        | NTP              | Warning          | Node clock drifts > 5s from another cluster node (corosync / HA / log correlation risk) |
 | IN0002        | IOMMU            | Info             | IOMMU disabled — PCI passthrough will not work                                 |
@@ -217,11 +217,11 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0003        | Agent           | Warning          | Guest agent not configured                                                               |
 | WG0004        | Agent           | Warning          | Agent enabled but not responding inside guest                                            |
 | IG0001        | VirtIO          | Info             | SCSI controller is not VirtIO — lower performance                                        |
-| IG0002        | VirtIO          | Info             | Disk not using VirtIO bus                                                                |
+| IG0002        | VirtIO          | Info             | Disk on IDE/SATA, or on SCSI with a non-VirtIO controller                                |
 | IG0003        | VirtIO          | Info             | Network interface not using VirtIO driver                                                |
 | WG0005        | Hardware        | Warning          | CD-ROM drive has an image mounted                                                        |
 | WG0006        | CPU             | Warning          | CPU type 'host' prevents live migration                                                  |
-| IG0004        | CPU             | Info             | CPU type is outdated (kvm64)                                                             |
+| IG0004        | CPU             | Info             | CPU type is outdated (kvm64, also when no CPU type is set)                               |
 | WG0037        | CPU             | Warning          | Non-host CPU type missing +spec-ctrl/+ssbd/+pcid/+md-clear flags                         |
 | WG0007        | CPU             | Warning          | CPU hotplug enabled on Windows guest — not supported                                     |
 | CG0004        | CPU             | Critical         | CPU type 'host' is incompatible with HA — live migration required by HA is impossible    |
@@ -236,7 +236,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | IG0008        | Hardware        | Info             | VM has serial console configured — verify this is intentional                            |
 | IG0012        | Hardware        | Info             | Machine type not configured — QEMU will use default which may change across PVE upgrades |
 | IG0016        | Hardware        | Info             | Machine type pinned to an old version — newer version available on the node              |
-| WG0012        | Hardware        | Warning          | Passthrough configured — live migration and HA not possible                              |
+| WG0012        | Hardware        | Warning          | Host USB/PCI passthrough configured (SPICE USB excluded) — no live migration or HA       |
 | CG0005        | HA              | Critical         | Disk is on non-shared storage but VM is managed by HA — live migration will fail         |
 | IG0015        | HA              | Info             | Guest is not managed by any HA resource — will not be restarted on node failure          |
 | WG0043        | Replication     | Warning          | HA guest has no enabled replication job — failover target will have no recent data       |

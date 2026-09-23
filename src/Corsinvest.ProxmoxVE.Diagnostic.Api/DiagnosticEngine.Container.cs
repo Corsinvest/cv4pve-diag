@@ -115,9 +115,9 @@ public partial class DiagnosticEngine
                         .Split(',')
                         .Any(p => p.Trim().Equals("apparmor=0", StringComparison.OrdinalIgnoreCase));
 
-                    var appArmorDisabledViaRaw = lxcConfig.ExtensionData?.Any(kv =>
+                    var appArmorDisabledViaRaw = RawLxcEntries(lxcConfig).Any(kv =>
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
-                        && kv.Value?.ToString()?.Equals("unconfined", StringComparison.OrdinalIgnoreCase) is true) is true;
+                        && kv.Value.Equals("unconfined", StringComparison.OrdinalIgnoreCase));
 
                     CreateResult(
                         isOk: !(appArmorDisabledViaFeatures || appArmorDisabledViaRaw),
@@ -175,9 +175,7 @@ public partial class DiagnosticEngine
 
                 #region Raw LXC config entries
                 // lxc.X entries bypass PVE abstractions and may introduce unsafe configurations
-                var rawLxcKeys = lxcConfig.ExtensionData?.Keys
-                    .Where(k => k.StartsWith("lxc.", StringComparison.OrdinalIgnoreCase))
-                    .ToList() ?? [];
+                var rawLxcKeys = RawLxcEntries(lxcConfig).Select(kv => kv.Key).Distinct().ToList();
                 CreateResult(
                     isOk: rawLxcKeys.Count == 0,
                     id: id,
@@ -205,4 +203,16 @@ public partial class DiagnosticEngine
                                      _backupStoragesByNode.GetValueOrDefault(item.Node, []));
         }
     }
+
+    /// <summary>
+    /// Raw <c>lxc.*</c> entries of a container config. The API returns them as a list of
+    /// [key, value] pairs under <c>lxc</c>, which the SDK exposes as <see cref="VmConfigLxc.Lxc"/>;
+    /// top-level <c>lxc.*</c> keys are read too, should any end up in the extension data.
+    /// </summary>
+    internal static IReadOnlyList<(string Key, string Value)> RawLxcEntries(VmConfigLxc config)
+        => [.. (config.Lxc ?? []).Where(p => p is { Length: > 0 } && !string.IsNullOrWhiteSpace(p[0]))
+                                 .Select(p => (Key: p[0].Trim(), Value: p.Length > 1 ? (p[1] ?? "").Trim() : ""))
+                                 .Concat(config.ExtensionData?.Where(kv => kv.Key.StartsWith("lxc.", StringComparison.OrdinalIgnoreCase))
+                                                              .Select(kv => (kv.Key, Value: kv.Value?.ToString()?.Trim() ?? ""))
+                                         ?? [])];
 }
