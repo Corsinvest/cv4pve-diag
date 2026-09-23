@@ -10,6 +10,24 @@
 - `docs/settings.md` wrongly suggested `create-settings --output=settings.json`: the command always writes `settings.json` in the current folder.
 
 
+## [2.5.0] — 2026-09-22
+
+### New checks
+
+**Cluster:**
+- `WC0020` — the account used for the analysis cannot see part of the cluster. Proxmox VE hides what the account is not allowed to see without raising any error, so the report could look complete when it is not. The finding says what was left out. (#52)
+
+### Fixes
+
+- Backup checks (`WG0019`, `WG0020`, `WS0003`) no longer report "No recent backups found!" on guests that are backed up when the account lacks the rights to see backup files (e.g. `PVEAuditor`). They are now skipped and `WC0020` explains why. (#52)
+- Pressure checks (`WN0031`, `WN0032`, `WN0033`, `WG0029`, `WG0030`, `WG0031`) showed values 100 times too high (e.g. 166.9%), producing false Critical alarms. Values are now correct; thresholds are unchanged.
+- `IG0016` (old machine type) was not running: every node reported an API error (`WG0042`) instead. It now works.
+
+### Documentation
+
+- README: corrected the permissions needed to check backups — `Datastore.Audit` alone is not enough.
+
+
 ## [2.4.0] — 2026-06-01
 
 ### Compliance reporting
