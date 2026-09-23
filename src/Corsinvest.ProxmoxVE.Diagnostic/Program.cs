@@ -35,9 +35,6 @@ var optCompliance = app.AddOption<ComplianceStandard?>("--compliance",
     "Add the Compliance column to the output, showing mappings for the selected standard only (Iso27001, Nis2, Dora, PciDss, …). Omit the flag to hide the column.");
 
 
-const string fastDescription = "Use fast profile (skips backup content, snapshots and LVM-thin metadata)";
-const string fullDescription = "Use full profile (every optional check on: S.M.A.R.T., ZFS detail, NVD CVE lookup, Ok results)";
-
 static Settings Profile(bool fast, bool full)
     => fast
         ? Settings.Fast()
@@ -46,8 +43,8 @@ static Settings Profile(bool fast, bool full)
             : Settings.Standard();
 
 var cmdCreateSettings = app.AddCommand("create-settings", $"Create file settings ({settingsFileName})");
-var optCreateFast = cmdCreateSettings.AddOption<bool>("--fast", fastDescription);
-var optCreateFull = cmdCreateSettings.AddOption<bool>("--full", fullDescription);
+var optCreateFast = cmdCreateSettings.AddOption<bool>("--fast", "Use fast profile (skips backup content, snapshots and LVM-thin metadata)");
+var optCreateFull = cmdCreateSettings.AddOption<bool>("--full", "Use full profile (every optional check on: S.M.A.R.T., ZFS detail, NVD CVE lookup, Ok results)");
 cmdCreateSettings.SetAction((action) =>
    {
        var settings = Profile(action.GetValue(optCreateFast), action.GetValue(optCreateFull));
@@ -67,8 +64,8 @@ app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIs
    });
 
 var cmdExecute = app.AddCommand("execute", "Execute diagnostic and print result to console");
-var optExecuteFast = cmdExecute.AddOption<bool>("--fast", fastDescription);
-var optExecuteFull = cmdExecute.AddOption<bool>("--full", fullDescription);
+var optExecuteFast = cmdExecute.AddOption<bool>("--fast", "Use fast profile (skips backup content, snapshots and LVM-thin metadata)");
+var optExecuteFull = cmdExecute.AddOption<bool>("--full", "Use full profile (every optional check on: S.M.A.R.T., ZFS detail, NVD CVE lookup, Ok results)");
 cmdExecute.SetAction(async (action)
       => await OutputEngine.CreateAsync(await app.ClientTryLoginAsync(loggerFactory),
                                         action.GetValue(optSettingsFile),
