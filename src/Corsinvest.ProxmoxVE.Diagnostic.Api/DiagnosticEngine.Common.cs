@@ -183,7 +183,12 @@ public partial class DiagnosticEngine
         #endregion
 
         var nodeApi = client.Nodes[node];
-        if (settings.Backup.Enabled)
+
+        // A backup storage of this node could not be read (already reported as WG0042): its
+        // backups are unknown, so "no recent backup" cannot be told apart from "not visible".
+        var backupContentUnknown = nodeBackupStorages.Any(a => a.Active
+                                                               && _backupContentUnavailable.Contains(BackupStorageKey(node, a.Storage)));
+        if (settings.Backup.Enabled && !backupContentUnknown)
         {
             // Reuse already-fetched backup content — filter by vmId in memory, no extra API call.
             // Key is storage name for shared storage, node/storage for non-shared.
@@ -230,74 +235,15 @@ public partial class DiagnosticEngine
         #region Task history
         // Failed tasks for this VM in the last 48 hours — vmid filtered server-side
         var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
-        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId))
+        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId)
+                                        .ToSafeEnum(_result, id, context, $"task history of guest {vmId}"))
                     .Where(a => a.StartTime >= dayTask);
         CheckTaskHistory(tasks, context, id);
         #endregion
 
         CheckSnapshots(snapshots, settings.Snapshot, _now, id, context);
 
-        var rrdList = rrdData.ToList();
-        CheckThresholdHost(thresholdHost,
-                           context,
-                           id,
-                           rrdList.Select(a => new ThresholdRddData(a, a, a)),
-                           cpuErrorCode: "WG0025",
-                           memoryErrorCode: "WG0026",
-                           netInErrorCode: "WG0027",
-                           netOutErrorCode: "WG0028");
-
-        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
-        // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
-        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
-        if (rrdList.Any(a => a.PressureCpuSome > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,
-                           "WG0029",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
-                                                   0d,
-                                                   id,
-                                                   $"PSI CPU some (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        if (rrdList.Any(a => a.PressureIoFull > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.IoFull,
-                           "WG0030",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
-                                                   0d,
-                                                   id,
-                                                   $"PSI I/O full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        if (rrdList.Any(a => a.PressureMemoryFull > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.MemoryFull,
-                           "WG0031",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
-                                                   0d,
-                                                   id,
-                                                   $"PSI Memory full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
-        var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
-        var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
-                        ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
-                        : 0.0;
-        CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+        CheckGuestRrd(thresholdHost, context, id, rrdData);
 
         // HA / Replication coverage — only meaningful for running, non-template guests.
         // IC0002 / IC0003 already cover the "no HA at all / no replication at all" cluster-wide
@@ -538,6 +484,78 @@ public partial class DiagnosticEngine
             : $"{node}/{storage}";
 
     private record ThresholdRddData(IMemory Memory, INetIO NetIO, ICpu Cpu);
+
+    // RRD-based checks for a VM/CT: thresholds, PSI pressure and health score.
+    // No data (the RRD fetch failed, already reported as WG0042) means nothing to check.
+    private void CheckGuestRrd(SettingsThresholdHost thresholdHost,
+                               DiagnosticResultContext context,
+                               string id,
+                               IEnumerable<VmRrdData> rrdData)
+    {
+        var rrdList = rrdData.ToList();
+        if (rrdList.Count == 0) { return; }
+
+        CheckThresholdHost(thresholdHost,
+                           context,
+                           id,
+                           rrdList.Select(a => new ThresholdRddData(a, a, a)),
+                           cpuErrorCode: "WG0025",
+                           memoryErrorCode: "WG0026",
+                           netInErrorCode: "WG0027",
+                           netOutErrorCode: "WG0028");
+
+        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
+        // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
+        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
+        if (rrdList.Any(a => a.PressureCpuSome > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,
+                           "WG0029",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
+                                                   0d,
+                                                   id,
+                                                   $"PSI CPU some (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureIoFull > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.IoFull,
+                           "WG0030",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
+                                                   0d,
+                                                   id,
+                                                   $"PSI I/O full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureMemoryFull > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.MemoryFull,
+                           "WG0031",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
+                                                   0d,
+                                                   id,
+                                                   $"PSI Memory full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
+        var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
+        var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
+                        ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
+                        : 0.0;
+        CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+    }
 
     private void CheckThresholdHost(SettingsThresholdHost thresholdHost,
                                     DiagnosticResultContext context,

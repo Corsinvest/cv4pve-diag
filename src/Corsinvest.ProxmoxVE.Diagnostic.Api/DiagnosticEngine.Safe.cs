@@ -33,6 +33,20 @@ internal static class DiagnosticSafeExtensions
     }
 
     /// <summary>
+    /// Like <see cref="ToSafeEnum{T}"/>, but returns <c>null</c> on failure, for callers that must
+    /// tell an unreadable list apart from an empty one.
+    /// </summary>
+    public static async Task<IReadOnlyList<T>?> ToSafeEnumOrNull<T>(this Task<IEnumerable<T>> task,
+                                                                    List<DiagnosticResult> result,
+                                                                    string id,
+                                                                    DiagnosticResultContext context,
+                                                                    string what)
+    {
+        try { return (await task)?.ToList() ?? []; }
+        catch (Exception ex) when (Record(ex, result, id, context, what)) { return null; }
+    }
+
+    /// <summary>
     /// Single-object variant of <see cref="ToSafeEnum{T}"/>. Returns <c>default(T)</c> on failure.
     /// </summary>
     public static async Task<T?> ToSafeSingle<T>(this Task<T> task,

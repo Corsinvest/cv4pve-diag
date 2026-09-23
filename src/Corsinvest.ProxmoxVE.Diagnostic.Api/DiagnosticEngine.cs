@@ -37,6 +37,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // Shared storages are fetched only once regardless of how many nodes mount them.
     private readonly Dictionary<string, List<NodeStorageContent>> _backupContentByStorage = [];
 
+    // Backup storages (same key as _backupContentByStorage) whose content could not be read.
+    // The per-guest backup checks are skipped for guests relying on them: no data is not "no backup".
+    private readonly HashSet<string> _backupContentUnavailable = new(StringComparer.OrdinalIgnoreCase);
+
     // Storage names that are shared — used in CheckCommonAsync to build the correct lookup key.
     private readonly HashSet<string> _sharedStorageNames = new(StringComparer.OrdinalIgnoreCase);
 
@@ -98,8 +102,11 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                     compliance: []);
             }
 
-            // Deduplicated storage list: shared → one record per storage name, non-shared → one per node
+            // Deduplicated storage list: shared → one record per storage name, non-shared → one per node.
+            // Ordered by node first: /cluster/resources lists nodes in a different order depending on
+            // which node answers, and the kept record gives the finding its id (ignore rules match on it).
             _storageResources = [.. _resources.Where(a => a.ResourceType == ClusterResourceType.Storage)
+                                      .OrderBy(a => a.Node, StringComparer.Ordinal)
                                       .GroupBy(a => a.Shared ? a.Storage : $"{a.Node}/{a.Storage}")
                                       .Select(g => g.First())];
 

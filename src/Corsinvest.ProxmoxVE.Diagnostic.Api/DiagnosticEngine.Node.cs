@@ -336,7 +336,8 @@ public partial class DiagnosticEngine
             // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
             CheckNodeRrd(settings,
                          id,
-                         await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation));
+                         await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation)
+                                      .ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"RRD data for node '{item.Node}'"));
             #endregion
 
             #region Cross-node comparisons
@@ -1088,7 +1089,9 @@ public partial class DiagnosticEngine
 
     private void CheckNodeRrd(Settings settings, string id, IEnumerable<NodeRrdData> rrdData)
     {
+        // No data (the RRD fetch failed, already reported as WG0042) means nothing to check.
         var rrdList = rrdData.ToList();
+        if (rrdList.Count == 0) { return; }
 
         CheckThresholdHost(settings.Node,
                            DiagnosticResultContext.Node,

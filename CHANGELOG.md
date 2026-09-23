@@ -19,6 +19,9 @@
 
 - `WN0037` (VLAN tag on a bridge that is not VLAN-aware) has been removed: it was a false alarm, that configuration works. Ignore rules for `WN0037` can be deleted.
 - `WN0010` (network card not active) no longer reports spare ports that are not used by any bridge or bond and have no IP address: being down is normal for them.
+- The analysis no longer stops halfway when a storage, a node or a guest does not answer (for example a slow backup server): the missing part is reported as `WG0042` and the rest of the report is produced.
+- When the backups on a storage cannot be read, the backup checks (`WG0019`, `WG0020`) are skipped for the guests of that node instead of reporting "No recent backups found!".
+- Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 
 ## [2.5.0] — 2026-09-22

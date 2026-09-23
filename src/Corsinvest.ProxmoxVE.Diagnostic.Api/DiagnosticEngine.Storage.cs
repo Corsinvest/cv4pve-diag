@@ -127,7 +127,8 @@ public partial class DiagnosticEngine
 
             if (item.Content.Split(",").Contains("images"))
             {
-                var content = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "images");
+                var content = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "images")
+                                           .ToSafeEnum(_result, item.GetWebUrl(), DiagnosticResultContext.Storage, $"disk images on storage '{item.Storage}'");
                 storagesImages.AddRange(content.Select(a => new StorageContent(item.GetWebUrl(),
                                                                                a.Volume,
                                                                                item.Storage,
@@ -143,7 +144,13 @@ public partial class DiagnosticEngine
                 // Populate _sharedStorageNames for use in BackupStorageKey (CheckCommonAsync)
                 if (item.Shared) { _sharedStorageNames.Add(item.Storage); }
                 var storageKey = BackupStorageKey(item.Node, item.Storage);
-                _backupContentByStorage[storageKey] = [.. await nodeApi.Storage[item.Storage].Content.GetAsync(content: "backup")];
+                var backups = await nodeApi.Storage[item.Storage].Content.GetAsync(content: "backup")
+                                           .ToSafeEnumOrNull(_result, item.GetWebUrl(), DiagnosticResultContext.Storage, $"backups on storage '{item.Storage}'");
+
+                // An unreadable storage is not an empty one: remember it, so the per-guest backup
+                // checks skip it instead of reporting "No recent backups found!" for every guest.
+                if (backups == null) { _backupContentUnavailable.Add(storageKey); }
+                else { _backupContentByStorage[storageKey] = [.. backups]; }
             }
         }
 
