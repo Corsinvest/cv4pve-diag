@@ -9,6 +9,17 @@
 - New `--fast` and `--full` options, as in cv4pve-report, on both `execute` and `create-settings`. `--fast` skips the slowest reads (backup content, snapshots, LVM-thin metadata) for a quick scan; `--full` turns on every optional check (disk S.M.A.R.T. details, ZFS pool details, CVE lookup, Ok results) for audits. Without options nothing changes. A settings file passed with `--settings-file` always takes precedence.
 - `docs/settings.md` wrongly suggested `create-settings --output=settings.json`: the command always writes `settings.json` in the current folder.
 
+### New checks
+
+**Network:**
+- `WN0046` — a VM or container uses a VLAN that its bridge does not let out of the node, so it cannot reach the rest of the network on that VLAN.
+- `WN0047` — a VM or container uses a bridge that does not exist on another node: moving it there (migration or HA) would fail.
+
+### Fixes
+
+- `WN0037` (VLAN tag on a bridge that is not VLAN-aware) has been removed: it was a false alarm, that configuration works. Ignore rules for `WN0037` can be deleted.
+- `WN0010` (network card not active) no longer reports spare ports that are not used by any bridge or bond and have no IP address: being down is normal for them.
+
 
 ## [2.5.0] — 2026-09-22
 

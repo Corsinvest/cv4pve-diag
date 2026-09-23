@@ -440,14 +440,16 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Network Card
-            // Physical NICs (type=eth) that are down — could mean a cable/switch problem
+            // Physical NICs (type=eth) that are down — could mean a cable/switch problem.
+            // Only NICs that are in use: a spare port with no cable is down by design.
+            var usedInterfaces = UsedInterfaces(networks);
             CreateResultPerItem(
-                items: networks.Where(a => a.Type == "eth").ToList(),
+                items: networks.Where(a => a.Type == "eth" && usedInterfaces.Contains(a.Interface)).ToList(),
                 isItemOk: a => a.Active,
                 itemId: _ => id,
                 itemDescriptionKo: a => $"Network card '{a.Interface}' not active",
                 aggregatedIdOk: id,
-                aggregatedDescriptionOk: _ => "All physical NICs are active",
+                aggregatedDescriptionOk: _ => "All physical NICs in use are active",
                 errorCode: "WN0010",
                 subContext: "Network",
                 context: DiagnosticResultContext.Node,
@@ -892,44 +894,80 @@ public partial class DiagnosticEngine
             //}
         }
 
-        #region Bridge VLAN awareness
-        // If a VM uses a VLAN tag on a bridge that is not VLAN-aware, the tag is silently ignored
-        // Build a flat list of (vm, net) pairs that hit a non-VLAN-aware bridge on their node,
-        // then run a single per-item check so the Ok branch fires when nothing is mismatched.
-        var vlanBridgeIssues = onlineNodes
-            .Where(n => nodeCompareData.TryGetValue(n.Node, out _))
+        #region Guest NICs vs host bridges
+        // Guests on a node, with their config — the input of both bridge checks below.
+        var guestsByNode = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                 && !a.IsTemplate
+                                                 && _vmConfigs.ContainsKey(a.VmId))
+                                     .ToLookup(a => a.Node);
+
+        // A tag on a non-VLAN-aware Linux bridge is fine: PVE uses the traditional model and builds
+        // vmbrXvN on top of the uplink's .N subinterface. The real trap is a VLAN-aware bridge whose
+        // bridge-vids was narrowed: a VLAN outside that list is not allowed on the bridge uplinks, so
+        // the guest only reaches peers on the same bridge. No bridge-vids means no restriction.
+        var vlanOutsideBridge = onlineNodes
+            .Where(n => nodeCompareData.ContainsKey(n.Node))
             .SelectMany(n =>
             {
-                var nodeData = nodeCompareData[n.Node];
-                var nonVlanBridges = nodeData.Networks
-                                              .Where(net => net.Type == "bridge" && net.BridgeVlanAware is not true)
-                                              .Select(net => net.Interface)
-                                              .ToHashSet();
-                if (nonVlanBridges.Count == 0) { return Enumerable.Empty<(ClusterResource Vm, VmNetwork Net)>(); }
-                return _resources
-                    .Where(a => a.ResourceType == ClusterResourceType.Vm
-                                && a.Node == n.Node
-                                && !a.IsTemplate
-                                && _vmConfigs.ContainsKey(a.VmId))
-                    .SelectMany(vm => _vmConfigs[vm.VmId].Networks
-                                        .Where(net => net.Tag.HasValue
-                                                       && !string.IsNullOrWhiteSpace(net.Bridge)
-                                                       && nonVlanBridges.Contains(net.Bridge))
-                                        .Select(net => (Vm: vm, Net: net)));
+                var allowedByBridge = nodeCompareData[n.Node].Networks
+                                        .Where(net => net.Type == "bridge"
+                                                      && net.BridgeVlanAware is true
+                                                      && !string.IsNullOrWhiteSpace(net.BridgeVids))
+                                        .ToDictionary(net => net.Interface, net => (net.BridgeVids, Ranges: VlanIds.Parse(net.BridgeVids)));
+
+                return guestsByNode[n.Node]
+                    .SelectMany(vm => _vmConfigs[vm.VmId].Networks.Select(net => (Vm: vm, Net: net)))
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Net.Bridge) && allowedByBridge.ContainsKey(x.Net.Bridge))
+                    .Select(x =>
+                    {
+                        var (vids, ranges) = allowedByBridge[x.Net.Bridge];
+                        return (x.Vm, x.Net, Vids: vids, Outside: VlansOutsideBridge(x.Net.Tag, x.Net.Trunks, ranges));
+                    })
+                    .Where(x => x.Outside.Count > 0);
             })
             .ToList();
         CreateResultPerItem(
-            items: vlanBridgeIssues,
+            items: vlanOutsideBridge,
             isItemOk: _ => false,
             itemId: x => x.Vm.GetWebUrl(),
-            itemDescriptionKo: x => $"VM {x.Vm.VmId} interface '{x.Net.Id}' uses VLAN tag {x.Net.Tag} on bridge '{x.Net.Bridge}' which is not VLAN-aware — tag will be silently ignored",
+            itemDescriptionKo: x => $"{(x.Vm.VmType == VmType.Lxc ? "CT" : "VM")} {x.Vm.VmId} interface '{x.Net.Id}' uses VLAN {VlanIds.Format(x.Outside)} "
+                                    + $"not in bridge-vids '{x.Vids}' of VLAN-aware bridge '{x.Net.Bridge}' — that VLAN does not leave the node",
             aggregatedIdOk: "cluster/network",
-            aggregatedDescriptionOk: _ => "No VM interface uses a VLAN tag on a non-VLAN-aware bridge",
-            errorCode: "WN0037",
+            aggregatedDescriptionOk: _ => "Every guest VLAN is allowed by the bridge-vids of its VLAN-aware bridge",
+            errorCode: "WN0046",
             subContext: "Network",
             context: DiagnosticResultContext.Node,
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: []);
+
+        // A bridge that exists on the guest's node but not on a peer: migrating or HA-recovering the
+        // guest to that peer fails. A bridge missing on the guest's own node is skipped on purpose —
+        // SDN vnets are not listed in /nodes/{node}/network, so it cannot be told apart from a vnet.
+        if (nodeCompareData.Count > 1)
+        {
+            var bridgesByNode = nodeCompareData.ToDictionary(kv => kv.Key,
+                                                             kv => kv.Value.Networks
+                                                                           .Where(net => net.Type is "bridge" or "OVSBridge")
+                                                                           .Select(net => net.Interface)
+                                                                           .ToHashSet());
+            var guests = nodeCompareData.Keys
+                                        .SelectMany(node => guestsByNode[node])
+                                        .Select(vm => (vm.Node, vm.VmId, Bridges: _vmConfigs[vm.VmId].Networks.Select(net => net.Bridge)));
+            var nodeUrls = onlineNodes.ToDictionary(n => n.Node, n => n.GetWebUrl());
+
+            CreateResultPerItem(
+                items: FindBridgesMissingOnPeers(bridgesByNode, guests),
+                isItemOk: _ => false,
+                itemId: x => nodeUrls[x.Node],
+                itemDescriptionKo: x => $"Bridge '{x.Bridge}' used by guest(s) {string.Join(", ", x.VmIds)} is missing on node(s) {string.Join(", ", x.MissingOn)} — migration or HA recovery there will fail",
+                aggregatedIdOk: "cluster/network",
+                aggregatedDescriptionOk: _ => "Every bridge used by a guest exists on all online nodes",
+                errorCode: "WN0047",
+                subContext: "Network",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance: []);
+        }
         #endregion
 
         #region Memory overcommit
@@ -1459,4 +1497,75 @@ public partial class DiagnosticEngine
         }
         #endregion
     }
+
+    /// <summary>
+    /// Interfaces that carry traffic: bridge ports, bond slaves, OVS ports and bond members, the raw
+    /// device under a VLAN interface, and any interface holding an IP of its own. A VLAN name such as
+    /// <c>eno1.100</c> also marks its parent <c>eno1</c> as used.
+    /// </summary>
+    internal static HashSet<string> UsedInterfaces(IEnumerable<NodeNetwork> networks)
+    {
+        var used = new HashSet<string>();
+        void Add(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) { return; }
+            used.Add(name);
+            var dot = name.IndexOf('.');
+            if (dot > 0) { used.Add(name[..dot]); }
+        }
+
+        foreach (var net in networks)
+        {
+            foreach (var name in $"{net.BridgePorts} {net.Slaves} {net.OvsPorts} {net.OvsBonds}".Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                Add(name);
+            }
+
+            if (net.Type == "vlan") { Add(string.IsNullOrWhiteSpace(net.VlanRawDevice) ? net.Interface : net.VlanRawDevice); }
+            if (!string.IsNullOrWhiteSpace(net.OvsBridge)) { Add(net.Interface); }
+            if (!string.IsNullOrWhiteSpace(net.Cidr)
+                || !string.IsNullOrWhiteSpace(net.Address)
+                || !string.IsNullOrWhiteSpace(net.Cidr6)
+                || !string.IsNullOrWhiteSpace(net.Address6))
+            {
+                Add(net.Interface);
+            }
+        }
+        return used;
+    }
+
+    /// <summary>
+    /// VLAN ids a guest NIC uses (its <c>tag</c> plus its <c>trunks</c>) that the bridge's
+    /// <c>bridge-vids</c> does not allow. VLAN 1 is always allowed: it is the bridge's default PVID.
+    /// </summary>
+    internal static IReadOnlyList<int> VlansOutsideBridge(int? tag, string? trunks, IReadOnlyList<(int From, int To)> allowed)
+    {
+        var used = VlanIds.Expand(VlanIds.Parse(trunks)).ToList();
+        if (tag.HasValue) { used.Add(tag.Value); }
+        return [.. used.Where(id => id != 1 && !VlanIds.Contains(allowed, id)).Distinct().Order()];
+    }
+
+    /// <summary>
+    /// Bridges a guest uses that exist on the guest's own node but not on every other node in
+    /// <paramref name="bridgesByNode"/>. One entry per (node, bridge) with the guests using it.
+    /// Bridges absent on the guest's own node are ignored — they may be SDN vnets.
+    /// </summary>
+    internal static List<(string Node, string Bridge, List<long> VmIds, List<string> MissingOn)> FindBridgesMissingOnPeers(
+        IReadOnlyDictionary<string, HashSet<string>> bridgesByNode,
+        IEnumerable<(string Node, long VmId, IEnumerable<string> Bridges)> guests)
+        => [.. guests.Where(g => bridgesByNode.ContainsKey(g.Node))
+                     .SelectMany(g => g.Bridges.Where(b => !string.IsNullOrWhiteSpace(b) && bridgesByNode[g.Node].Contains(b))
+                                               .Distinct()
+                                               .Select(b => (g.Node, Bridge: b, g.VmId)))
+                     .GroupBy(x => (x.Node, x.Bridge))
+                     .Select(g => (g.Key.Node,
+                                   g.Key.Bridge,
+                                   VmIds: g.Select(x => x.VmId).Distinct().Order().ToList(),
+                                   MissingOn: bridgesByNode.Where(kv => kv.Key != g.Key.Node && !kv.Value.Contains(g.Key.Bridge))
+                                                           .Select(kv => kv.Key)
+                                                           .Order()
+                                                           .ToList()))
+                     .Where(x => x.MissingOn.Count > 0)
+                     .OrderBy(x => x.Node)
+                     .ThenBy(x => x.Bridge)];
 }

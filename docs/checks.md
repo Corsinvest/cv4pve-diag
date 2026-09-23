@@ -137,7 +137,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WN0007        | Timezone         | Warning          | Timezone differs between nodes                                                 |
 | WN0008        | AptRepositories  | Warning          | APT repository sources differ between nodes                                    |
 | WN0009        | Network          | Warning          | Physical NIC MTU differs between nodes                                         |
-| WN0010        | Network          | Warning          | Physical NIC is down                                                           |
+| WN0010        | Network          | Warning          | Physical NIC in use (bridge, bond, VLAN or own IP) is down                     |
 | WN0034        | Network          | Warning          | Bond has fewer than two slaves — no link redundancy                            |
 | CN0002        | PackageVersions  | Critical         | Nodes have different package versions installed                                |
 | WN0011        | Service          | Warning          | A required system service is not running                                       |
@@ -154,7 +154,8 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | IN0003        | Consolidation    | Info             | Node CPU and RAM utilization both below threshold — consider consolidating VMs |
 | WN0015        | CPUCompatibility | Warning          | Nodes have different x86-64 feature levels — live migration may fail           |
 | WN0036        | Memory           | Warning          | Sum of VM allocated RAM exceeds physical node RAM                              |
-| WN0037        | Network          | Warning          | VM/CT uses VLAN tag on a bridge that is not VLAN-aware — tag silently ignored  |
+| WN0046        | Network          | Warning          | VM/CT uses a VLAN (tag or trunk) not in the `bridge-vids` of its VLAN-aware bridge |
+| WN0047        | Network          | Warning          | Bridge used by a VM/CT is missing on another node — migration / HA recovery fails |
 | WN0027        | Usage            | Warning/Critical | CPU usage above configured threshold                                           |
 | WN0038        | Usage            | Warning/Critical | Memory usage above configured threshold                                        |
 | WN0039/WN0040 | Usage            | Warning/Critical | Network throughput above configured threshold                                  |
