@@ -35,10 +35,20 @@ var optCompliance = app.AddOption<ComplianceStandard?>("--compliance",
     "Add the Compliance column to the output, showing mappings for the selected standard only (Iso27001, Nis2, Dora, PciDss, …). Omit the flag to hide the column.");
 
 
-app.AddCommand("create-settings", $"Create file settings ({settingsFileName})")
-   .SetAction((_) =>
+static Settings Profile(bool fast, bool full)
+    => fast
+        ? Settings.Fast()
+        : full
+            ? Settings.Full()
+            : Settings.Standard();
+
+var cmdCreateSettings = app.AddCommand("create-settings", $"Create file settings ({settingsFileName})");
+var optCreateFast = cmdCreateSettings.AddOption<bool>("--fast", "Use fast profile (skips backup content, snapshots and LVM-thin metadata)");
+var optCreateFull = cmdCreateSettings.AddOption<bool>("--full", "Use full profile (every optional check on: S.M.A.R.T., ZFS detail, NVD CVE lookup, Ok results)");
+cmdCreateSettings.SetAction((action) =>
    {
-       File.WriteAllText(settingsFileName, JsonSerializer.Serialize(new Settings(), new JsonSerializerOptions { WriteIndented = true }));
+       var settings = Profile(action.GetValue(optCreateFast), action.GetValue(optCreateFull));
+       File.WriteAllText(settingsFileName, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
        Console.Out.WriteLine(OutputEngine.PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
        Console.Out.WriteLine(OutputEngine.PrintEnum("Consolidation", typeof(RrdDataConsolidation)));
        Console.Out.WriteLine($"Create file: {settingsFileName}");
@@ -53,10 +63,13 @@ app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIs
        Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");
    });
 
-app.AddCommand("execute", "Execute diagnostic and print result to console")
-   .SetAction(async (action)
+var cmdExecute = app.AddCommand("execute", "Execute diagnostic and print result to console");
+var optExecuteFast = cmdExecute.AddOption<bool>("--fast", "Use fast profile (skips backup content, snapshots and LVM-thin metadata)");
+var optExecuteFull = cmdExecute.AddOption<bool>("--full", "Use full profile (every optional check on: S.M.A.R.T., ZFS detail, NVD CVE lookup, Ok results)");
+cmdExecute.SetAction(async (action)
       => await OutputEngine.CreateAsync(await app.ClientTryLoginAsync(loggerFactory),
                                         action.GetValue(optSettingsFile),
+                                        Profile(action.GetValue(optExecuteFast), action.GetValue(optExecuteFull)),
                                         action.GetValue(optIgnoredIssuesFile),
                                         action.GetValue(optOutput),
                                         action.GetValue(optShowIgnoredIssues),

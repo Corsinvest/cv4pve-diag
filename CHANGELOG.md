@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Profiles
+
+- New `--fast` and `--full` options, as in cv4pve-report, on both `execute` and `create-settings`. `--fast` skips the slowest reads (backup content, snapshots, LVM-thin metadata) for a quick scan; `--full` turns on every optional check (disk S.M.A.R.T. details, ZFS pool details, CVE lookup, Ok results) for audits. Without options nothing changes. A settings file passed with `--settings-file` always takes precedence.
+- `docs/settings.md` wrongly suggested `create-settings --output=settings.json`: the command always writes `settings.json` in the current folder.
+
+
 ## [2.4.0] — 2026-06-01
 
 ### Compliance reporting
