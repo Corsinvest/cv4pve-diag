@@ -22,15 +22,17 @@ internal class OutputEngine
 
     public static async Task CreateAsync(PveClient client,
                                          string? settingsFile,
+                                         Settings profile,
                                          string? ignoredIssuesFile,
                                          OutputType output,
                                          bool showIgnoredIssues,
                                          string? outputFile,
                                          ComplianceStandard? compliance)
     {
+        // A settings file wins over the --fast / --full profile, as in cv4pve-report.
         var settings = !string.IsNullOrWhiteSpace(settingsFile)
                           ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsFile!))
-                          : new Settings();
+                          : profile;
 
         var ignoredIssues = !string.IsNullOrWhiteSpace(ignoredIssuesFile)
                                 ? JsonSerializer.Deserialize<List<DiagnosticResult>>(File.ReadAllText(ignoredIssuesFile!))

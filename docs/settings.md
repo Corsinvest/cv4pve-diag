@@ -17,10 +17,32 @@ See [compliance.md](compliance.md) for the catalog of compliance mappings attach
 
 ---
 
-## Generate a template with all defaults
+## Profiles
+
+Three built-in profiles cover the common cases, as in cv4pve-report. Use them directly on `execute`, or as the starting point of a settings file:
+
+| Profile | Option | What it does | For |
+|---|---|---|---|
+| **Fast** | `--fast` | Skips backup content, snapshots and LVM-thin metadata | Quick scan of large clusters |
+| **Standard** | *(default)* | The defaults described below | Daily checks |
+| **Full** | `--full` | Also S.M.A.R.T. details, ZFS pool details, NVD CVE lookup (needs internet access) and Ok results | Audits, full verification |
 
 ```bash
-cv4pve-diag create-settings --output=settings.json
+cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid execute --full
+```
+
+A `--settings-file` always wins over `--fast` / `--full`.
+
+---
+
+## Generate a template
+
+`create-settings` writes `settings.json` in the current folder, with the defaults or with a profile:
+
+```bash
+cv4pve-diag create-settings          # Standard
+cv4pve-diag create-settings --fast   # Fast
+cv4pve-diag create-settings --full   # Full
 ```
 
 ---

@@ -90,4 +90,34 @@ public class Settings
     /// When false (default), output is identical to the legacy mode — only failures appear.
     /// </summary>
     public bool IncludeOkResult { get; set; }
+
+    /// <summary>
+    /// Fast profile — skips the per-guest and per-storage heavy reads: backup content,
+    /// snapshots and LVM-thin metadata. For a quick scan of large clusters.
+    /// </summary>
+    public static Settings Fast()
+    {
+        var settings = new Settings();
+        settings.Backup.Enabled = false;
+        settings.Snapshot.Enabled = false;
+        settings.Node.NodeStorage.LvmThinMetadata = false;
+        return settings;
+    }
+
+    /// <summary>Standard profile — the defaults. Used when no profile or settings file is given.</summary>
+    public static Settings Standard() => new();
+
+    /// <summary>
+    /// Full profile — every optional check turned on: S.M.A.R.T. details, ZFS pool details,
+    /// NVD CVE lookup (needs internet access) and Ok results, for audits. Thresholds keep their
+    /// defaults; network thresholds stay disabled (they depend on the link speed).
+    /// </summary>
+    public static Settings Full()
+    {
+        var settings = new Settings { IncludeOkResult = true };
+        settings.Node.Smart.Enabled = true;
+        settings.Node.NodeStorage.ZfsDetail = true;
+        settings.Cve.NvdEnabled = true;
+        return settings;
+    }
 }

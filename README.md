@@ -209,10 +209,11 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 Full field-by-field reference, defaults, recommended scenarios and the complete `settings.json` template are in [docs/settings.md](docs/settings.md).
 
 ```bash
-# Generate default settings file
-cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid create-settings
+# Built-in profiles: --fast (quick scan), default Standard, --full (every optional check, for audits)
+cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid execute --full
 
-# Run with custom settings
+# Generate a settings file (optionally from a profile) and run with it
+cv4pve-diag create-settings --full
 cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid --settings-file=settings.json execute
 ```
 
