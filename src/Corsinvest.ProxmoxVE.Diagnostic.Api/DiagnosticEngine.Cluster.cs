@@ -955,7 +955,8 @@ public partial class DiagnosticEngine
         var roles = rolesTask.Result;
         var domains = domainsTask.Result;
 
-        var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any() is true)
+        // A disabled entry cannot be used to log in: it is not a second factor.
+        var usersWithTfa = tfaEntries.Where(t => t.Entries?.Any(e => e.Enable) is true)
                                      .Select(t => t.UserId)
                                      .ToHashSet();
 

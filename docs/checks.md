@@ -215,7 +215,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | CG0001        | VM State        | Critical         | Hibernated VM state left in pending — VM was suspended and never resumed (not when hibernated on purpose) |
 | IG0010        | Status          | Info             | Config changes pending reboot to take effect                                             |
 | WG0015        | Status          | Warning          | VM is locked and cannot be managed                                                       |
-| WG0001        | OS              | Warning          | VM OS type is not configured                                                             |
+| WG0001        | OS              | Warning          | VM OS type is not configured (or left as Other)                                          |
 | WG0002        | OSNotMaintained | Warning          | Guest OS has reached end of life                                                         |
 | WG0003        | Agent           | Warning          | Guest agent not configured                                                               |
 | WG0004        | Agent           | Warning          | Agent enabled but not responding inside guest                                            |

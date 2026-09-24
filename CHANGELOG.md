@@ -30,6 +30,12 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 - `WN0010` (network card not active) no longer reports spare ports that are not used by any bridge or bond and have no IP address: being down is normal for them.
 - The analysis no longer stops halfway when a storage, a node or a guest does not answer (for example a slow backup server): the missing part is reported as `WG0042` and the rest of the report is produced.
 - When the backups on a storage cannot be read, the backup checks (`WG0019`, `WG0020`) are skipped for the guests of that node instead of reporting "No recent backups found!".
+- Options Proxmox VE leaves out of a configuration when they hold their default (memory, swap, SCSI controller, hotplug, OS type, …) are now read with that default instead of as empty or zero.
+- `WG0003`, `WG0004` and `WG0014` (guest agent) now recognise an agent enabled as `enabled=1`.
+- A cloud-init drive on a directory, NFS or CIFS storage is no longer reported as a mounted CD-ROM (`WG0005`).
+- A disabled two-factor entry no longer counts as two-factor authentication for the user.
+- `WG0001` (OS type not set) also reports VMs left as "Other", which is what an unset OS type means for Proxmox VE.
+- `WG0016` (start on boot not enabled) no longer reports containers that do have start on boot enabled. The same problem could affect `WG0015` (locked) and `IG0011` (protection) on containers.
 - `CG0006` and `WG0041` now see the raw `lxc.*` settings of a container: a privileged container with AppArmor disabled (`lxc.apparmor.profile: unconfined`) was reported as safe.
 - `WN0013` now reports when a node must be rebooted to run a newer installed kernel. Before, it never did.
 - `CN0002` (package versions differ) no longer raises a Critical alarm when a node only keeps some old kernels installed; the message now lists the packages that really differ.

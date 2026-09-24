@@ -115,15 +115,16 @@ public partial class DiagnosticEngine
             var id = item.GetWebUrl();
 
             #region OS
-            // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly
+            // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly.
+            // Not set means 'other' for PVE (the SDK reports it so): no guest-specific optimization.
             CreateResult(
-                isOk: config.OsType != null,
+                isOk: config.OsType != null && !config.OsType.Equals("other", StringComparison.OrdinalIgnoreCase),
                 id: id,
                 errorCode: "WG0001",
                 subContext: "OS",
                 context: DiagnosticResultContext.Qemu,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: "OsType not set!",
+                descriptionKo: "OsType not set (Other) — Proxmox VE applies no guest-specific settings",
                 descriptionOk: $"OsType set to '{config.OsTypeDecode}'",
                 compliance: []);
             if (config.OsType != null)
