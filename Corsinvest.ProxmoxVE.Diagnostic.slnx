@@ -4,6 +4,26 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="3rd-party-licenses.md" />
+    <File Path="CHANGELOG.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="LICENSE.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/checks.md" />
+    <File Path="docs/compliance.md" />
+    <File Path="docs/ignored-issues.md" />
+    <File Path="docs/settings.md" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/quality.yml" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Corsinvest.ProxmoxVE.Diagnostic.Api/Corsinvest.ProxmoxVE.Diagnostic.Api.csproj" />
     <Project Path="src/Corsinvest.ProxmoxVE.Diagnostic/Corsinvest.ProxmoxVE.Diagnostic.csproj" />
