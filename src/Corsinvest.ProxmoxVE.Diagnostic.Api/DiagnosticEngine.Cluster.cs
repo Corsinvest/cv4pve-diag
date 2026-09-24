@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.RegularExpressions;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
@@ -252,13 +253,28 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: []);
 
-        // Backup jobs without retention policy — storage will fill up indefinitely
+        // Backup jobs without retention policy — storage will fill up indefinitely.
+        // A job without its own prune-backups uses the one of its target storage; keep-all=1 (the
+        // default when neither sets one) keeps everything. Jobs whose storage configuration could
+        // not be read (already reported as WG0042) are skipped: their retention is unknown.
+        var storageConfig = await GetStorageConfigAsync();
+        bool? JobRetention(ClusterBackup job)
+        {
+            string? Option(string key) => job.ExtensionData?.TryGetValue(key, out var value) is true ? value?.ToString() : null;
+            var own = BackupRetention(Option("prune-backups"), Option("maxfiles"));
+            if (own != null) { return own; }
+            if (storageConfig == null) { return null; }
+            // vzdump writes to 'local' when the job names no storage.
+            var target = string.IsNullOrWhiteSpace(job.Storage) ? "local" : job.Storage;
+            return BackupRetention(storageConfig.FirstOrDefault(s => s.Storage == target)?.PruneBackups, null) ?? false;
+        }
+
         CreateResultPerItem(
-            items: backupList.Where(a => a.Enabled).ToList(),
-            isItemOk: a => a.ExtensionData?.ContainsKey("maxfiles") is true
-                           || a.ExtensionData?.ContainsKey("prune-backups") is true,
+            items: backupList.Where(a => a.Enabled && JobRetention(a) != null).ToList(),
+            isItemOk: a => JobRetention(a) == true,
             itemId: a => $"cluster/backup/{a.Id}",
-            itemDescriptionKo: a => $"Backup job '{a.Id}' has no retention policy (maxfiles/prune) — storage will fill up",
+            itemDescriptionKo: a => $"Backup job '{a.Id}' has no retention policy (prune-backups) on the job or on storage '{a.Storage}' — storage will fill up"
+                                    + (IsPbsStorage(a.Storage) ? " unless a prune job on the Proxmox Backup Server removes old backups" : ""),
             aggregatedIdOk: "cluster/backup",
             aggregatedDescriptionOk: _ => "All enabled backup jobs have a retention policy",
             errorCode: "WC0002",
@@ -319,6 +335,28 @@ public partial class DiagnosticEngine
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: _backupControls);
+    }
+
+    /// <summary>
+    /// Whether a retention setting removes old backups: <c>true</c> when some keep-* count is set,
+    /// <c>false</c> for keep-all=1 or maxfiles=0 (keep everything), <c>null</c> when nothing is set.
+    /// <paramref name="pruneBackups"/> comes as <c>keep-daily=7,keep-last=3</c> from a storage and
+    /// as a JSON object from a backup job; both are read.
+    /// </summary>
+    internal static bool? BackupRetention(string? pruneBackups, string? maxFiles)
+    {
+        var keeps = Regex.Matches(pruneBackups ?? "", @"(keep-[a-z]+)""?\s*[:=]\s*""?(\d+)")
+                         .GroupBy(m => m.Groups[1].Value, StringComparer.OrdinalIgnoreCase)
+                         .ToDictionary(g => g.Key, g => int.Parse(g.Last().Groups[2].Value), StringComparer.OrdinalIgnoreCase);
+        if (keeps.Count > 0)
+        {
+            if (keeps.GetValueOrDefault("keep-all") == 1) { return false; }
+            return keeps.Any(k => !k.Key.Equals("keep-all", StringComparison.OrdinalIgnoreCase) && k.Value > 0);
+        }
+
+        // Legacy option, replaced by prune-backups: 0 means unlimited.
+        if (int.TryParse(maxFiles, out var max)) { return max > 0; }
+        return null;
     }
 
     // A task that ended with "WARNINGS: n" completed; only other statuses are failures.

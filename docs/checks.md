@@ -60,7 +60,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | ------ | ----------- | -------- | ------------------------------------------------------------------------ |
 | WC0001 | Backup      | Warning  | No automated backup job for any VM/CT                                    |
 | IC0001 | Backup      | Info     | Backup job has no compression configured                                 |
-| WC0002 | Backup      | Warning  | Backup job has no maxfiles/prune policy — storage will fill up           |
+| WC0002 | Backup      | Warning  | Neither the backup job nor its storage has a retention (prune-backups) — storage will fill up |
 | CC0001 | Quorum      | Critical | Cluster has lost quorum — VM operations may be blocked                   |
 | CC0002 | Quorum      | Critical | Corosync expected votes does not match online node count                 |
 | CC0003 | HA          | Critical | HA group references nodes that are currently offline                     |
@@ -115,6 +115,9 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 >
 > When they are missing, `WC0020` is reported as a **Warning** and the three backup checks are
 > skipped, instead of flagging every guest as having no backups.
+>
+> In the same way, `WS0002` and `WS0003` are skipped when `VM.Audit` does not cover `/vms`: the
+> disks and backups of the guests the account cannot see would all look orphaned.
 >
 > The other privileges (`VM.Audit`, `Datastore.Audit`, `Sys.Audit`, `Pool.Audit`) are reported as
 > **Info**: an account restricted to part of the cluster is a legitimate configuration, so the
@@ -192,15 +195,15 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 
 | Code   | SubContext | Gravity          | Description                                                                         |
 | ------ | ---------- | ---------------- | ----------------------------------------------------------------------------------- |
-| CS0001 | Status     | Critical         | Storage is not accessible (excludes storages disabled on purpose)                   |
-| WS0008 | Status     | Warning          | Storage is disabled — backup jobs or guests may still point at it                   |
+| CS0001 | Status     | Critical         | Storage is not accessible on a node (shared storages are checked on every node)     |
+| WS0008 | Status     | Warning          | Storage is disabled but an enabled backup job or a guest still uses it              |
 | WS0001 | Usage      | Warning/Critical | Storage usage above configured threshold                                            |
-| WS0003 | Backup     | Warning          | Backup file whose VMID no longer exists                                             |
-| WS0002 | Image      | Warning          | Disk image not attached to any VM/CT                                                |
-| WS0004 | Usage      | Warning          | Allocated disk space exceeds physical capacity (thin provisioning)                  |
-| WS0005 | Shared     | Warning          | Shared storage only mounted on one node                                             |
+| WS0003 | Backup     | Warning          | Backup files whose VMID no longer exists (one finding per VMID and storage)         |
+| WS0002 | Image      | Warning          | Disk image or container volume not attached to any VM/CT on that node               |
+| WS0004 | Usage      | Warning          | Allocated disk space exceeds physical capacity on a node (thin provisioning)        |
+| WS0005 | Shared     | Warning          | Shared storage only mounted on one node (not when restricted to one node by 'nodes') |
 | WS0006 | Backup     | Warning          | No storage has 'backup' content type — backups cannot be stored                     |
-| WS0007 | Backup     | Warning          | Backup job storage not available on a node — VMs on that node will not be backed up |
+| WS0007 | Backup     | Warning          | Enabled backup job storage not available on a node it runs on — VMs there not backed up |
 
 </details>
 

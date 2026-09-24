@@ -87,4 +87,18 @@ public class DiagnosticEngineClusterTests
         Assert.False(DiagnosticEngine.IsNodeFirewallEnabled(new Dictionary<string, object> { ["enable"] = 0L }));
         Assert.True(DiagnosticEngine.IsNodeFirewallEnabled(new Dictionary<string, object> { ["enable"] = 1L }));
     }
+
+    // ----- WC0002: retention of a job (JSON object) or a storage (key=value list) -----
+    [Theory]
+    [InlineData("""{"keep-daily":"30"}""", null, true)]
+    [InlineData("keep-daily=7,keep-last=3", null, true)]
+    [InlineData("keep-all=1", null, false)]
+    [InlineData("""{"keep-all": 1}""", null, false)]
+    [InlineData("keep-last=0", null, false)]
+    [InlineData(null, "3", true)]
+    [InlineData(null, "0", false)]
+    [InlineData(null, null, null)]
+    [InlineData("", null, null)]
+    public void Retention_is_read_from_prune_backups_or_maxfiles(string? pruneBackups, string? maxFiles, bool? expected)
+        => Assert.Equal(expected, DiagnosticEngine.BackupRetention(pruneBackups, maxFiles));
 }

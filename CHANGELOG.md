@@ -66,6 +66,15 @@
 - `IG0012` also reports machine types without a version, such as `q35`, which change on upgrade like an unset one. Machine types with options (`viommu`) are now checked by `IG0016`, and its message shows the exact name of the latest version.
 - Duplicate MAC addresses (`WG0033`) are also found between VMs and containers and between two interfaces of the same guest.
 - A usage threshold with only Warning or only Critical set is now checked, instead of being skipped.
+- Orphaned volumes (`WS0002`) now include container volumes, which were never checked. A copy of a disk left on another node, after a migration for example, is now reported too, while replicas and the RAM state of snapshots are not.
+- Orphaned backups (`WS0003`) are reported once per deleted guest and storage, with the total size, instead of once per backup file.
+- `WS0002` and `WS0003` are skipped when the account cannot see every guest. Otherwise the disks and backups of hidden guests would be reported as orphaned.
+- `WC0002` (backup job without retention) now also reads the retention of the target storage, which the job uses when it has none of its own. `keep-all` and `maxfiles=0` count as no retention.
+- A disabled storage (`WS0008`) was never reported, because Proxmox leaves it out of the resource list. It is now read from the storage configuration and reported when a backup job or a guest still uses it.
+- A shared storage that is down on only one node is now reported (`CS0001`).
+- `WS0007` no longer reports disabled backup jobs, or nodes a job does not run on.
+- `WS0005` no longer reports a shared storage restricted to one node on purpose.
+- Thin provisioning (`WS0004`) compares each node's pool with the disks of that node's guests, instead of adding up the guests of every node.
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

@@ -18,11 +18,14 @@ public partial class DiagnosticEngine
     /// <param name="Alternative">Privilege that substitutes for it, if any.</param>
     /// <param name="Impact">What the user loses — phrased as the visible consequence.</param>
     /// <param name="DisablesBackupChecks">Whether the backup checks must be skipped without it.</param>
+    /// <param name="DisablesOrphanChecks">Whether the orphaned image/backup checks must be skipped
+    /// without it, also when it is granted on part of the root only.</param>
     private sealed record RequiredPrivilege(string Privilege,
                                             string Root,
                                             string? Alternative,
                                             string Impact,
-                                            bool DisablesBackupChecks = false);
+                                            bool DisablesBackupChecks = false,
+                                            bool DisablesOrphanChecks = false);
 
     // Privileges whose absence does NOT surface as an API error. PVE filters the caller's view
     // instead of returning 403, so the analysis silently sees less than it should:
@@ -39,7 +42,8 @@ public partial class DiagnosticEngine
         new("VM.Audit",
             "/vms",
             null,
-            "VMs and containers are missing from the analysis entirely — they are filtered out of /cluster/resources"),
+            "VMs and containers are missing from the analysis entirely — they are filtered out of /cluster/resources",
+            DisablesOrphanChecks: true),
 
         new("Datastore.Audit",
             "/storage",
@@ -128,6 +132,10 @@ public partial class DiagnosticEngine
         var backupChecksOff = missing.Any(a => a.DisablesBackupChecks && !partial.Contains(a));
         if (backupChecksOff) { _backupChecksEnabled = false; }
 
+        // A guest the account cannot see still owns its disks and backups: WS0002/WS0003 would list
+        // them as orphaned (delete candidates). Wrong either way, whether part or all is hidden.
+        if (missing.Any(a => a.DisablesOrphanChecks)) { _orphanChecksEnabled = false; }
+
         foreach (var item in missing)
         {
             var name = $"'{item.Privilege}'{(item.Alternative == null ? "" : $" (or '{item.Alternative}')")}";
@@ -143,10 +151,12 @@ public partial class DiagnosticEngine
                 Description = partial.Contains(item)
                     ? $"Privilege {name} is granted on part of '{item.Root}' — the analysis covers only that subset. "
                       + $"Outside it, {item.Impact}. This is expected if the account is scoped on purpose; "
+                      + (item.DisablesOrphanChecks ? "the orphaned image and backup checks (WS0002, WS0003) are skipped; " : "")
                       + $"grant {name} on '{item.Root}' to cover everything."
                     : $"Privilege {name} is not granted on '{item.Root}' — {item.Impact}. "
                       + "Proxmox omits these from its response without reporting an error, so the analysis cannot see what is missing. "
                       + (item.DisablesBackupChecks ? "The backup checks (WG0019, WG0020, WS0003) are skipped. " : "")
+                      + (item.DisablesOrphanChecks ? "The orphaned image and backup checks (WS0002, WS0003) are skipped. " : "")
                       + "See the permissions section in the README.",
                 Context = DiagnosticResultContext.Cluster,
                 SubContext = "Permissions",

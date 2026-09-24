@@ -25,6 +25,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // pre-check. A field, not settings.Backup.Enabled, so the caller's Settings object is never changed.
     private bool _backupChecksEnabled = settings.Backup.Enabled;
 
+    // Orphaned image/backup checks (WS0002, WS0003) on/off: turned off by the permission pre-check
+    // when the account cannot see every guest.
+    private bool _orphanChecksEnabled = true;
+
     // False when /cluster/backup could not be read: the job list is unknown, not empty.
     private bool _clusterBackupsKnown;
 
