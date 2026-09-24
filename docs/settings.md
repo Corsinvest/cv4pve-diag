@@ -91,6 +91,7 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
     "MaxVCpuRatio": 4.0,                  // vCPU overcommit ratio (sum vCPU / physical CPU) above which WG0036 fires
     "ConsolidationCpuThreshold": 10.0,    // node CPU % below which the node is flagged as consolidation candidate (IN0003)
     "ConsolidationMemThreshold": 20.0,    // node RAM % below which the node is flagged as consolidation candidate
+    "IoWait": { "Warning": 10, "Critical": 25 }, // average CPU iowait % over the RRD time frame (WN0028)
     "Rrd": {                                                  // node-specific PSI defaults — tighter than VM/CT (PVE 9.0+ only)
       "TimeFrame": "Day",
       "Consolidation": "Average",

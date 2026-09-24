@@ -27,6 +27,12 @@ public class SettingsThresholdNode : SettingsThresholdHost
     public double ConsolidationMemThreshold { get; set; } = 20.0;
 
     /// <summary>
+    /// CPU IOWait threshold (% of CPU time spent waiting for I/O, averaged over the RRD time frame).
+    /// Sustained values above 10% point to a storage bottleneck (WN0028).
+    /// </summary>
+    public SettingsThreshold<double> IoWait { get; set; } = new() { Warning = 10, Critical = 25 };
+
+    /// <summary>
     /// S.M.A.R.T. disk checks configuration
     /// </summary>
     public SettingsSmartDisk Smart { get; set; } = new();
