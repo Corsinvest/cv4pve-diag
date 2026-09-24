@@ -89,9 +89,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27001.A_5_30,
                 ComplianceControls.Iso27001.A_8_16,
                 ComplianceControls.Nis2.Art_21_f,
-                ComplianceControls.Dora.Art_12,
+                ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_b,
-                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Ens.OP_MON_3,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
             ]);
@@ -116,9 +116,9 @@ public partial class DiagnosticEngine
             [
                 ComplianceControls.Iso27001.A_5_30,
                 ComplianceControls.Iso27001.A_8_16,
-                ComplianceControls.Dora.Art_12,
+                ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_b,
-                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Ens.OP_MON_3,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
             ]);
@@ -140,9 +140,9 @@ public partial class DiagnosticEngine
             [
                 ComplianceControls.Iso27001.A_5_30,
                 ComplianceControls.Iso27001.A_8_16,
-                ComplianceControls.Dora.Art_12,
+                ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_b,
-                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Ens.OP_PL_4,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
             ]);
@@ -311,9 +311,9 @@ public partial class DiagnosticEngine
             compliance:
             [
                 ComplianceControls.Iso27001.A_5_30,
-                ComplianceControls.Dora.Art_12,
+                ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_b,
-                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Ens.OP_PL_4,
                 ComplianceControls.Soc2.A1_1,
                 ComplianceControls.NistCsf.PR_IR_04,
             ]);
@@ -342,7 +342,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.AgId.ABSC_10_3,
                 ComplianceControls.AgId.ABSC_10_4,
                 ComplianceControls.Ens.MP_INFO_6,
-                ComplianceControls.C5.OPS_21,
+                ComplianceControls.C5.OPS_06,
                 ComplianceControls.Soc2.A1_2,
                 ComplianceControls.Nist80053.CP_9,
                 ComplianceControls.Iso27018.A_12_3_1,
@@ -390,7 +390,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.AgId.ABSC_10_3,
                 ComplianceControls.AgId.ABSC_10_4,
                 ComplianceControls.Ens.MP_INFO_6,
-                ComplianceControls.C5.OPS_21,
+                ComplianceControls.C5.OPS_06,
                 ComplianceControls.Soc2.A1_2,
                 ComplianceControls.Nist80053.CP_9,
                 ComplianceControls.Iso27018.A_12_3_1,
@@ -432,8 +432,8 @@ public partial class DiagnosticEngine
                 compliance:
                 [
                     ComplianceControls.Iso27001.A_5_30,
-                    ComplianceControls.Dora.Art_12,
-                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Dora.Art_11,
+                    ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.Iso27017.CLD_6_3_1,
                     ComplianceControls.NistCsf.PR_IR_04,
                 ]);

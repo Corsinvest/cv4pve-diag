@@ -75,6 +75,11 @@
 - `WS0007` no longer reports disabled backup jobs, or nodes a job does not run on.
 - `WS0005` no longer reports a shared storage restricted to one node on purpose.
 - Thin provisioning (`WS0004`) compares each node's pool with the disks of that node's guests, instead of adding up the guests of every node.
+- Compliance references corrected against the official texts, so audit reports cite the right controls:
+  - DORA: the titles of Art. 11 (response and recovery) and Art. 12 (backup) were swapped. High availability, replication and storage availability findings now cite Art. 11.
+  - NIS2: Art. 21(d) is supply-chain security; account findings now cite Art. 21(i).
+  - ENS: mp.s.1 is e-mail protection and op.mon.1 is intrusion detection. Findings now cite op.cont.4 (alternative means), op.pl.4 (capacity), op.mon.3 (surveillance) and op.acc.6 (authentication).
+  - C5:2020: several identifiers pointed to other criteria. Backup is OPS-06, logging OPS-13, hardening OPS-23, authentication IDM-09, privileged access IDM-06. The English identifiers CRY and COS replace KRY and KOS.
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

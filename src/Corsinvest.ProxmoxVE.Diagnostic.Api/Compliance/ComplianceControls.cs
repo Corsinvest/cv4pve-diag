@@ -88,10 +88,6 @@ public static class ComplianceControls
         public static readonly ComplianceMapping Art_21_c =
             new(ComplianceStandard.Nis2, "Art.21(c)", "Backup management and disaster recovery");
 
-        /// <summary>Art.21(d) — Supply chain security, including security-related aspects of relationships with suppliers and service providers.</summary>
-        public static readonly ComplianceMapping Art_21_d =
-            new(ComplianceStandard.Nis2, "Art.21(d)", "Identity / access lifecycle management");
-
         /// <summary>Art.21(e) — Security in network and information systems acquisition, development and maintenance, including vulnerability handling and disclosure.</summary>
         public static readonly ComplianceMapping Art_21_e =
             new(ComplianceStandard.Nis2, "Art.21(e)", "Vulnerability handling and disclosure");
@@ -114,7 +110,7 @@ public static class ComplianceControls
 
         internal static IEnumerable<ComplianceMapping> All =>
         [
-            Art_21_c, Art_21_d, Art_21_e, Art_21_f, Art_21_h, Art_21_i, Art_21_j,
+            Art_21_c, Art_21_e, Art_21_f, Art_21_h, Art_21_i, Art_21_j,
         ];
     }
 
@@ -129,13 +125,13 @@ public static class ComplianceControls
         public static readonly ComplianceMapping Art_10 =
             new(ComplianceStandard.Dora, "Art.10", "Detection of anomalous activities");
 
-        /// <summary>Art.11 — Backup policies and recovery procedures.</summary>
+        /// <summary>Art.11 — Response and recovery (ICT business continuity policy).</summary>
         public static readonly ComplianceMapping Art_11 =
-            new(ComplianceStandard.Dora, "Art.11", "Backup policies and recovery procedures");
+            new(ComplianceStandard.Dora, "Art.11", "Response and recovery (ICT business continuity)");
 
-        /// <summary>Art.12 — ICT business continuity policy.</summary>
+        /// <summary>Art.12 — Backup policies and procedures, restoration and recovery procedures and methods.</summary>
         public static readonly ComplianceMapping Art_12 =
-            new(ComplianceStandard.Dora, "Art.12", "ICT business continuity policy");
+            new(ComplianceStandard.Dora, "Art.12", "Backup policies, restoration and recovery procedures");
 
         internal static IEnumerable<ComplianceMapping> All => [Art_9, Art_10, Art_11, Art_12];
     }
@@ -296,17 +292,13 @@ public static class ComplianceControls
         public static readonly ComplianceMapping OP_ACC_1 =
             new(ComplianceStandard.Ens, "op.acc.1", "Identification");
 
-        /// <summary>op.acc.2 — Access rights (least privilege, role-based).</summary>
+        /// <summary>op.acc.2 — Access requirements (Requisitos de acceso: least privilege, role-based).</summary>
         public static readonly ComplianceMapping OP_ACC_2 =
-            new(ComplianceStandard.Ens, "op.acc.2", "Access rights");
+            new(ComplianceStandard.Ens, "op.acc.2", "Access requirements");
 
-        /// <summary>op.acc.4 — Local access process (authentication mechanism, MFA on admin).</summary>
-        public static readonly ComplianceMapping OP_ACC_4 =
-            new(ComplianceStandard.Ens, "op.acc.4", "Local access process");
-
-        /// <summary>op.acc.5 — Remote access (segregated, controlled remote administration).</summary>
-        public static readonly ComplianceMapping OP_ACC_5 =
-            new(ComplianceStandard.Ens, "op.acc.5", "Remote access");
+        /// <summary>op.acc.6 — Authentication mechanism, organisation users (Mecanismo de autenticación: usuarios de la organización).</summary>
+        public static readonly ComplianceMapping OP_ACC_6 =
+            new(ComplianceStandard.Ens, "op.acc.6", "Authentication mechanism (organisation users)");
 
         /// <summary>op.exp.1 — Inventory of assets.</summary>
         public static readonly ComplianceMapping OP_EXP_1 =
@@ -328,150 +320,134 @@ public static class ComplianceControls
         public static readonly ComplianceMapping OP_EXP_5 =
             new(ComplianceStandard.Ens, "op.exp.5", "Change management");
 
-        /// <summary>op.exp.8 — Activity log recording.</summary>
+        /// <summary>op.exp.8 — Activity logging (Registro de la actividad).</summary>
         public static readonly ComplianceMapping OP_EXP_8 =
-            new(ComplianceStandard.Ens, "op.exp.8", "Activity log recording");
+            new(ComplianceStandard.Ens, "op.exp.8", "Activity logging");
 
-        /// <summary>op.exp.9 — Incident management records.</summary>
+        /// <summary>op.exp.9 — Incident management logging (Registro de la gestión de incidentes).</summary>
         public static readonly ComplianceMapping OP_EXP_9 =
-            new(ComplianceStandard.Ens, "op.exp.9", "Incident management records");
+            new(ComplianceStandard.Ens, "op.exp.9", "Incident management logging");
 
         /// <summary>op.cont.2 — Continuity plan (HA / failover provisions).</summary>
         public static readonly ComplianceMapping OP_CONT_2 =
             new(ComplianceStandard.Ens, "op.cont.2", "Continuity plan");
 
-        /// <summary>op.cont.3 — Periodic test of continuity procedures.</summary>
+        /// <summary>op.cont.3 — Periodic tests (Pruebas periódicas) of the continuity plan.</summary>
         public static readonly ComplianceMapping OP_CONT_3 =
-            new(ComplianceStandard.Ens, "op.cont.3", "Periodic continuity tests");
+            new(ComplianceStandard.Ens, "op.cont.3", "Periodic tests");
 
-        /// <summary>op.mon.1 — Intrusion detection / monitoring of system activity.</summary>
-        public static readonly ComplianceMapping OP_MON_1 =
-            new(ComplianceStandard.Ens, "op.mon.1", "System activity monitoring");
+        /// <summary>op.cont.4 — Alternative means (Medios alternativos): redundancy, HA, failover.</summary>
+        public static readonly ComplianceMapping OP_CONT_4 =
+            new(ComplianceStandard.Ens, "op.cont.4", "Alternative means");
 
-        /// <summary>mp.com.1 — Secure communications perimeter (firewall, network segregation).</summary>
+        /// <summary>op.pl.4 — Capacity sizing and management (Dimensionamiento/gestión de la capacidad).</summary>
+        public static readonly ComplianceMapping OP_PL_4 =
+            new(ComplianceStandard.Ens, "op.pl.4", "Capacity sizing and management");
+
+        /// <summary>op.mon.3 — Surveillance (Vigilancia): continuous monitoring of the system state and events.</summary>
+        public static readonly ComplianceMapping OP_MON_3 =
+            new(ComplianceStandard.Ens, "op.mon.3", "Surveillance");
+
+        /// <summary>mp.com.1 — Secure perimeter (Perímetro seguro: firewall, network segregation).</summary>
         public static readonly ComplianceMapping MP_COM_1 =
-            new(ComplianceStandard.Ens, "mp.com.1", "Secure communications perimeter");
+            new(ComplianceStandard.Ens, "mp.com.1", "Secure perimeter");
 
-        /// <summary>mp.com.2 — Protection of confidentiality in communications (encryption in transit).</summary>
+        /// <summary>mp.com.2 — Protection of confidentiality (Protección de la confidencialidad: encryption in transit).</summary>
         public static readonly ComplianceMapping MP_COM_2 =
-            new(ComplianceStandard.Ens, "mp.com.2", "Protection of confidentiality in communications");
+            new(ComplianceStandard.Ens, "mp.com.2", "Protection of confidentiality");
 
-        /// <summary>mp.info.6 — Backup copies of information.</summary>
+        /// <summary>mp.info.6 — Backup copies (Copias de seguridad).</summary>
         public static readonly ComplianceMapping MP_INFO_6 =
-            new(ComplianceStandard.Ens, "mp.info.6", "Information backup");
-
-        /// <summary>mp.s.1 — Service protection (availability, isolation).</summary>
-        public static readonly ComplianceMapping MP_S_1 =
-            new(ComplianceStandard.Ens, "mp.s.1", "Service protection");
+            new(ComplianceStandard.Ens, "mp.info.6", "Backup copies");
 
         internal static IEnumerable<ComplianceMapping> All =>
         [
-            OP_ACC_1, OP_ACC_2, OP_ACC_4, OP_ACC_5,
+            OP_ACC_1, OP_ACC_2, OP_ACC_6,
             OP_EXP_1, OP_EXP_2, OP_EXP_3, OP_EXP_4, OP_EXP_5, OP_EXP_8, OP_EXP_9,
-            OP_CONT_2, OP_CONT_3,
-            OP_MON_1,
+            OP_CONT_2, OP_CONT_3, OP_CONT_4,
+            OP_PL_4,
+            OP_MON_3,
             MP_COM_1, MP_COM_2,
             MP_INFO_6,
-            MP_S_1,
         ];
     }
 
     /// <summary>
     /// C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).
-    /// Identifiers follow the official BSI taxonomy: OIS (organisation of information security),
-    /// HR (human resources), AM (asset management), PS (physical security), RB (regulatory/business),
-    /// IDM (identity / access management), KRY (cryptography), KOS (communication security),
-    /// PI (portability / interoperability), OPS (operations), BCM (business continuity management),
-    /// SIM (incident management), COM (compliance), INQ (investigation requests), DEV (development),
-    /// SSO (service supplier), POR (portability of customer data). Only the subset technically
-    /// verifiable on a Proxmox VE cluster is listed.
+    /// Identifiers and titles as in the English edition of the catalogue: OIS, SP, HR, AM, PS, OPS,
+    /// IDM, CRY (cryptography), COS (communication security), PI (portability and interoperability),
+    /// DEV, SSO, SIM, BCM, COM, INQ, PSS. Only the subset technically verifiable on a Proxmox VE
+    /// cluster is listed.
     /// </summary>
     public static class C5
     {
-        /// <summary>IDM-01 — Policy for system and data access (least privilege, role separation).</summary>
+        /// <summary>IDM-01 — Policy for user accounts and access rights.</summary>
         public static readonly ComplianceMapping IDM_01 =
-            new(ComplianceStandard.C5, "IDM-01", "Policy for system and data access");
+            new(ComplianceStandard.C5, "IDM-01", "Policy for user accounts and access rights");
 
-        /// <summary>IDM-02 — User registration and approval workflow.</summary>
+        /// <summary>IDM-02 — Granting and change of user accounts and access rights.</summary>
         public static readonly ComplianceMapping IDM_02 =
-            new(ComplianceStandard.C5, "IDM-02", "User registration");
+            new(ComplianceStandard.C5, "IDM-02", "Granting and change of user accounts and access rights");
 
-        /// <summary>IDM-03 — Locking, deactivation and deletion of accounts (lifecycle).</summary>
+        /// <summary>IDM-03 — Locking and withdrawal of user accounts in the event of inactivity or multiple failed logins.</summary>
         public static readonly ComplianceMapping IDM_03 =
-            new(ComplianceStandard.C5, "IDM-03", "Account lifecycle");
+            new(ComplianceStandard.C5, "IDM-03", "Locking and withdrawal of user accounts");
 
-        /// <summary>IDM-08 — Authentication mechanisms (strong / multi-factor for privileged users).</summary>
-        public static readonly ComplianceMapping IDM_08 =
-            new(ComplianceStandard.C5, "IDM-08", "Authentication mechanisms");
+        /// <summary>IDM-06 — Privileged access rights.</summary>
+        public static readonly ComplianceMapping IDM_06 =
+            new(ComplianceStandard.C5, "IDM-06", "Privileged access rights");
 
-        /// <summary>IDM-09 — Authorisation mechanisms (role-based, least privilege).</summary>
+        /// <summary>IDM-09 — Authentication mechanisms (strong / multi-factor authentication).</summary>
         public static readonly ComplianceMapping IDM_09 =
-            new(ComplianceStandard.C5, "IDM-09", "Authorisation mechanisms");
+            new(ComplianceStandard.C5, "IDM-09", "Authentication mechanisms");
 
-        /// <summary>KRY-01 — Policy for the use of cryptography.</summary>
-        public static readonly ComplianceMapping KRY_01 =
-            new(ComplianceStandard.C5, "KRY-01", "Policy for use of cryptography");
+        /// <summary>CRY-01 — Policy for the use of encryption procedures and key management.</summary>
+        public static readonly ComplianceMapping CRY_01 =
+            new(ComplianceStandard.C5, "CRY-01", "Policy for the use of encryption procedures and key management");
 
-        /// <summary>KRY-03 — Encryption of data in transit (TLS configuration, certificate hygiene).</summary>
-        public static readonly ComplianceMapping KRY_03 =
-            new(ComplianceStandard.C5, "KRY-03", "Encryption of data in transit");
+        /// <summary>CRY-02 — Encryption of data for transmission (transport encryption).</summary>
+        public static readonly ComplianceMapping CRY_02 =
+            new(ComplianceStandard.C5, "CRY-02", "Encryption of data for transmission (transport encryption)");
 
-        /// <summary>KOS-01 — Technical safeguards for the cloud network (firewalls, segregation).</summary>
-        public static readonly ComplianceMapping KOS_01 =
-            new(ComplianceStandard.C5, "KOS-01", "Technical safeguards for cloud network");
+        /// <summary>COS-01 — Technical safeguards (firewalls, segregation).</summary>
+        public static readonly ComplianceMapping COS_01 =
+            new(ComplianceStandard.C5, "COS-01", "Technical safeguards");
 
-        /// <summary>KOS-03 — Logging of communication-layer events (firewall log).</summary>
-        public static readonly ComplianceMapping KOS_03 =
-            new(ComplianceStandard.C5, "KOS-03", "Logging of communication events");
+        /// <summary>OPS-06 — Data Backup and Recovery – Concept.</summary>
+        public static readonly ComplianceMapping OPS_06 =
+            new(ComplianceStandard.C5, "OPS-06", "Data Backup and Recovery – Concept");
 
-        /// <summary>OPS-09 — Audit logging of administrative activity.</summary>
-        public static readonly ComplianceMapping OPS_09 =
-            new(ComplianceStandard.C5, "OPS-09", "Audit logging");
-
-        /// <summary>OPS-10 — Monitoring of audit logs and abnormal events.</summary>
+        /// <summary>OPS-10 — Logging and Monitoring – Concept.</summary>
         public static readonly ComplianceMapping OPS_10 =
-            new(ComplianceStandard.C5, "OPS-10", "Monitoring of audit logs");
+            new(ComplianceStandard.C5, "OPS-10", "Logging and Monitoring – Concept");
 
-        /// <summary>OPS-16 — Handling of vulnerabilities (scanning + remediation).</summary>
-        public static readonly ComplianceMapping OPS_16 =
-            new(ComplianceStandard.C5, "OPS-16", "Vulnerability handling");
+        /// <summary>OPS-13 — Logging and Monitoring – Identification of Events.</summary>
+        public static readonly ComplianceMapping OPS_13 =
+            new(ComplianceStandard.C5, "OPS-13", "Logging and Monitoring – Identification of Events");
 
-        /// <summary>OPS-18 — Patch management (timely application of security updates).</summary>
+        /// <summary>OPS-18 — Managing Vulnerabilities, Malfunctions and Errors – Concept.</summary>
         public static readonly ComplianceMapping OPS_18 =
-            new(ComplianceStandard.C5, "OPS-18", "Patch management");
+            new(ComplianceStandard.C5, "OPS-18", "Managing Vulnerabilities, Malfunctions and Errors – Concept");
 
-        /// <summary>OPS-21 — Backup of customer data (job existence, retention, restore tests).</summary>
-        public static readonly ComplianceMapping OPS_21 =
-            new(ComplianceStandard.C5, "OPS-21", "Backup of customer data");
-
-        /// <summary>OPS-23 — Storage of backups (separated, protected, available).</summary>
+        /// <summary>OPS-23 — Managing Vulnerabilities, Malfunctions and Errors – System Hardening.</summary>
         public static readonly ComplianceMapping OPS_23 =
-            new(ComplianceStandard.C5, "OPS-23", "Storage of backups");
+            new(ComplianceStandard.C5, "OPS-23", "Managing Vulnerabilities, Malfunctions and Errors – System Hardening");
 
-        /// <summary>BCM-01 — Top-level business continuity policy.</summary>
-        public static readonly ComplianceMapping BCM_01 =
-            new(ComplianceStandard.C5, "BCM-01", "Business continuity policy");
-
-        /// <summary>BCM-03 — Redundancy of system components (HA, replication).</summary>
+        /// <summary>BCM-03 — Planning business continuity (redundancy, HA, replication).</summary>
         public static readonly ComplianceMapping BCM_03 =
-            new(ComplianceStandard.C5, "BCM-03", "Redundancy of system components");
+            new(ComplianceStandard.C5, "BCM-03", "Planning business continuity");
 
-        /// <summary>BCM-04 — Periodic testing of continuity arrangements.</summary>
+        /// <summary>BCM-04 — Verification, updating and testing of the business continuity.</summary>
         public static readonly ComplianceMapping BCM_04 =
-            new(ComplianceStandard.C5, "BCM-04", "Periodic testing of continuity");
-
-        /// <summary>PI-02 — Hardening of virtualisation infrastructure (segregation, machine type, CPU flags).</summary>
-        public static readonly ComplianceMapping PI_02 =
-            new(ComplianceStandard.C5, "PI-02", "Hardening of virtualisation infrastructure");
+            new(ComplianceStandard.C5, "BCM-04", "Verification, updating and testing of the business continuity");
 
         internal static IEnumerable<ComplianceMapping> All =>
         [
-            IDM_01, IDM_02, IDM_03, IDM_08, IDM_09,
-            KRY_01, KRY_03,
-            KOS_01, KOS_03,
-            OPS_09, OPS_10, OPS_16, OPS_18, OPS_21, OPS_23,
-            BCM_01, BCM_03, BCM_04,
-            PI_02,
+            IDM_01, IDM_02, IDM_03, IDM_06, IDM_09,
+            CRY_01, CRY_02,
+            COS_01,
+            OPS_06, OPS_10, OPS_13, OPS_18, OPS_23,
+            BCM_03, BCM_04,
         ];
     }
 
