@@ -126,6 +126,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.PR_DS_11,
             ComplianceControls.Iso22301.C_8_3_5,
             ComplianceControls.BsiGrundschutz.CON_3_A5,
+            ComplianceControls.Nis2Ir.C_4_2,
         ];
 
         // Is this guest covered by at least one enabled backup job? Skipped when the job list
@@ -223,6 +224,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.ID_IM_04,
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.Nis2Ir.C_4_2,
                 ]);
         }
         #endregion
@@ -322,6 +324,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.ID_IM_04,
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.Nis2Ir.C_4_2,
             ];
 
             if (_haVmIds.Count > 0)
@@ -404,6 +407,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.DE_CM_01,
                 ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.Nis2Ir.C_3_2,
             ]);
     }
 
@@ -517,6 +521,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.PR_IR_01,
             ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
             ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
+            ComplianceControls.Nis2Ir.C_6_7,
+            ComplianceControls.Nis2Ir.C_6_8,
         ];
 
         CreateResult(

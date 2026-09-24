@@ -352,6 +352,82 @@ public static class ComplianceControls
     }
 
     /// <summary>
+    /// Commission Implementing Regulation (EU) 2024/2690 — technical and methodological requirements
+    /// of the NIS2 risk-management measures (Art. 21(5) of Directive (EU) 2022/2555) for DNS service
+    /// providers, TLD name registries, cloud computing, data centre and content delivery network
+    /// providers, managed (security) service providers, online marketplaces, search engines, social
+    /// networks and trust service providers. Identifiers are the points of the Annex, at the level
+    /// that carries a title (numbering as in the ENISA technical implementation guidance).
+    /// </summary>
+    public static class Nis2Ir
+    {
+        /// <summary>3.2 — Monitoring and logging (incl. 3.2.6 synchronised time sources).</summary>
+        public static readonly ComplianceMapping C_3_2 =
+            new(ComplianceStandard.Nis2Ir, "3.2", "Monitoring and logging");
+
+        /// <summary>4.1 — Business continuity and disaster recovery plan.</summary>
+        public static readonly ComplianceMapping C_4_1 =
+            new(ComplianceStandard.Nis2Ir, "4.1", "Business continuity and disaster recovery plan");
+
+        /// <summary>4.2 — Backup and redundancy management (backup copies, integrity checks, redundancy).</summary>
+        public static readonly ComplianceMapping C_4_2 =
+            new(ComplianceStandard.Nis2Ir, "4.2", "Backup and redundancy management");
+
+        /// <summary>6.3 — Configuration management (secure configurations of hardware, software, services and networks).</summary>
+        public static readonly ComplianceMapping C_6_3 =
+            new(ComplianceStandard.Nis2Ir, "6.3", "Configuration management");
+
+        /// <summary>6.6 — Security patch management.</summary>
+        public static readonly ComplianceMapping C_6_6 =
+            new(ComplianceStandard.Nis2Ir, "6.6", "Security patch management");
+
+        /// <summary>6.7 — Network security.</summary>
+        public static readonly ComplianceMapping C_6_7 =
+            new(ComplianceStandard.Nis2Ir, "6.7", "Network security");
+
+        /// <summary>6.8 — Network segmentation.</summary>
+        public static readonly ComplianceMapping C_6_8 =
+            new(ComplianceStandard.Nis2Ir, "6.8", "Network segmentation");
+
+        /// <summary>6.10 — Vulnerability handling and disclosure.</summary>
+        public static readonly ComplianceMapping C_6_10 =
+            new(ComplianceStandard.Nis2Ir, "6.10", "Vulnerability handling and disclosure");
+
+        /// <summary>9 — Cryptography.</summary>
+        public static readonly ComplianceMapping C_9 =
+            new(ComplianceStandard.Nis2Ir, "9", "Cryptography");
+
+        /// <summary>11.2 — Management of access rights.</summary>
+        public static readonly ComplianceMapping C_11_2 =
+            new(ComplianceStandard.Nis2Ir, "11.2", "Management of access rights");
+
+        /// <summary>11.3 — Privileged accounts and system administration accounts.</summary>
+        public static readonly ComplianceMapping C_11_3 =
+            new(ComplianceStandard.Nis2Ir, "11.3", "Privileged accounts and system administration accounts");
+
+        /// <summary>11.5 — Identification (unique identities, deactivated when no longer needed).</summary>
+        public static readonly ComplianceMapping C_11_5 =
+            new(ComplianceStandard.Nis2Ir, "11.5", "Identification");
+
+        /// <summary>11.7 — Multi-factor authentication.</summary>
+        public static readonly ComplianceMapping C_11_7 =
+            new(ComplianceStandard.Nis2Ir, "11.7", "Multi-factor authentication");
+
+        /// <summary>12.4 — Asset inventory.</summary>
+        public static readonly ComplianceMapping C_12_4 =
+            new(ComplianceStandard.Nis2Ir, "12.4", "Asset inventory");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            C_3_2, C_4_1, C_4_2,
+            C_6_3, C_6_6, C_6_7, C_6_8, C_6_10,
+            C_9,
+            C_11_2, C_11_3, C_11_5, C_11_7,
+            C_12_4,
+        ];
+    }
+
+    /// <summary>
     /// ISO 22301:2019 — Security and resilience — Business continuity management systems — Requirements.
     /// Clause numbers and titles as in the published table of contents (the requirement text is not
     /// public). Only clauses a cluster configuration can give evidence for are listed.
@@ -1008,7 +1084,7 @@ public static class ComplianceControls
     // ──────── Lookup ────────
 
     private static readonly FrozenDictionary<(ComplianceStandard, string), ComplianceMapping> _byKey =
-        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Soc2.All, Nist80053.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All, Acn.All, Iso22301.All, BsiGrundschutz.All }
+        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Soc2.All, Nist80053.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All, Acn.All, Iso22301.All, BsiGrundschutz.All, Nis2Ir.All }
             .SelectMany(x => x)
             .ToFrozenDictionary(m => (m.Standard, m.ControlId));
 

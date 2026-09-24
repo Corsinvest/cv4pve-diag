@@ -60,6 +60,7 @@ Accepted values match the [Standards supported](#standards-supported) list — t
 | `Acn` | ACN NIS2 basic security measures (Italy, Determinazione ACN 379907/2025) |
 | `Iso22301` | ISO 22301:2019 (business continuity) |
 | `BsiGrundschutz` | BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany) |
+| `Nis2Ir` | NIS2 Implementing Regulation (EU) 2024/2690 (cloud, data centre, managed service providers, …) |
 | `Ens` | Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
 | `C5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) |
 | `Soc2` | AICPA Trust Services Criteria (SOC 2) |
@@ -123,6 +124,7 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | **GDPR** (EU Regulation 2016/679) | Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only |
 | **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
 | **ACN** — NIS2 basic security measures (Italy, Determinazione ACN n. 379907/2025) | ID.AM-02, ID.RA-08, ID.IM-04, PR.AA-01/03/05, PR.DS-02/11, PR.PS-01/02/04, PR.IR-01, DE.CM-01 |
+| **NIS2 Implementing Regulation (EU) 2024/2690** — cloud, data centre, managed service providers and other digital providers | 3.2, 4.1, 4.2, 6.3, 6.6, 6.7, 6.8, 6.10, 9, 11.2, 11.3, 11.5, 11.7, 12.4 |
 | **ISO 22301:2019** — Business continuity management systems | 8.3.4, 8.3.5, 8.4.5, 8.5, 9.1 |
 | **BSI IT-Grundschutz** — Kompendium Edition 2023 (Germany) | CON.1.A1, CON.3.A5, OPS.1.1.3.A15, OPS.1.1.5.A3/A4, ORP.4.A10/A21, SYS.1.1.A19, SYS.1.5.A4/A17/A20, SYS.1.6.A17, SYS.1.8.A13 |
 | **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/6, op.exp.1/2/3/4/5/8/9, op.cont.2/3/4, op.pl.4, op.mon.3, mp.com.1/2, mp.info.6 |
@@ -240,6 +242,27 @@ The measures Italian NIS2 entities must apply under D.Lgs. 138/2024 art. 24, set
 | DE.CM-01 | Networks and services monitored | Metric server, services, NTP |
 
 The measures have no requirement for time synchronisation, capacity management or a log retention period, so those findings carry no ACN control.
+
+### NIS2 Implementing Regulation (EU) 2024/2690
+
+The technical and methodological requirements of the NIS2 risk-management measures (Directive (EU) 2022/2555, Art. 21(5)) for DNS service providers, TLD name registries, cloud computing, data centre and content delivery network providers, managed and managed security service providers, online marketplaces, search engines, social networks and trust service providers. For these entities it details what Art. 21 asks in general terms. Identifiers are the points of the Annex that carry a title; numbering and titles as in ENISA's technical implementation guidance (June 2025).
+
+| Point | Title | Where it appears |
+|---|---|---|
+| 3.2 | Monitoring and logging | Cluster log, task history, firewall audit logging, metric server, node time sync (3.2.6) |
+| 4.1 | Business continuity and disaster recovery plan | (declared) |
+| 4.2 | Backup and redundancy management | All backup checks, HA, replication, quorum, single-node |
+| 6.3 | Configuration management | Container isolation, patch consistency across nodes |
+| 6.6 | Security patch management | Patch, PVE and OS end of life, important updates, outdated machine type |
+| 6.7 | Network security | Cluster/node firewall, guest firewall |
+| 6.8 | Network segmentation | Guest firewall, duplicate MAC |
+| 6.10 | Vulnerability handling and disclosure | CVE checks |
+| 9 | Cryptography | Certificates, TLS |
+| 11.2 | Management of access rights | ACL, pools, container isolation |
+| 11.3 | Privileged accounts and system administration accounts | Privileged ACL, root@pam token privsep |
+| 11.5 | Identification | Account lifecycle, user and API token expiration |
+| 11.7 | Multi-factor authentication | TFA |
+| 12.4 | Asset inventory | (declared) |
 
 ### ISO 22301:2019 — Business continuity management systems
 

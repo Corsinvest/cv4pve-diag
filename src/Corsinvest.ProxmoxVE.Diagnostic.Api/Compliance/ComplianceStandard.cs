@@ -62,4 +62,7 @@ public enum ComplianceStandard
 
     /// <summary>BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany).</summary>
     BsiGrundschutz,
+
+    /// <summary>Commission Implementing Regulation (EU) 2024/2690 — NIS2 technical and methodological requirements.</summary>
+    Nis2Ir,
 }

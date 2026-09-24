@@ -203,6 +203,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.PR_PS_02,
             ComplianceControls.Acn.PR_PS_01,
             ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
+            ComplianceControls.Nis2Ir.C_6_6,
+            ComplianceControls.Nis2Ir.C_6_3,
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
@@ -275,6 +277,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                    ComplianceControls.Nis2Ir.C_4_2,
+                    ComplianceControls.Nis2Ir.C_3_2,
                 ]);
             if (!item.IsOnline) { continue; }
 
@@ -306,6 +310,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.ID_RA_01,
                 ComplianceControls.Acn.PR_PS_02,
                 ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
+                ComplianceControls.Nis2Ir.C_6_6,
             ];
             if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
@@ -358,6 +363,7 @@ public partial class DiagnosticEngine
                         ComplianceControls.Iso27017.CLD_9_5_2,
                         ComplianceControls.Acn.PR_PS_02,
                         ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
+                        ComplianceControls.Nis2Ir.C_6_6,
                     ]);
             }
             #endregion
@@ -499,6 +505,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                    ComplianceControls.Nis2Ir.C_4_2,
+                    ComplianceControls.Nis2Ir.C_3_2,
                 ]);
 
             // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
@@ -532,6 +540,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.ID_IM_04,
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.Nis2Ir.C_4_2,
                 ]);
             #endregion
 
@@ -602,6 +611,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.DE_CM_01,
                     ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                    ComplianceControls.Nis2Ir.C_3_2,
                 ]);
             #endregion
 
@@ -625,6 +635,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.PR_DS_02,
                 ComplianceControls.Acn.PR_DS_02,
                 ComplianceControls.BsiGrundschutz.CON_1_A1,
+                ComplianceControls.Nis2Ir.C_9,
             ];
             CreateResultPerItem(
                 items: fetch.Certificates,
@@ -715,6 +726,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.ID_IM_04,
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.Nis2Ir.C_4_2,
                 ]);
             #endregion
 
@@ -811,6 +823,7 @@ public partial class DiagnosticEngine
                         ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                         ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                         ComplianceControls.BsiGrundschutz.OPS_1_1_5_A4,
+                        ComplianceControls.Nis2Ir.C_3_2,
                     ]);
             }
 
@@ -863,6 +876,7 @@ public partial class DiagnosticEngine
                             ComplianceControls.Acn.DE_CM_01,
                             ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                             ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                            ComplianceControls.Nis2Ir.C_3_2,
                         ]);
                 }
             }
@@ -1149,6 +1163,7 @@ public partial class DiagnosticEngine
                         ComplianceControls.Acn.ID_IM_04,
                         ComplianceControls.Iso22301.C_8_3_5,
                         ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                        ComplianceControls.Nis2Ir.C_4_2,
                     ]);
             }
         }
@@ -1295,6 +1310,8 @@ public partial class DiagnosticEngine
         ComplianceControls.Iso22301.C_8_3_5,
         ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
         ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+        ComplianceControls.Nis2Ir.C_4_2,
+        ComplianceControls.Nis2Ir.C_3_2,
     ];
 
     private void CheckZfsChildren(string id,
