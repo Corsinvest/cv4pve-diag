@@ -16,7 +16,7 @@ The diagnostic logic is unchanged: same checks, same severity, same descriptions
 
 ## Single-node setups and compliance
 
-A single-node Proxmox VE host is, by design, **not compliant** with the resilience and business-continuity controls that most standards require (ISO 27001 A.5.30, NIS2 Art. 21(c), DORA Art. 12, …). With only one node:
+A single-node Proxmox VE host is, by design, **not compliant** with the resilience and business-continuity controls that most standards require (ISO 27001 A.5.30, NIS2 Art. 21(c), DORA Art. 11, …). With only one node:
 
 - There is **no HA failover** — if the host goes down, every guest goes down with it.
 - There is **no replication target** between nodes.
@@ -57,6 +57,9 @@ Accepted values match the [Standards supported](#standards-supported) list — t
 | `PciDss` | PCI DSS v4.0 |
 | `Gdpr` | GDPR (technical security of processing) |
 | `AgId` | AgID Misure minime ICT (Italian PA) |
+| `Acn` | ACN NIS2 basic security measures (Italy, Determinazione ACN 379907/2025) |
+| `Iso22301` | ISO 22301:2019 (business continuity) |
+| `BsiGrundschutz` | BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany) |
 | `Ens` | Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
 | `C5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) |
 | `Soc2` | AICPA Trust Services Criteria (SOC 2) |
@@ -114,13 +117,16 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | Standard | Coverage |
 |---|---|
 | **ISO/IEC 27001:2022** | Access, backup, crypto, logging, monitoring, vulnerability, network security |
-| **NIS2** (EU Directive 2022/2555) | Art. 21(c/d/e/f/h/i/j) |
+| **NIS2** (EU Directive 2022/2555) | Art. 21(c/e/f/h/i/j) |
 | **DORA** (EU Regulation 2022/2554) | Art. 9, 10, 11, 12 |
 | **PCI DSS v4.0** | 1.2, 4.2, 6.3, 7.2, 8.2, 8.4.2, 10.2 |
 | **GDPR** (EU Regulation 2016/679) | Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only |
 | **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
-| **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/4/5, op.exp.1/2/3/4/5/8/9, op.cont.2/3, op.mon.1, mp.com.1/2, mp.info.6, mp.s.1 |
-| **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) | IDM-01/02/03/08/09, KRY-01/03, KOS-01/03, OPS-09/10/16/18/21/23, BCM-01/03/04, PI-02 |
+| **ACN** — NIS2 basic security measures (Italy, Determinazione ACN n. 379907/2025) | ID.AM-02, ID.RA-08, ID.IM-04, PR.AA-01/03/05, PR.DS-02/11, PR.PS-01/02/04, PR.IR-01, DE.CM-01 |
+| **ISO 22301:2019** — Business continuity management systems | 8.3.4, 8.3.5, 8.4.5, 8.5, 9.1 |
+| **BSI IT-Grundschutz** — Kompendium Edition 2023 (Germany) | CON.1.A1, CON.3.A5, OPS.1.1.3.A15, OPS.1.1.5.A3/A4, ORP.4.A10/A21, SYS.1.1.A19, SYS.1.5.A4/A17/A20, SYS.1.6.A17, SYS.1.8.A13 |
+| **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/6, op.exp.1/2/3/4/5/8/9, op.cont.2/3/4, op.pl.4, op.mon.3, mp.com.1/2, mp.info.6 |
+| **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) | IDM-01/02/03/06/09, CRY-01/02, COS-01, OPS-06/10/13/18/23, BCM-03/04 |
 | **SOC 2** — AICPA Trust Services Criteria (2017 + 2022) | CC6.1/2/3/6/7/8, CC7.1/2/3, CC8.1, A1.1/2/3, C1.1/2 |
 | **NIST SP 800-53 rev.5** — Moderate baseline subset | AC-2/3/6, AU-2/6/12, CM-2/6/7, CP-9/10, IA-2/5, SC-7/8/13, SI-2/4/5 |
 | **ISO/IEC 27017:2015** | CLD.6.3.1, CLD.8.1.5, CLD.9.5.1/2, CLD.12.1.5, CLD.12.4.5, CLD.13.1.4 |
@@ -156,11 +162,10 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | Article | Title | Where it appears |
 |---|---|---|
 | Art. 21(c) | Backup management and disaster recovery | Backup, HA, replication, single-node, storage capacity |
-| Art. 21(d) | Identity / access lifecycle management | Lifecycle, tokens |
 | Art. 21(e) | Vulnerability handling and disclosure | Patch, CVE, firewall, OS EOL, CPU security flags |
 | Art. 21(f) | Effectiveness assessment (logging / monitoring) | Cluster log, task failures, NTP, services, metric server |
 | Art. 21(h) | Cryptography and encryption | Certificates |
-| Art. 21(i) | Access control policies and asset management | ACL, container isolation, pools |
+| Art. 21(i) | Access control policies and asset management | ACL, container isolation, pools, account lifecycle, tokens |
 | Art. 21(j) | Multi-factor authentication | TFA (all variants) |
 
 ### DORA
@@ -169,8 +174,8 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 |---|---|---|
 | Art. 9 | ICT security policies | TFA |
 | Art. 10 | Detection of anomalous activities | Cluster log, task failures, metric server |
-| Art. 11 | Backup policies and recovery procedures | Backup, storage backup config |
-| Art. 12 | ICT business continuity policy | HA, replication, single-node, storage availability, replication errors |
+| Art. 11 | Response and recovery (ICT business continuity) | HA, replication, single-node, storage availability, replication errors, backup |
+| Art. 12 | Backup policies, restoration and recovery procedures | Backup, storage backup config, disk cache integrity |
 
 ### PCI DSS v4.0
 
@@ -214,56 +219,106 @@ Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation clu
 | ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
 | ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
 
+### ACN — NIS2 basic security measures (Italy)
+
+The measures Italian NIS2 entities must apply under D.Lgs. 138/2024 art. 24, set by **Determinazione ACN n. 379907 of 19 December 2025** (in force from 15 January 2026, replacing n. 164179/2025). Allegato 1 applies to *soggetti importanti*, Allegato 2 to *soggetti essenziali*; Allegato 2 contains every requirement of Allegato 1 plus further ones. Identifiers are the Framework Nazionale / NIST CSF 2.0 subcategory codes the annexes use; each measure has numbered requirements (*punti*), which the report does not split.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| ID.AM-02 | Inventory of software, services and systems | (declared) |
+| ID.RA-08 | Vulnerability disclosures received, analysed and remediated | CVE checks |
+| ID.IM-04 | Business continuity and disaster recovery plans (backups, redundancy) | HA, replication, quorum, single-node, storage availability |
+| PR.AA-01 | Identity and credential management | Account lifecycle, user and API token expiration |
+| PR.AA-03 | Authentication, multi-factor for relevant systems | TFA (root@pam, admins, group, realm) |
+| PR.AA-05 | Least privilege and separate privileged accounts | ACL, container privileged, root@pam token privsep |
+| PR.DS-02 | Protection of data in transit (encryption) | Certificates (expired / expiring), TLS |
+| PR.DS-11 | Backups created, protected, maintained and tested | All backup checks, backup storage availability, disk cache integrity |
+| PR.PS-01 | Secure configuration baselines (essential entities only) | Container isolation, patch consistency across nodes |
+| PR.PS-02 | Supported software and timely security updates | Patch, PVE and OS end of life, CVE, important updates, outdated machine type |
+| PR.PS-04 | Logs generated and kept for continuous monitoring | Cluster log, task history, firewall audit logging |
+| PR.IR-01 | Networks protected from unauthorised access (firewalls) | Cluster/node firewall, guest firewall, duplicate MAC |
+| DE.CM-01 | Networks and services monitored | Metric server, services, NTP |
+
+The measures have no requirement for time synchronisation, capacity management or a log retention period, so those findings carry no ACN control.
+
+### ISO 22301:2019 — Business continuity management systems
+
+Only the clauses a cluster configuration can give evidence for. Clause numbers and titles come from the published table of contents; the requirement text is not public. The standard is under revision (ISO/CD 22301).
+
+| Clause | Title | Where it appears |
+|---|---|---|
+| 8.3.4 | Resource requirements | Storage usage, thin provisioning |
+| 8.3.5 | Implementation of solutions | Backup jobs and coverage, HA, replication, quorum, single-node |
+| 8.4.5 | Recovery | (declared) |
+| 8.5 | Exercise programme | (declared — restore and failover tests are not visible from the API) |
+| 9.1 | Monitoring, measurement, analysis and evaluation | (declared) |
+
+### BSI IT-Grundschutz — Kompendium Edition 2023 (Germany)
+
+Requirements (*Anforderungen*) of the IT-Grundschutz-Kompendium, Edition 2023 — the last edition; it is superseded by Grundschutz++ (published October 2026, certifiable from 2027) and remains certifiable until November 2031. Titles are the German ones of the Kompendium; the letter is the protection level: (B) Basis, (S) Standard, (H) elevated protection needs.
+
+| Requirement | Title | Where it appears |
+|---|---|---|
+| CON.1.A1 | Auswahl geeigneter kryptografischer Verfahren (B) | Certificates, TLS |
+| CON.3.A5 | Regelmäßige Datensicherung (B) | All backup checks |
+| OPS.1.1.3.A15 | Regelmäßige Aktualisierung von IT-Systemen und Software (B) | Patch, PVE and OS end of life, CVE, important updates |
+| OPS.1.1.5.A3 | Konfiguration der Protokollierung auf System- und Netzebene (B) | Cluster log, task history, firewall audit logging |
+| OPS.1.1.5.A4 | Zeitsynchronisation der IT-Systeme (B) | Node time offset (WN0014) |
+| ORP.4.A10 | Schutz von Benutzendenkennungen mit weitreichenden Berechtigungen (S) | ACL, root@pam token privsep |
+| ORP.4.A21 | Mehr-Faktor-Authentisierung (H) | TFA |
+| SYS.1.1.A19 | Einrichtung lokaler Paketfilter (S) | Cluster/node firewall, guest firewall |
+| SYS.1.5.A4 | Sichere Konfiguration eines Netzes für virtuelle Infrastrukturen (B) | Guest firewall, duplicate MAC |
+| SYS.1.5.A17 | Überwachung des Betriebszustands und der Konfiguration der virtuellen Infrastruktur (S) | Metric server, services, monitoring |
+| SYS.1.5.A20 | Verwendung von hochverfügbaren Architekturen (H) | HA, replication, quorum, single-node |
+| SYS.1.6.A17 | Ausführung von Containern ohne Privilegien (S) | Privileged containers, container isolation |
+| SYS.1.8.A13 | Überwachung und Verwaltung von Speicherlösungen (S) | Storage usage, thin provisioning |
+
 ### ENS — Esquema Nacional de Seguridad (Spanish Public Administration baseline, Real Decreto 311/2022)
 
-Subset of ENS Annex II controls verifiable on a Proxmox VE cluster. Identifiers follow the official taxonomy: `op.*` operational framework, `mp.*` protection measures.
+Subset of ENS Annex II measures verifiable on a Proxmox VE cluster. Identifiers and titles follow Annex II of RD 311/2022: `op.*` operational framework, `mp.*` protection measures.
 
 | Control | Title | Where it appears |
 |---|---|---|
 | op.acc.1 | Identification | Account lifecycle, user expiration, API token expiration |
-| op.acc.2 | Access rights | ACL, container privileged, root@pam token privsep |
-| op.acc.4 | Local access process | TFA (root@pam, admins, group, realm) |
-| op.acc.5 | Remote access | (declared, available for future remote-admin checks) |
+| op.acc.2 | Access requirements | ACL, container privileged, root@pam token privsep |
+| op.acc.6 | Authentication mechanism (organisation users) | TFA (root@pam, admins, group, realm) |
 | op.exp.1 | Inventory of assets | (declared, supports future inventory checks) |
 | op.exp.2 | Security configuration | Container privileged, raw lxc config, hardening |
 | op.exp.3 | Security configuration management | Patch consistency across nodes, version/kernel mismatch |
-| op.exp.4 | Maintenance and software updates | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| op.exp.4 | Maintenance and security updates | Patch, PVE EOL, CVE, important updates, outdated machine type |
 | op.exp.5 | Change management | (declared) |
-| op.exp.8 | Activity log recording | Cluster log, task history, firewall audit logging, metric server |
-| op.exp.9 | Incident management records | (declared) |
+| op.exp.8 | Activity logging | Cluster log, task history, firewall audit logging, metric server |
+| op.exp.9 | Incident management logging | (declared) |
 | op.cont.2 | Continuity plan | HA, replication, single-node, HA guest checks |
-| op.cont.3 | Periodic continuity tests | (declared) |
-| op.mon.1 | System activity monitoring | Metric server (IC0018/IC0019) |
-| mp.com.1 | Secure communications perimeter | Cluster/node firewall, guest firewall, malware-defence baseline |
-| mp.com.2 | Protection of confidentiality in communications | Certificates (expired / expiring), TLS |
-| mp.info.6 | Information backup | All backup checks, backup storage availability, disk cache integrity |
-| mp.s.1 | Service protection | HA, single-node, container isolation |
+| op.cont.3 | Periodic tests | (declared) |
+| op.cont.4 | Alternative means | HA, replication, quorum, redundant network and storage |
+| op.pl.4 | Capacity sizing and management | Storage usage, thin provisioning |
+| op.mon.3 | Surveillance | Metric server, task failures, services, storage availability |
+| mp.com.1 | Secure perimeter | Cluster/node firewall, guest firewall, malware-defence baseline |
+| mp.com.2 | Protection of confidentiality | Certificates (expired / expiring), TLS |
+| mp.info.6 | Backup copies | All backup checks, backup storage availability, disk cache integrity |
 
 ### C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020)
 
-Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE cluster.
+Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE cluster. Identifiers and titles as in the English edition (CRY and COS are KRY and KOS in the German one).
 
 | Control | Title | Where it appears |
 |---|---|---|
-| IDM-01 | Policy for system and data access | (declared, supports future ACL-policy checks) |
-| IDM-02 | User registration | (declared) |
-| IDM-03 | Account lifecycle | (declared) |
-| IDM-08 | Authentication mechanisms | TFA (root@pam, admins, group, realm) |
-| IDM-09 | Authorisation mechanisms | ACL, container privileged, root@pam token privsep |
-| KRY-01 | Policy for use of cryptography | (declared) |
-| KRY-03 | Encryption of data in transit | Certificates (expired / expiring), TLS |
-| KOS-01 | Technical safeguards for cloud network | Cluster/node firewall, guest firewall, malware-defence baseline |
-| KOS-03 | Logging of communication events | (declared) |
-| OPS-09 | Audit logging | Cluster log, task history, firewall audit logging, metric server |
-| OPS-10 | Monitoring of audit logs | Metric server (IC0018/IC0019) |
-| OPS-16 | Vulnerability handling | (declared, complements OPS-18) |
-| OPS-18 | Patch management | Patch, PVE EOL, CVE, important updates, outdated machine type |
-| OPS-21 | Backup of customer data | All backup checks, backup storage availability, disk cache integrity |
-| OPS-23 | Storage of backups | (declared) |
-| BCM-01 | Business continuity policy | (declared) |
-| BCM-03 | Redundancy of system components | HA, replication, single-node, HA guest checks |
-| BCM-04 | Periodic testing of continuity | (declared) |
-| PI-02 | Hardening of virtualisation infrastructure | Container isolation, single-node, service protection |
+| IDM-01 | Policy for user accounts and access rights | (declared, supports future ACL-policy checks) |
+| IDM-02 | Granting and change of user accounts and access rights | (declared) |
+| IDM-03 | Locking and withdrawal of user accounts | (declared) |
+| IDM-06 | Privileged access rights | ACL, container privileged, root@pam token privsep |
+| IDM-09 | Authentication mechanisms | TFA (root@pam, admins, group, realm) |
+| CRY-01 | Policy for the use of encryption procedures and key management | (declared) |
+| CRY-02 | Encryption of data for transmission (transport encryption) | Certificates (expired / expiring), TLS |
+| COS-01 | Technical safeguards | Cluster/node firewall, guest firewall, malware-defence baseline, duplicate MAC |
+| OPS-06 | Data Backup and Recovery – Concept | All backup checks, backup storage availability, disk cache integrity |
+| OPS-10 | Logging and Monitoring – Concept | Metric server (IC0018/IC0019) |
+| OPS-13 | Logging and Monitoring – Identification of Events | Cluster log, task history, firewall audit logging, services |
+| OPS-18 | Managing Vulnerabilities, Malfunctions and Errors – Concept | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| OPS-23 | Managing Vulnerabilities, Malfunctions and Errors – System Hardening | Container isolation, patch consistency across nodes |
+| BCM-03 | Planning business continuity | HA, replication, single-node, HA guest checks |
+| BCM-04 | Verification, updating and testing of the business continuity | (declared) |
 
 ### SOC 2 — AICPA Trust Services Criteria (2017 + 2022 revision)
 

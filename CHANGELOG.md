@@ -9,6 +9,120 @@
 - New `--fast` and `--full` options, as in cv4pve-report, on both `execute` and `create-settings`. `--fast` skips the slowest reads (backup content, snapshots, LVM-thin metadata) for a quick scan; `--full` turns on every optional check (disk S.M.A.R.T. details, ZFS pool details, CVE lookup, Ok results) for audits. Without options nothing changes. A settings file passed with `--settings-file` always takes precedence.
 - `docs/settings.md` wrongly suggested `create-settings --output=settings.json`: the command always writes `settings.json` in the current folder.
 
+### New checks
+
+**Network:**
+- `WN0046` — a VM or container uses a VLAN that its bridge does not let out of the node, so it cannot reach the rest of the network on that VLAN.
+- `WN0047` — a VM or container uses a bridge that does not exist on another node: moving it there (migration or HA) would fail.
+
+### Compliance
+
+Three new standards, bringing the total to 17. Use them with `--compliance=Acn`, `--compliance=Iso22301` or `--compliance=BsiGrundschutz`:
+- **ACN (Italy)** — the NIS2 security measures Italian essential and important entities must apply (Determinazione ACN n. 379907 of 19 December 2025, in force from 15 January 2026).
+- **ISO 22301:2019** — business continuity: backup, HA, replication and capacity findings.
+- **BSI IT-Grundschutz** (Germany, Kompendium Edition 2023) — requirements for virtualization, containers, storage, backup, updates, logging, time synchronisation and access.
+
+See [docs/compliance.md](docs/compliance.md) for the controls and where they appear.
+
+### Fixes
+
+- `WN0037` (VLAN tag on a bridge that is not VLAN-aware) has been removed: it was a false alarm, that configuration works. Ignore rules for `WN0037` can be deleted.
+- `WN0010` (network card not active) no longer reports spare ports that are not used by any bridge or bond and have no IP address: being down is normal for them.
+- The analysis no longer stops halfway when a storage, a node or a guest does not answer (for example a slow backup server): the missing part is reported as `WG0042` and the rest of the report is produced.
+- When the backups on a storage cannot be read, the backup checks (`WG0019`, `WG0020`) are skipped for the guests of that node instead of reporting "No recent backups found!".
+- Options Proxmox VE leaves out of a configuration when they hold their default (memory, swap, SCSI controller, hotplug, OS type, …) are now read with that default instead of as empty or zero.
+- `WG0003`, `WG0004` and `WG0014` (guest agent) now recognise an agent enabled as `enabled=1`.
+- A cloud-init drive on a directory, NFS or CIFS storage is no longer reported as a mounted CD-ROM (`WG0005`).
+- A disabled two-factor entry no longer counts as two-factor authentication for the user.
+- `WG0001` (OS type not set) also reports VMs left as "Other", which is what an unset OS type means for Proxmox VE.
+- `WG0016` (start on boot not enabled) no longer reports containers that do have start on boot enabled. The same problem could affect `WG0015` (locked) and `IG0011` (protection) on containers.
+- `CG0006` and `WG0041` now see the raw `lxc.*` settings of a container: a privileged container with AppArmor disabled (`lxc.apparmor.profile: unconfined`) was reported as safe.
+- `WN0013` now reports when a node must be rebooted to run a newer installed kernel. Before, it never did.
+- `CN0002` (package versions differ) no longer raises a Critical alarm when a node only keeps some old kernels installed; the message now lists the packages that really differ.
+- `WN0005` (hosts files differ) no longer reports files that differ only in comments or spaces.
+- VMs without a CPU type set use the old `kvm64` model: `IG0004` and `WG0037` now check them too.
+- `WG0012` (passthrough) no longer reports SPICE USB redirection, which does not block migration.
+- `IG0002` now reports IDE and SATA disks even when the SCSI controller is VirtIO.
+- README: the example output is now real output of the current version (it showed wrong codes, such as `WS0001` for orphaned images and `WS0003` for storage usage, and results the tool cannot produce). The number of findings tagged with compliance controls is corrected to 100+.
+- An ignore file written as in the documentation (`"Context": "Qemu"`, `"Gravity": "Warning"`) made the tool stop before starting; names and numbers are both accepted now, as are comments and trailing commas. An invalid pattern is reported at start, not after the whole analysis.
+- Ignored findings are now left out of the report, as documented; `--ignored-issues-show` keeps them, marked in a column. `create-ignored-issues` writes a real example rule instead of an empty one that ignored everything.
+- With `--fast` every guest got "'cv4pve-autosnap' not configured": snapshots are not read in that profile. The snapshot checks are now skipped when snapshots were not read.
+- A settings file that sets only part of a section no longer resets the rest of it (for example setting only the VM CPU threshold changed the VM health score thresholds). `"TimeFrame": "Week"` and the other names are accepted, and `create-settings` writes them.
+- The analysis no longer stops when the NVD CVE service is slow, or when a disk (S.M.A.R.T.) or a ZFS pool cannot be read with `--full`.
+- With `--compliance`, the findings saying the analysis is incomplete (API errors, missing permissions) are kept, so an audit report cannot look clean when data was not read.
+- JSON output writes Context and Gravity as names; HTML and Markdown output escape the text.
+- `--fast` and `--full` together are now an error instead of silently using `--fast`.
+- `CC0002` could never fire. It now reports a node whose loss leaves the cluster without quorum — for example a node holding 2 of 3 votes, or either node of a two-node cluster without a QDevice.
+- The API token checks (`WC0006`, `IC0006`, `IC0021`, `WC0015`) never saw any token and always reported Ok. They now read the tokens.
+- When the list of users, backup jobs, HA resources, replication jobs, metric servers or ACLs cannot be read, the checks that depend on it are skipped (the error is reported as `WG0042`) instead of reporting "nothing configured" — for example "root@pam has no TFA" or "no backup job".
+- `WG0017` (guest not backed up) now honours the job's excluded guests and its node restriction, and no longer reads each pool again for every guest.
+- `IC0004` could never find an empty pool.
+- `WN0001` (node firewall disabled) reported nodes whose firewall is on by default. `WC0004` now checks the inbound policy only, with PVE's default (DROP) when unset; REJECT counts as strict too. `WC0008` reports only rules that accept traffic from/to any address, including `::/0`, one finding per rule.
+- Failed backup tasks: tasks ending with warnings no longer count as failures, and the message names the guest and the time. The cluster task failure rate (`IC0016`) is checked also when no backup job exists.
+- `WG0043` (HA guest without replication) is reported only for guests with disks on local storage.
+- A permission granted only on the backup storage no longer switches off every backup check.
+- Disks and backups of a guest whose configuration could not be read are no longer reported as orphaned.
+- Container bind mounts and device mounts are no longer reported as "disk disabled for backup": vzdump never backs them up.
+- Messages about containers say "CT" instead of "VM".
+- CVE checks (`CN0015`, `WN0042`) reported CVEs already fixed in the installed version, or belonging to another version branch: every vulnerable range listed by NVD is now read, with its start and whether its end is the fixed version. If the installed version cannot be read, no CVE is reported instead of all of them.
+- `CN0004` (replication job with errors) could never fire; it now reports failing replication jobs.
+- `WN0011` no longer reports services that are not installed on the node.
+- `WN0036` (memory overcommit) no longer counts templates, which never run.
+- ZFS hot spares (`AVAIL`, `INUSE`) are no longer reported as failed vdevs (`CN0012`).
+- Disks whose S.M.A.R.T. status cannot be read (behind a RAID controller or USB bridge) are no longer reported as failing; the message shows the status value.
+- Nodes without swap no longer get a "SWAP usage NaN%" result, and the health score no longer shows "NaN".
+- VMs with CPU type `max` are treated like `host`: they cannot live-migrate between different CPUs (`WG0006`, `CG0004`) and already get the CPU's security features (`WG0037`).
+- `WG0004` (guest agent not running) is reported only when Proxmox says the agent does not answer. Other errors, such as a missing permission, are shown as "Unable to read" instead.
+- HA guests on local storage (`CG0005`) are no longer reported when a replication job keeps a copy on the other nodes, and containers are now checked too.
+- A VM hibernated on purpose is no longer reported as "never resumed properly" (`CG0001`).
+- Tasks that finished with warnings are no longer counted as failed tasks of the guest (`CG0003`).
+- Pending changes that remove an option are now counted (`IG0010`).
+- `IG0001` (SCSI controller) is checked only on VMs that have SCSI disks.
+- `IG0012` also reports machine types without a version, such as `q35`, which change on upgrade like an unset one. Machine types with options (`viommu`) are now checked by `IG0016`, and its message shows the exact name of the latest version.
+- Duplicate MAC addresses (`WG0033`) are also found between VMs and containers and between two interfaces of the same guest.
+- A usage threshold with only Warning or only Critical set is now checked, instead of being skipped.
+- Orphaned volumes (`WS0002`) now include container volumes, which were never checked. A copy of a disk left on another node, after a migration for example, is now reported too, while replicas and the RAM state of snapshots are not.
+- Orphaned backups (`WS0003`) are reported once per deleted guest and storage, with the total size, instead of once per backup file.
+- `WS0002` and `WS0003` are skipped when the account cannot see every guest. Otherwise the disks and backups of hidden guests would be reported as orphaned.
+- `WC0002` (backup job without retention) now also reads the retention of the target storage, which the job uses when it has none of its own. `keep-all` and `maxfiles=0` count as no retention.
+- A disabled storage (`WS0008`) was never reported, because Proxmox leaves it out of the resource list. It is now read from the storage configuration and reported when a backup job or a guest still uses it.
+- A shared storage that is down on only one node is now reported (`CS0001`).
+- `WS0007` no longer reports disabled backup jobs, or nodes a job does not run on.
+- `WS0005` no longer reports a shared storage restricted to one node on purpose.
+- Thin provisioning (`WS0004`) compares each node's pool with the disks of that node's guests, instead of adding up the guests of every node.
+- `IN0004` reported the cluster CA certificate as self-signed, which it always is. It now reports what matters: the web interface still uses the certificate generated by Proxmox VE (not trusted by browsers), or a custom one that is self-signed.
+- `WN0028` (node IOWait) used the CPU thresholds (70% / 85%), far above any real storage bottleneck, so it never fired. It has its own setting, `Node.IoWait`, with Warning at 10% and Critical at 25%.
+- Old backups (`WG0019`) no longer include protected backups, which are kept on purpose and never pruned.
+- `WG0038` (nesting without keyctl) described keyctl as a security measure, but it only lets Docker and systemd work inside unprivileged containers. It is replaced by `IG0017` (Info), checked on unprivileged containers only. Ignore rules for `WG0038` no longer match anything.
+- `WG0037` (CPU security flags) asked for Intel flags on AMD nodes too. It now asks for the flags of the node's CPU vendor, as listed in the Proxmox VE documentation (AMD: `ibpb`, `virt-ssbd`), and no longer asks for flags already included in the CPU model (`-IBRS`, `-IBPB`).
+- Numbers in the messages (`80.9%`, `2.61 TB`) no longer depend on the regional settings of the machine running the analysis. The same cluster gave "80,9%" on one PC and "80.9%" on another, so ignore rules written on one did not match on the other.
+- Node clock checks (`WN0014`, `WN0045`) compared times read at different moments: on a slow cluster, or with `--full`, the wait for the other reads was counted as clock drift. The clocks are now compared at the moment each node answers.
+- `docs/checks.md` had `WG0023` and `WG0024` swapped; `docs/settings.md` described `Storage.Rrd` as used by the storage check, which reads the current usage.
+- Compliance references corrected against the official texts, so audit reports cite the right controls:
+  - DORA: the titles of Art. 11 (response and recovery) and Art. 12 (backup) were swapped. High availability, replication and storage availability findings now cite Art. 11.
+  - NIS2: Art. 21(d) is supply-chain security; account findings now cite Art. 21(i).
+  - ENS: mp.s.1 is e-mail protection and op.mon.1 is intrusion detection. Findings now cite op.cont.4 (alternative means), op.pl.4 (capacity), op.mon.3 (surveillance) and op.acc.6 (authentication).
+  - C5:2020: several identifiers pointed to other criteria. Backup is OPS-06, logging OPS-13, hardening OPS-23, authentication IDM-09, privileged access IDM-06. The English identifiers CRY and COS replace KRY and KOS.
+- Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
+
+
+## [2.5.0] — 2026-09-22
+
+### New checks
+
+**Cluster:**
+- `WC0020` — the account used for the analysis cannot see part of the cluster. Proxmox VE hides what the account is not allowed to see without raising any error, so the report could look complete when it is not. The finding says what was left out. (#52)
+
+### Fixes
+
+- Backup checks (`WG0019`, `WG0020`, `WS0003`) no longer report "No recent backups found!" on guests that are backed up when the account lacks the rights to see backup files (e.g. `PVEAuditor`). They are now skipped and `WC0020` explains why. (#52)
+- Pressure checks (`WN0031`, `WN0032`, `WN0033`, `WG0029`, `WG0030`, `WG0031`) showed values 100 times too high (e.g. 166.9%), producing false Critical alarms. Values are now correct; thresholds are unchanged.
+- `IG0016` (old machine type) was not running: every node reported an API error (`WG0042`) instead. It now works.
+
+### Documentation
+
+- README: corrected the permissions needed to check backups — `Datastore.Audit` alone is not enough.
+
 
 ## [2.4.0] — 2026-06-01
 

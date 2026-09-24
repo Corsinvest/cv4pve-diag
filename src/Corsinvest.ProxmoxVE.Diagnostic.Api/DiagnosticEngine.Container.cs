@@ -17,7 +17,7 @@ public partial class DiagnosticEngine
                                       VmConfigLxc Config,
                                       VmFirewallOptions? Firewall,
                                       IReadOnlyList<KeyValue> Pending,
-                                      IReadOnlyList<VmSnapshot> Snapshots);
+                                      IReadOnlyList<VmSnapshot>? Snapshots);
 
     private async Task<ContainerFetchData> FetchContainerDataAsync(ClusterResource item)
     {
@@ -26,8 +26,8 @@ public partial class DiagnosticEngine
         var firewallTask = vmApi.Firewall.Options.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Lxc, $"firewall options of CT {item.VmId}");
         var pendingTask = vmApi.Pending.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"pending changes of CT {item.VmId}");
         var snapshotTask = settings.Snapshot.Enabled
-                            ? vmApi.Snapshot.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"snapshots of CT {item.VmId}")
-                            : Task.FromResult<IReadOnlyList<VmSnapshot>>([]);
+                            ? vmApi.Snapshot.GetAsync().ToSafeEnumOrNull(_result, id, DiagnosticResultContext.Lxc, $"snapshots of CT {item.VmId}")
+                            : Task.FromResult<IReadOnlyList<VmSnapshot>?>(null);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
         return new ContainerFetchData(item, (VmConfigLxc)_vmConfigs[item.VmId],
                                       firewallTask.Result, pendingTask.Result, snapshotTask.Result);
@@ -62,9 +62,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Gdpr.Art_5_1_f,
                     ComplianceControls.AgId.ABSC_5_1,
                     ComplianceControls.Ens.OP_ACC_2,
-                    ComplianceControls.Ens.MP_S_1,
-                    ComplianceControls.C5.IDM_09,
-                    ComplianceControls.C5.PI_02,
+                    ComplianceControls.C5.IDM_06,
+                    ComplianceControls.C5.OPS_23,
                     ComplianceControls.Soc2.CC6_3,
                     ComplianceControls.Soc2.A1_1,
                     ComplianceControls.Nist80053.AC_6,
@@ -72,25 +71,29 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_6,
                     ComplianceControls.NistCsf.PR_AA_05,
                     ComplianceControls.NistCsf.ID_AM_02,
+                    ComplianceControls.Acn.PR_AA_05,
+                    ComplianceControls.Acn.PR_PS_01,
+                    ComplianceControls.BsiGrundschutz.ORP_4_A10,
+                    ComplianceControls.BsiGrundschutz.SYS_1_6_A17,
                 ];
 
                 #region Nesting without keyctl
-                // nesting=1 allows Docker/nested containers inside LXC.
-                // keyctl=1 is required alongside nesting for proper isolation of kernel keyrings
-                // between nested containers. Without keyctl the inner containers share the host
-                // keyring and may leak secrets or fail cryptographic operations.
-                if (lxc.HasNesting)
+                // nesting=1 is what Docker and nested containers need. In an unprivileged container
+                // they usually also need keyctl=1, which allows the keyctl() system call (PVE docs:
+                // "for unprivileged containers only"); without it Docker or systemd services may fail.
+                // It is not an isolation measure. Replaces WG0038, which reported it as a security gap.
+                if (lxc.HasNesting && lxc.Unprivileged)
                 {
                     CreateResult(
                         isOk: lxc.HasKeyctl,
                         id: id,
-                        errorCode: "WG0038",
+                        errorCode: "IG0017",
                         subContext: "Features",
                         context: DiagnosticResultContext.Lxc,
-                        gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: "Container has nesting=1 but keyctl=1 is not enabled — kernel keyring isolation may be incomplete",
-                        descriptionOk: "Container has nesting=1 with keyctl=1 — kernel keyring isolation is in place",
-                        compliance: containerIsolationControls);
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: "Container has nesting=1 without keyctl=1 — Docker or systemd inside the container may not work",
+                        descriptionOk: "Container has nesting=1 with keyctl=1",
+                        compliance: []);
                 }
                 #endregion
 
@@ -109,18 +112,14 @@ public partial class DiagnosticEngine
 
                 if (!lxc.Unprivileged)
                 {
-                    // Privileged container with AppArmor explicitly disabled via features=apparmor=0
-                    // or via raw lxc.apparmor.profile=unconfined — no kernel confinement at all
-                    var appArmorDisabledViaFeatures = (lxc.Features ?? "")
-                        .Split(',')
-                        .Any(p => p.Trim().Equals("apparmor=0", StringComparison.OrdinalIgnoreCase));
-
-                    var appArmorDisabledViaRaw = lxcConfig.ExtensionData?.Any(kv =>
+                    // Privileged container with AppArmor disabled via raw lxc.apparmor.profile=unconfined
+                    // — no kernel confinement at all. pve-container has no feature flag for AppArmor.
+                    var appArmorDisabled = RawLxcEntries(lxcConfig).Any(kv =>
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
-                        && kv.Value?.ToString()?.Equals("unconfined", StringComparison.OrdinalIgnoreCase) is true) is true;
+                        && kv.Value.Equals("unconfined", StringComparison.OrdinalIgnoreCase));
 
                     CreateResult(
-                        isOk: !(appArmorDisabledViaFeatures || appArmorDisabledViaRaw),
+                        isOk: !appArmorDisabled,
                         id: id,
                         errorCode: "CG0006",
                         subContext: "Security",
@@ -175,9 +174,7 @@ public partial class DiagnosticEngine
 
                 #region Raw LXC config entries
                 // lxc.X entries bypass PVE abstractions and may introduce unsafe configurations
-                var rawLxcKeys = lxcConfig.ExtensionData?.Keys
-                    .Where(k => k.StartsWith("lxc.", StringComparison.OrdinalIgnoreCase))
-                    .ToList() ?? [];
+                var rawLxcKeys = RawLxcEntries(lxcConfig).Select(kv => kv.Key).Distinct().ToList();
                 CreateResult(
                     isOk: rawLxcKeys.Count == 0,
                     id: id,
@@ -205,4 +202,16 @@ public partial class DiagnosticEngine
                                      _backupStoragesByNode.GetValueOrDefault(item.Node, []));
         }
     }
+
+    /// <summary>
+    /// Raw <c>lxc.*</c> entries of a container config. The API returns them as a list of
+    /// [key, value] pairs under <c>lxc</c>, which the SDK exposes as <see cref="VmConfigLxc.Lxc"/>;
+    /// top-level <c>lxc.*</c> keys are read too, should any end up in the extension data.
+    /// </summary>
+    internal static IReadOnlyList<(string Key, string Value)> RawLxcEntries(VmConfigLxc config)
+        => [.. (config.Lxc ?? []).Where(p => p is { Length: > 0 } && !string.IsNullOrWhiteSpace(p[0]))
+                                 .Select(p => (Key: p[0].Trim(), Value: p.Length > 1 ? (p[1] ?? "").Trim() : ""))
+                                 .Concat(config.ExtensionData?.Where(kv => kv.Key.StartsWith("lxc.", StringComparison.OrdinalIgnoreCase))
+                                                              .Select(kv => (kv.Key, Value: kv.Value?.ToString()?.Trim() ?? ""))
+                                         ?? [])];
 }

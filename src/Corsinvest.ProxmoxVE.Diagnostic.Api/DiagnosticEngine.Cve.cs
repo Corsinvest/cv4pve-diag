@@ -19,8 +19,37 @@ public partial class DiagnosticEngine
                                string Description,
                                double? CvssScore,
                                string? Severity,
-                               string? VersionStart,
-                               string? VersionEnd);
+                               IReadOnlyList<CveVersionRange> Ranges);
+
+    /// <summary>
+    /// One vulnerable range of a CVE for Proxmox VE, as NVD describes it in a cpeMatch: optional
+    /// start (including or excluding) and end (including or excluding), or a single exact version.
+    /// </summary>
+    internal sealed record CveVersionRange(string? StartIncluding = null,
+                                           string? StartExcluding = null,
+                                           string? EndIncluding = null,
+                                           string? EndExcluding = null,
+                                           string? Exact = null)
+    {
+        /// <summary>True when <paramref name="version"/> falls in this range.</summary>
+        public bool Contains(string version)
+            => Exact != null
+                ? DebianVersion.Compare(version, Exact) == 0
+                : (StartIncluding == null || DebianVersion.Compare(version, StartIncluding) >= 0)
+                  && (StartExcluding == null || DebianVersion.Compare(version, StartExcluding) > 0)
+                  && (EndIncluding == null || DebianVersion.Compare(version, EndIncluding) <= 0)
+                  && (EndExcluding == null || DebianVersion.Compare(version, EndExcluding) < 0);
+
+        /// <summary>A range with no bound says nothing about which versions are affected.</summary>
+        public bool IsBounded => Exact != null || EndIncluding != null || EndExcluding != null;
+    }
+
+    /// <summary>
+    /// True when the installed version falls in any vulnerable range. An unknown installed version
+    /// (pve-manager missing from the package list) matches nothing: every CVE would apply otherwise.
+    /// </summary>
+    internal static bool CveApplies(IReadOnlyList<CveVersionRange> ranges, string? installedVersion)
+        => !string.IsNullOrWhiteSpace(installedVersion) && ranges.Any(r => r.Contains(installedVersion));
 
     private List<NvdCveEntry>? _nvdCveData;
 
@@ -61,21 +90,23 @@ public partial class DiagnosticEngine
                 // emit an Info finding with no actionable information.
                 if (score is null || score < settings.Cve.MinCvssScore) { continue; }
 
-                var (versionStart, versionEnd) = ExtractProxmoxVersionRange(cve);
-
-                // Without an upper version bound we cannot tell whether the installed version is affected.
+                // Without a bounded range we cannot tell whether the installed version is affected.
                 // This also drops CVEs where the CPE only references other products.
-                if (string.IsNullOrWhiteSpace(versionEnd)) { continue; }
+                var ranges = ExtractProxmoxVersionRanges(cve);
+                if (ranges.Count == 0) { continue; }
 
                 var desc = ExtractEnglishDescription(cve);
                 // A finding without a description is noise — skip it.
                 if (string.IsNullOrWhiteSpace(desc)) { continue; }
 
-                result.Add(new NvdCveEntry(id, desc, score, severity, versionStart, versionEnd));
+                result.Add(new NvdCveEntry(id, desc, score, severity, ranges));
             }
             _nvdCveData = result;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        // TaskCanceledException is an OperationCanceledException: both the 120 s token and the
+        // HttpClient timeout throw it. Nothing else cancels the analysis, so every failure is
+        // caught here instead of aborting the whole run.
+        catch (Exception ex)
         {
             _nvdCveData = [];
             _result.Add(new DiagnosticResult
@@ -123,13 +154,16 @@ public partial class DiagnosticEngine
         return (null, null);
     }
 
-    // Pulls (versionStartIncluding, versionEndExcluding|versionEndIncluding) from the first
-    // CPE entry that references proxmox:virtual_environment. The CPE filter is still needed
-    // even with virtualMatchString= on the request: a CVE may include CPEs for other products too,
-    // and we must take the range from the right one.
-    private static (string? Start, string? End) ExtractProxmoxVersionRange(JsonElement cve)
+    // Every vulnerable range of the CPE entries that reference proxmox:virtual_environment. A CVE
+    // can list several (e.g. one for 7.x and one for 8.x); taking only the first judged a node on
+    // the wrong branch. The CPE filter is still needed even with virtualMatchString= on the request:
+    // a CVE may include CPEs for other products too.
+    internal static List<CveVersionRange> ExtractProxmoxVersionRanges(JsonElement cve)
     {
-        if (!cve.TryGetProperty("configurations", out var configs)) { return (null, null); }
+        static string? Get(JsonElement e, string name) => e.TryGetProperty(name, out var v) ? v.GetString() : null;
+
+        var ranges = new List<CveVersionRange>();
+        if (!cve.TryGetProperty("configurations", out var configs)) { return ranges; }
         foreach (var config in configs.EnumerateArray())
         {
             if (!config.TryGetProperty("nodes", out var nodes)) { continue; }
@@ -138,18 +172,24 @@ public partial class DiagnosticEngine
                 if (!node.TryGetProperty("cpeMatch", out var cpeMatches)) { continue; }
                 foreach (var cpe in cpeMatches.EnumerateArray())
                 {
-                    if (!cpe.TryGetProperty("criteria", out var criteria)) { continue; }
-                    if (!criteria.GetString()!.Contains("proxmox:virtual_environment", StringComparison.OrdinalIgnoreCase)) { continue; }
+                    var criteria = Get(cpe, "criteria") ?? "";
+                    if (!criteria.Contains("proxmox:virtual_environment", StringComparison.OrdinalIgnoreCase)) { continue; }
 
-                    var start = cpe.TryGetProperty("versionStartIncluding", out var vs) ? vs.GetString() : null;
-                    string? end = null;
-                    if (cpe.TryGetProperty("versionEndExcluding", out var ve)) { end = ve.GetString(); }
-                    else if (cpe.TryGetProperty("versionEndIncluding", out var vi)) { end = vi.GetString(); }
-                    return (start, end);
+                    // cpe:2.3:a:proxmox:virtual_environment:<version>:... — a concrete version with no
+                    // range fields means exactly that version.
+                    var parts = criteria.Split(':');
+                    var cpeVersion = parts.Length > 5 && parts[5] is not ("*" or "-") ? parts[5] : null;
+
+                    var range = new CveVersionRange(Get(cpe, "versionStartIncluding"),
+                                                    Get(cpe, "versionStartExcluding"),
+                                                    Get(cpe, "versionEndIncluding"),
+                                                    Get(cpe, "versionEndExcluding"));
+                    if (!range.IsBounded && cpeVersion != null) { range = new CveVersionRange(Exact: cpeVersion); }
+                    if (range.IsBounded) { ranges.Add(range); }
                 }
             }
         }
-        return (null, null);
+        return ranges;
     }
 
     private void CheckNodeCve(string id, IEnumerable<NodeAptVersion> aptVersions)
@@ -179,13 +219,14 @@ public partial class DiagnosticEngine
             ComplianceControls.Cis.C_7,
             ComplianceControls.NistCsf.PR_PS_02,
             ComplianceControls.NistCsf.ID_RA_01,
+            ComplianceControls.Acn.PR_PS_02,
+            ComplianceControls.Acn.ID_RA_08,
+            ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
         ];
 
         // Applicable CVEs: those whose vulnerable range covers the installed pve-manager version.
         var applicable = _nvdCveData
-            .Where(cve => string.IsNullOrWhiteSpace(pveVerStr)
-                          || string.IsNullOrWhiteSpace(cve.VersionEnd)
-                          || DebianVersion.Compare(pveVerStr, cve.VersionEnd) <= 0)
+            .Where(cve => CveApplies(cve.Ranges, pveVerStr))
             .Select(cve => new
             {
                 Cve = cve,

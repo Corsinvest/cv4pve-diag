@@ -14,18 +14,18 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Tests;
 public class SettingsProfilesTests
 {
     [Fact]
-    public void Standard_is_the_defaults()
+    public void Standard_reads_backups_and_snapshots_but_no_optional_detail()
     {
+        // The values docs/settings.md documents for the standard profile.
         var standard = Settings.Standard();
-        var defaults = new Settings();
 
-        Assert.Equal(defaults.Backup.Enabled, standard.Backup.Enabled);
-        Assert.Equal(defaults.Snapshot.Enabled, standard.Snapshot.Enabled);
-        Assert.Equal(defaults.Node.Smart.Enabled, standard.Node.Smart.Enabled);
-        Assert.Equal(defaults.Node.NodeStorage.ZfsDetail, standard.Node.NodeStorage.ZfsDetail);
-        Assert.Equal(defaults.Node.NodeStorage.LvmThinMetadata, standard.Node.NodeStorage.LvmThinMetadata);
-        Assert.Equal(defaults.Cve.NvdEnabled, standard.Cve.NvdEnabled);
-        Assert.Equal(defaults.IncludeOkResult, standard.IncludeOkResult);
+        Assert.True(standard.Backup.Enabled);
+        Assert.True(standard.Snapshot.Enabled);
+        Assert.True(standard.Node.NodeStorage.LvmThinMetadata);
+        Assert.False(standard.Node.Smart.Enabled);
+        Assert.False(standard.Node.NodeStorage.ZfsDetail);
+        Assert.False(standard.Cve.NvdEnabled);
+        Assert.False(standard.IncludeOkResult);
     }
 
     [Fact]

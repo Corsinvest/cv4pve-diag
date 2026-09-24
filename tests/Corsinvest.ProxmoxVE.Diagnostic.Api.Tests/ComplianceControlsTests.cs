@@ -72,6 +72,36 @@ public class ComplianceControlsTests
         }
     }
 
+    // Every ComplianceMapping field declared in a standard's class (ComplianceControls.Nis2, ...).
+    private static IEnumerable<(string Class, ComplianceMapping Mapping)> DeclaredFields()
+        => typeof(ComplianceControls).GetNestedTypes()
+                                     .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                                                       .Where(f => f.FieldType == typeof(ComplianceMapping))
+                                                       .Select(f => (t.Name, (ComplianceMapping)f.GetValue(null)!)));
+
+    [Fact]
+    public void Every_control_belongs_to_the_standard_of_its_class()
+    {
+        // A copy-pasted entry (e.g. a C5 control created with ComplianceStandard.Ens) would be
+        // reported under the wrong standard.
+        var wrong = DeclaredFields().Where(f => f.Mapping.Standard.ToString() != f.Class)
+                                    .Select(f => $"{f.Class}: {f.Mapping.Standard}/{f.Mapping.ControlId}")
+                                    .ToList();
+        Assert.Empty(wrong);
+    }
+
+    [Fact]
+    public void Every_declared_control_is_in_the_catalog()
+    {
+        // A control missing from its class' All list is used by the checks but unknown to
+        // Find / GetTitle, so reports show it without a title.
+        var catalog = ComplianceControls.All.ToHashSet();
+        var missing = DeclaredFields().Where(f => !catalog.Contains(f.Mapping))
+                                      .Select(f => $"{f.Class}/{f.Mapping.ControlId}")
+                                      .ToList();
+        Assert.Empty(missing);
+    }
+
     [Fact]
     public void Find_returns_null_for_unknown_control()
     {

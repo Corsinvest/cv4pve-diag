@@ -19,7 +19,7 @@ public partial class DiagnosticEngine
                                           SettingsThresholdHost thresholdHost,
                                           VmConfig config,
                                           IEnumerable<KeyValue> pending,
-                                          IEnumerable<VmSnapshot> snapshots,
+                                          IEnumerable<VmSnapshot>? snapshots,
                                           IEnumerable<VmRrdData> rrdData,
                                           DiagnosticResultContext context,
                                           string node,
@@ -27,10 +27,14 @@ public partial class DiagnosticEngine
                                           string id,
                                           IEnumerable<NodeStorage> nodeBackupStorages)
     {
+        // "VM" or "CT" in the texts: the same checks run for containers.
+        var guest = context == DiagnosticResultContext.Lxc ? "CT" : "VM";
+
         #region VM State
-        // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly
+        // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly.
+        // A VM hibernated on purpose keeps its vmstate with lock 'suspended' (reported by WG0015).
         CreateResultPerItem(
-            items: pending.Where(a => a.Key == "vmstate").ToList(),
+            items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
             isItemOk: _ => false,
             itemId: _ => id,
             itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
@@ -47,7 +51,7 @@ public partial class DiagnosticEngine
         // Config changes applied via the API are held in "pending" until the VM is rebooted.
         // Calling out pending changes helps operators know a reboot is needed for changes to take effect.
         var pendingChanges = pending.Where(a => a.Key != "vmstate"
-                                                && (a.Pending != null || a.Delete == 1)).ToList();
+                                                && (a.Pending != null || a.Delete > 0)).ToList();
         CreateResult(
             isOk: pendingChanges.Count == 0,
             id: id,
@@ -55,7 +59,7 @@ public partial class DiagnosticEngine
             subContext: "Status",
             context: context,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: $"VM has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
+            descriptionKo: $"{guest} has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
             descriptionOk: "No pending config changes",
             compliance: []);
         #endregion
@@ -69,8 +73,8 @@ public partial class DiagnosticEngine
             subContext: "Status",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"VM is locked by '{config.Lock}'",
-            descriptionOk: "VM is not locked",
+            descriptionKo: $"{guest} is locked by '{config.Lock}'",
+            descriptionOk: $"{guest} is not locked",
             compliance: []);
         #endregion
 
@@ -95,8 +99,8 @@ public partial class DiagnosticEngine
             subContext: "Protection",
             context: context,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "For production environment is better VM Protection = enabled",
-            descriptionOk: "VM Protection is enabled",
+            descriptionKo: $"For production environment is better {guest} Protection = enabled",
+            descriptionOk: $"{guest} Protection is enabled",
             compliance: []);
         #endregion
 
@@ -112,48 +116,42 @@ public partial class DiagnosticEngine
             ComplianceControls.AgId.ABSC_10_3,
             ComplianceControls.AgId.ABSC_10_4,
             ComplianceControls.Ens.MP_INFO_6,
-            ComplianceControls.C5.OPS_21,
+            ComplianceControls.C5.OPS_06,
             ComplianceControls.Soc2.A1_2,
             ComplianceControls.Nist80053.CP_9,
             ComplianceControls.Iso27018.A_12_3_1,
             ComplianceControls.Cis.C_11,
             ComplianceControls.NistCsf.PR_DS_11,
             ComplianceControls.NistCsf.RC_RP_01,
+            ComplianceControls.Acn.PR_DS_11,
+            ComplianceControls.Iso22301.C_8_3_5,
+            ComplianceControls.BsiGrundschutz.CON_3_A5,
         ];
 
-        // Check if this VM is covered by at least one enabled backup job (all, by vmid, or by pool)
-        var foundBackupConfig = _clusterBackups.Any(a => a.Enabled && a.All);
-        if (!foundBackupConfig)
+        // Is this guest covered by at least one enabled backup job? Skipped when the job list
+        // could not be read (already reported as WG0042): unknown is not "not configured".
+        if (_clusterBackupsKnown)
         {
-            foundBackupConfig = _clusterBackups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
-                                               .SelectMany(a => a.VmId.Split(","))
-                                               .Any(a => long.TryParse(a.Trim(), out var bid) && bid == vmId);
-            if (!foundBackupConfig)
-            {
-                foreach (var poolId in _clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
-                {
-                    var poolDetail = await client.Pools[poolId].GetAsync()
-                                           .ToSafeSingle(_result, $"pools/{poolId}", DiagnosticResultContext.Cluster, $"members of pool '{poolId}'");
-                    if (poolDetail == null) { continue; }
-                    foundBackupConfig = poolDetail.Members.Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmId);
-                    if (foundBackupConfig) { break; }
-                }
-            }
+            var pool = _resources.FirstOrDefault(r => r.ResourceType == ClusterResourceType.Vm && r.VmId == vmId)?.Pool;
+            CreateResult(
+                isOk: IsCoveredByBackupJob(_clusterBackups, vmId, node, pool),
+                id: id,
+                errorCode: "WG0017",
+                subContext: "Backup",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "vzdump backup not configured",
+                descriptionOk: "Guest is covered by at least one enabled backup job",
+                compliance: backupGuestControls);
         }
-        CreateResult(
-            isOk: foundBackupConfig,
-            id: id,
-            errorCode: "WG0017",
-            subContext: "Backup",
-            context: context,
-            gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "vzdump backup not configured",
-            descriptionOk: "Guest is covered by at least one enabled backup job",
-            compliance: backupGuestControls);
 
-        // Individual disks excluded from backup — even if the job exists, these disks won't be saved
+        // Individual disks excluded from backup — even if the job exists, these disks won't be saved.
+        // Container bind mounts (host path) and device mounts (/dev) are never backed up by vzdump:
+        // there is no backup flag to set, so they are not reported.
         CreateResultPerItem(
-            items: config.Disks.Where(a => !a.IsUnused).ToList(),
+            items: config.Disks.Where(a => !a.IsUnused
+                                           && !(context == DiagnosticResultContext.Lxc
+                                                && (!string.IsNullOrEmpty(a.MountSourcePath) || a.Passthrough))).ToList(),
             isItemOk: a => a.Backup,
             itemId: _ => id,
             itemDescriptionKo: a => $"Disk '{a.Id}' disabled for backup",
@@ -182,8 +180,60 @@ public partial class DiagnosticEngine
             compliance: []);
         #endregion
 
+        #region HA with local storage
+        // HA moves the guest to another node: a disk on non-shared storage is not there, unless a
+        // replication job keeps a copy on the other nodes (local ZFS with replication is a
+        // documented setup). Container bind and device mounts are host paths, not guest disks.
+        var guestResource = _resources.FirstOrDefault(r => r.ResourceType == ClusterResourceType.Vm && r.VmId == vmId);
+        if (!string.IsNullOrWhiteSpace(guestResource?.HaState))
+        {
+            var replicated = _replicatedVmIds.Contains(vmId);
+            CreateResultPerItem(
+                items: config.Disks.Where(d => !d.IsUnused
+                                               && !string.IsNullOrWhiteSpace(d.Storage)
+                                               && !(context == DiagnosticResultContext.Lxc
+                                                    && (!string.IsNullOrEmpty(d.MountSourcePath) || d.Passthrough))).ToList(),
+                isItemOk: d => replicated || _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
+                itemId: _ => id,
+                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated — migration and failover will fail",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => replicated
+                                                ? $"HA {guest} is replicated to the other nodes"
+                                                : $"All HA {guest} disks are on shared storage",
+                errorCode: "CG0005",
+                subContext: "HA",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Critical,
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Dora.Art_11,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.OP_CONT_4,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ]);
+        }
+        #endregion
+
         var nodeApi = client.Nodes[node];
-        if (settings.Backup.Enabled)
+
+        // A backup storage of this node could not be read (already reported as WG0042): its
+        // backups are unknown, so "no recent backup" cannot be told apart from "not visible".
+        var backupContentUnknown = nodeBackupStorages.Any(a => a.Active
+                                                               && _backupContentUnavailable.Contains(BackupStorageKey(node, a.Storage)));
+        if (_backupChecksEnabled && !backupContentUnknown)
         {
             // Reuse already-fetched backup content — filter by vmId in memory, no extra API call.
             // Key is storage name for shared storage, node/storage for non-shared.
@@ -196,7 +246,9 @@ public partial class DiagnosticEngine
             // Old backups still present waste storage space
             if (settings.Backup.MaxAgeDays > 0)
             {
-                var oldBackups = backupContents.Where(a => a.CreationDate.Date <= _now.Date.AddDays(-settings.Backup.MaxAgeDays)).ToList();
+                // Protected backups are kept on purpose (prune never removes them): not reported.
+                var oldBackups = backupContents.Where(a => !a.Protected
+                                                           && a.CreationDate.Date <= _now.Date.AddDays(-settings.Backup.MaxAgeDays)).ToList();
                 CreateResult(
                     isOk: oldBackups.Count == 0,
                     id: id,
@@ -230,74 +282,17 @@ public partial class DiagnosticEngine
         #region Task history
         // Failed tasks for this VM in the last 48 hours — vmid filtered server-side
         var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
-        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId))
+        var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId)
+                                        .ToSafeEnum(_result, id, context, $"task history of guest {vmId}"))
                     .Where(a => a.StartTime >= dayTask);
         CheckTaskHistory(tasks, context, id);
         #endregion
 
-        CheckSnapshots(snapshots, settings.Snapshot, _now, id, context);
+        // null = snapshots not read (Snapshot.Enabled off, e.g. --fast, or the fetch failed and
+        // was reported as WG0042): no data is not "no cv4pve-autosnap", skip instead.
+        if (snapshots != null) { CheckSnapshots(snapshots, settings.Snapshot, _now, id, context); }
 
-        var rrdList = rrdData.ToList();
-        CheckThresholdHost(thresholdHost,
-                           context,
-                           id,
-                           rrdList.Select(a => new ThresholdRddData(a, a, a)),
-                           cpuErrorCode: "WG0025",
-                           memoryErrorCode: "WG0026",
-                           netInErrorCode: "WG0027",
-                           netOutErrorCode: "WG0028");
-
-        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
-        // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
-        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
-        if (rrdList.Any(a => a.PressureCpuSome > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,
-                           "WG0029",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
-                                                   0d,
-                                                   id,
-                                                   $"PSI CPU some (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        if (rrdList.Any(a => a.PressureIoFull > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.IoFull,
-                           "WG0030",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
-                                                   0d,
-                                                   id,
-                                                   $"PSI I/O full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        if (rrdList.Any(a => a.PressureMemoryFull > 0))
-        {
-            CheckThreshold(thresholdHost.Rrd.Pressure.MemoryFull,
-                           "WG0031",
-                           context,
-                           "Pressure",
-                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
-                                                   0d,
-                                                   id,
-                                                   $"PSI Memory full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
-                           true,
-                           false);
-        }
-
-        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
-        var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
-        var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
-                        ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
-                        : 0.0;
-        CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+        CheckGuestRrd(thresholdHost, context, id, rrdData);
 
         // HA / Replication coverage — only meaningful for running, non-template guests.
         // IC0002 / IC0003 already cover the "no HA at all / no replication at all" cluster-wide
@@ -312,12 +307,11 @@ public partial class DiagnosticEngine
             [
                 ComplianceControls.Iso27001.A_5_30,
                 ComplianceControls.Nis2.Art_21_c,
-                ComplianceControls.Dora.Art_12,
+                ComplianceControls.Dora.Art_11,
                 ComplianceControls.Gdpr.Art_32_1_b,
                 ComplianceControls.Ens.OP_CONT_2,
-                ComplianceControls.Ens.MP_S_1,
+                ComplianceControls.Ens.OP_CONT_4,
                 ComplianceControls.C5.BCM_03,
-                ComplianceControls.C5.PI_02,
                 ComplianceControls.Soc2.A1_1,
                 ComplianceControls.Soc2.A1_2,
                 ComplianceControls.Nist80053.CP_10,
@@ -325,6 +319,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_11,
                 ComplianceControls.NistCsf.PR_IR_04,
                 ComplianceControls.NistCsf.RC_RP_01,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
             ];
 
             if (_haVmIds.Count > 0)
@@ -342,8 +339,16 @@ public partial class DiagnosticEngine
             }
 
             // If the guest is in HA on non-shared storage, replication is the only way the failover target
-            // has a recent copy. Flag HA guests with no enabled replication job.
-            if (_haVmIds.Contains(vmId))
+            // has a recent copy. Flag HA guests with no enabled replication job — only when a disk is
+            // on local storage (on Ceph/NFS the target already sees the data, and replication is
+            // ZFS-only anyway) and the replication job list could be read.
+            var sharedStorages = _resources.Where(r => r.ResourceType == ClusterResourceType.Storage && r.Shared)
+                                           .Select(r => r.Storage)
+                                           .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var hasLocalDisk = config.Disks.Any(d => !d.IsUnused
+                                                    && !string.IsNullOrEmpty(d.Storage)
+                                                    && !sharedStorages.Contains(d.Storage));
+            if (_haVmIds.Contains(vmId) && _replicationKnown && hasLocalDisk)
             {
                 CreateResult(
                     isOk: _replicatedVmIds.Contains(vmId),
@@ -363,7 +368,8 @@ public partial class DiagnosticEngine
                                   DiagnosticResultContext context,
                                   string id)
     {
-        var tasksCount = tasks.Count(a => !a.StatusOk);
+        // errors=1 also returns tasks that ended with "WARNINGS: n": they completed.
+        var tasksCount = tasks.Count(a => !TaskSucceeded(a.Status));
         CreateResult(
             isOk: tasksCount == 0,
             id: id,
@@ -383,8 +389,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_32_1_d,
                 ComplianceControls.AgId.ABSC_5_2,
                 ComplianceControls.Ens.OP_EXP_8,
-                ComplianceControls.Ens.OP_MON_1,
-                ComplianceControls.C5.OPS_09,
+                ComplianceControls.Ens.OP_MON_3,
+                ComplianceControls.C5.OPS_13,
                 ComplianceControls.C5.OPS_10,
                 ComplianceControls.Soc2.CC7_2,
                 ComplianceControls.Nist80053.AU_12,
@@ -394,6 +400,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.DE_CM_01,
                 ComplianceControls.NistCsf.DE_CM_03,
                 ComplianceControls.Iso27017.CLD_12_4_5,
+                ComplianceControls.Acn.PR_PS_04,
+                ComplianceControls.Acn.DE_CM_01,
+                ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
             ]);
     }
 
@@ -497,13 +507,16 @@ public partial class DiagnosticEngine
             ComplianceControls.Gdpr.Art_5_1_f,
             ComplianceControls.AgId.ABSC_8_1,
             ComplianceControls.Ens.MP_COM_1,
-            ComplianceControls.C5.KOS_01,
+            ComplianceControls.C5.COS_01,
             ComplianceControls.Soc2.CC6_6,
             ComplianceControls.Nist80053.SC_7,
             ComplianceControls.Iso27017.CLD_13_1_4,
             ComplianceControls.Cis.C_12,
             ComplianceControls.Cis.C_13,
             ComplianceControls.NistCsf.PR_IR_01,
+            ComplianceControls.Acn.PR_IR_01,
+            ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
+            ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
         ];
 
         CreateResult(
@@ -513,7 +526,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"{kind} firewall is disabled — {kind.ToLower()} is exposed to all traffic on the node bridge",
+            descriptionKo: $"{kind} firewall is disabled — the guest is exposed to all traffic on the node bridge",
             descriptionOk: $"{kind} firewall is enabled",
             compliance: firewallControls);
 
@@ -526,7 +539,7 @@ public partial class DiagnosticEngine
                 subContext: "Firewall",
                 context: context,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"{kind} firewall IP filter is disabled — {kind.ToLower()} can spoof source IP addresses",
+                descriptionKo: $"{kind} firewall IP filter is disabled — the guest can spoof source IP addresses",
                 descriptionOk: $"{kind} firewall IP filter is enabled",
                 compliance: firewallControls);
         }
@@ -538,6 +551,78 @@ public partial class DiagnosticEngine
             : $"{node}/{storage}";
 
     private record ThresholdRddData(IMemory Memory, INetIO NetIO, ICpu Cpu);
+
+    // RRD-based checks for a VM/CT: thresholds, PSI pressure and health score.
+    // No data (the RRD fetch failed, already reported as WG0042) means nothing to check.
+    private void CheckGuestRrd(SettingsThresholdHost thresholdHost,
+                               DiagnosticResultContext context,
+                               string id,
+                               IEnumerable<VmRrdData> rrdData)
+    {
+        var rrdList = rrdData.ToList();
+        if (rrdList.Count == 0) { return; }
+
+        CheckThresholdHost(thresholdHost,
+                           context,
+                           id,
+                           rrdList.Select(a => new ThresholdRddData(a, a, a)),
+                           cpuErrorCode: "WG0025",
+                           memoryErrorCode: "WG0026",
+                           netInErrorCode: "WG0027",
+                           netOutErrorCode: "WG0028");
+
+        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
+        // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
+        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
+        if (rrdList.Any(a => a.PressureCpuSome > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,
+                           "WG0029",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
+                                                   0d,
+                                                   id,
+                                                   $"PSI CPU some (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureIoFull > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.IoFull,
+                           "WG0030",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
+                                                   0d,
+                                                   id,
+                                                   $"PSI I/O full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        if (rrdList.Any(a => a.PressureMemoryFull > 0))
+        {
+            CheckThreshold(thresholdHost.Rrd.Pressure.MemoryFull,
+                           "WG0031",
+                           context,
+                           "Pressure",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
+                                                   0d,
+                                                   id,
+                                                   $"PSI Memory full (rrd {thresholdHost.Rrd.TimeFrame} {thresholdHost.Rrd.Consolidation})")],
+                           true,
+                           false);
+        }
+
+        // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
+        var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
+        var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
+                        ? rrdList.Where(a => Convert.ToDouble(a.MemorySize) > 0).Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
+                        : 0.0;
+        CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+    }
 
     private void CheckThresholdHost(SettingsThresholdHost thresholdHost,
                                     DiagnosticResultContext context,
@@ -644,11 +729,13 @@ public partial class DiagnosticEngine
                                 IReadOnlyList<ComplianceMapping>? compliance = null)
     {
         // Both thresholds disabled → skip entirely (no result, not even Ok).
-        if (threshold.Warning == 0 || threshold.Critical == 0) { return; }
+        // A single one set (the other 0) is checked on its own, as in CheckHealthScore.
+        if (threshold.Warning <= 0 && threshold.Critical <= 0) { return; }
 
         var complianceList = compliance ?? [];
 
-        foreach (var a in data)
+        // A size of 0 gives no percentage (0/0 = NaN, which compares as Ok): skip the datapoint.
+        foreach (var a in data.Where(a => isValue || a.Size > 0))
         {
             var pct = Math.Round(isValue ? a.Usage : a.Usage / a.Size * 100.0, 1);
             var description = $"{a.PrefixDescription} usage {pct}%";
@@ -657,8 +744,8 @@ public partial class DiagnosticEngine
                 description += $" - {FormatHelper.FromBytes(a.Usage)} of {FormatHelper.FromBytes(a.Size)}";
             }
 
-            var isCritical = pct >= threshold.Critical;
-            var isWarning = !isCritical && pct >= threshold.Warning;
+            var isCritical = threshold.Critical > 0 && pct >= threshold.Critical;
+            var isWarning = !isCritical && threshold.Warning > 0 && pct >= threshold.Warning;
             var isOk = !isCritical && !isWarning;
 
             CreateResult(
@@ -674,4 +761,21 @@ public partial class DiagnosticEngine
         }
     }
 
+    /// <summary>
+    /// True when an enabled vzdump job backs up the guest: the job runs on the guest's node (or on
+    /// every node) and selects it with all=1 (unless listed in exclude), by vmid, or by pool.
+    /// </summary>
+    internal static bool IsCoveredByBackupJob(IEnumerable<ClusterBackup> jobs, long vmId, string node, string? pool)
+    {
+        static bool Lists(string? ids, long vmId)
+            => (ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                          .Any(a => long.TryParse(a, out var id) && id == vmId);
+
+        return jobs.Where(a => a.Enabled)
+                   .Where(a => string.IsNullOrWhiteSpace(a.Node) || string.Equals(a.Node, node, StringComparison.OrdinalIgnoreCase))
+                   .Any(a => a.All
+                                ? !Lists(a.ExtensionData?.TryGetValue("exclude", out var exclude) is true ? exclude?.ToString() : null, vmId)
+                                : Lists(a.VmId, vmId)
+                                  || (!string.IsNullOrWhiteSpace(a.Pool) && string.Equals(a.Pool, pool, StringComparison.OrdinalIgnoreCase)));
+    }
 }

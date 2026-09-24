@@ -10,7 +10,7 @@ This document describes every field, its default, and what changes when you tune
 
 The `IncludeOkResult` top-level flag controls whether passing checks also produce a result entry:
 
-- `false` (default) — only failures are emitted. Output and exit code are unchanged from the legacy mode.
+- `false` (default) — only failures are emitted, as in earlier versions.
 - `true` — every diagnostic check (compliance-mapped or operational) also emits an `Ok` result with `Gravity = Ok` on success. Useful for full audit reports where you need to prove that controls were verified, not just violated.
 
 See [compliance.md](compliance.md) for the catalog of compliance mappings attached to each check.
@@ -70,7 +70,7 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
 {
   "Storage": {
     "Rrd": {
-      "TimeFrame": "Day",         // RRD window for storage usage averaging: Hour, Day, Week, Month, Year
+      "TimeFrame": "Day",         // not used yet: WS0001 checks the current storage usage
       "Consolidation": "Average", // RRD function: Average (smooth) or Maximum (peak detection)
     },
     "Threshold": {
@@ -91,6 +91,7 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
     "MaxVCpuRatio": 4.0,                  // vCPU overcommit ratio (sum vCPU / physical CPU) above which WG0036 fires
     "ConsolidationCpuThreshold": 10.0,    // node CPU % below which the node is flagged as consolidation candidate (IN0003)
     "ConsolidationMemThreshold": 20.0,    // node RAM % below which the node is flagged as consolidation candidate
+    "IoWait": { "Warning": 10, "Critical": 25 }, // average CPU iowait % over the RRD time frame (WN0028)
     "Rrd": {                                                  // node-specific PSI defaults — tighter than VM/CT (PVE 9.0+ only)
       "TimeFrame": "Day",
       "Consolidation": "Average",

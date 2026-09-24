@@ -60,7 +60,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | ------ | ----------- | -------- | ------------------------------------------------------------------------ |
 | WC0001 | Backup      | Warning  | No automated backup job for any VM/CT                                    |
 | IC0001 | Backup      | Info     | Backup job has no compression configured                                 |
-| WC0002 | Backup      | Warning  | Backup job has no maxfiles/prune policy — storage will fill up           |
+| WC0002 | Backup      | Warning  | Neither the backup job nor its storage has a retention (prune-backups) — storage will fill up |
 | CC0001 | Quorum      | Critical | Cluster has lost quorum — VM operations may be blocked                   |
 | CC0002 | Quorum      | Critical | Corosync expected votes does not match online node count                 |
 | CC0003 | HA          | Critical | HA group references nodes that are currently offline                     |
@@ -116,6 +116,9 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 > When they are missing, `WC0020` is reported as a **Warning** and the three backup checks are
 > skipped, instead of flagging every guest as having no backups.
 >
+> In the same way, `WS0002` and `WS0003` are skipped when `VM.Audit` does not cover `/vms`: the
+> disks and backups of the guests the account cannot see would all look orphaned.
+>
 > The other privileges (`VM.Audit`, `Datastore.Audit`, `Sys.Audit`, `Pool.Audit`) are reported as
 > **Info**: an account restricted to part of the cluster is a legitimate configuration, so the
 > finding states what the analysis covers rather than reporting a fault. See the permissions section
@@ -132,14 +135,14 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WN0003        | EOL              | Warning          | Installed PVE version has reached end of life                                  |
 | WN0004        | Subscription     | Warning          | Node has no active Proxmox VE subscription                                     |
 | CN0001        | Version          | Critical         | Nodes in cluster have different PVE versions                                   |
-| WN0005        | Hosts            | Warning          | `/etc/hosts` content differs between nodes                                     |
+| WN0005        | Hosts            | Warning          | `/etc/hosts` entries differ between nodes (comments and spacing ignored)       |
 | WN0006        | DNS              | Warning          | DNS configuration differs between nodes                                        |
 | WN0007        | Timezone         | Warning          | Timezone differs between nodes                                                 |
 | WN0008        | AptRepositories  | Warning          | APT repository sources differ between nodes                                    |
 | WN0009        | Network          | Warning          | Physical NIC MTU differs between nodes                                         |
-| WN0010        | Network          | Warning          | Physical NIC is down                                                           |
+| WN0010        | Network          | Warning          | Physical NIC in use (bridge, bond, VLAN or own IP) is down                     |
 | WN0034        | Network          | Warning          | Bond has fewer than two slaves — no link redundancy                            |
-| CN0002        | PackageVersions  | Critical         | Nodes have different package versions installed                                |
+| CN0002        | PackageVersions  | Critical         | A package installed on both nodes has a different version (old kernels ignored) |
 | WN0011        | Service          | Warning          | A required system service is not running                                       |
 | CN0003        | Certificates     | Critical         | TLS certificate has expired                                                    |
 | WN0023        | Certificates     | Warning          | TLS certificate expires within 30 days                                         |
@@ -147,14 +150,15 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | CN0004        | Replication      | Critical         | Replication job has errors                                                     |
 | IN0001        | Update           | Info             | Packages available for update                                                  |
 | WN0012        | Update           | Warning          | Security/important packages available for update                               |
-| WN0013        | Reboot           | Warning          | Running kernel differs from installed kernel                                   |
+| WN0013        | Reboot           | Warning          | A newer kernel is installed than the one running — reboot needed               |
 | WN0014        | NTP              | Warning          | Node time is out of sync with NTP                                              |
 | WN0045        | NTP              | Warning          | Node clock drifts > 5s from another cluster node (corosync / HA / log correlation risk) |
 | IN0002        | IOMMU            | Info             | IOMMU disabled — PCI passthrough will not work                                 |
 | IN0003        | Consolidation    | Info             | Node CPU and RAM utilization both below threshold — consider consolidating VMs |
 | WN0015        | CPUCompatibility | Warning          | Nodes have different x86-64 feature levels — live migration may fail           |
 | WN0036        | Memory           | Warning          | Sum of VM allocated RAM exceeds physical node RAM                              |
-| WN0037        | Network          | Warning          | VM/CT uses VLAN tag on a bridge that is not VLAN-aware — tag silently ignored  |
+| WN0046        | Network          | Warning          | VM/CT uses a VLAN (tag or trunk) not in the `bridge-vids` of its VLAN-aware bridge |
+| WN0047        | Network          | Warning          | Bridge used by a VM/CT is missing on another node — migration / HA recovery fails |
 | WN0027        | Usage            | Warning/Critical | CPU usage above configured threshold                                           |
 | WN0038        | Usage            | Warning/Critical | Memory usage above configured threshold                                        |
 | WN0039/WN0040 | Usage            | Warning/Critical | Network throughput above configured threshold                                  |
@@ -191,15 +195,15 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 
 | Code   | SubContext | Gravity          | Description                                                                         |
 | ------ | ---------- | ---------------- | ----------------------------------------------------------------------------------- |
-| CS0001 | Status     | Critical         | Storage is not accessible (excludes storages disabled on purpose)                   |
-| WS0008 | Status     | Warning          | Storage is disabled — backup jobs or guests may still point at it                   |
+| CS0001 | Status     | Critical         | Storage is not accessible on a node (shared storages are checked on every node)     |
+| WS0008 | Status     | Warning          | Storage is disabled but an enabled backup job or a guest still uses it              |
 | WS0001 | Usage      | Warning/Critical | Storage usage above configured threshold                                            |
-| WS0003 | Backup     | Warning          | Backup file whose VMID no longer exists                                             |
-| WS0002 | Image      | Warning          | Disk image not attached to any VM/CT                                                |
-| WS0004 | Usage      | Warning          | Allocated disk space exceeds physical capacity (thin provisioning)                  |
-| WS0005 | Shared     | Warning          | Shared storage only mounted on one node                                             |
+| WS0003 | Backup     | Warning          | Backup files whose VMID no longer exists (one finding per VMID and storage)         |
+| WS0002 | Image      | Warning          | Disk image or container volume not attached to any VM/CT on that node               |
+| WS0004 | Usage      | Warning          | Allocated disk space exceeds physical capacity on a node (thin provisioning)        |
+| WS0005 | Shared     | Warning          | Shared storage only mounted on one node (not when restricted to one node by 'nodes') |
 | WS0006 | Backup     | Warning          | No storage has 'backup' content type — backups cannot be stored                     |
-| WS0007 | Backup     | Warning          | Backup job storage not available on a node — VMs on that node will not be backed up |
+| WS0007 | Backup     | Warning          | Enabled backup job storage not available on a node it runs on — VMs there not backed up |
 
 </details>
 
@@ -208,22 +212,22 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 
 | Code          | SubContext      | Gravity          | Description                                                                              |
 | ------------- | --------------- | ---------------- | ---------------------------------------------------------------------------------------- |
-| CG0001        | VM State        | Critical         | Hibernated VM state left in pending — VM was suspended and never resumed                 |
+| CG0001        | VM State        | Critical         | Hibernated VM state left in pending — VM was suspended and never resumed (not when hibernated on purpose) |
 | IG0010        | Status          | Info             | Config changes pending reboot to take effect                                             |
 | WG0015        | Status          | Warning          | VM is locked and cannot be managed                                                       |
-| WG0001        | OS              | Warning          | VM OS type is not configured                                                             |
+| WG0001        | OS              | Warning          | VM OS type is not configured (or left as Other)                                          |
 | WG0002        | OSNotMaintained | Warning          | Guest OS has reached end of life                                                         |
 | WG0003        | Agent           | Warning          | Guest agent not configured                                                               |
 | WG0004        | Agent           | Warning          | Agent enabled but not responding inside guest                                            |
 | IG0001        | VirtIO          | Info             | SCSI controller is not VirtIO — lower performance                                        |
-| IG0002        | VirtIO          | Info             | Disk not using VirtIO bus                                                                |
+| IG0002        | VirtIO          | Info             | Disk on IDE/SATA, or on SCSI with a non-VirtIO controller                                |
 | IG0003        | VirtIO          | Info             | Network interface not using VirtIO driver                                                |
 | WG0005        | Hardware        | Warning          | CD-ROM drive has an image mounted                                                        |
-| WG0006        | CPU             | Warning          | CPU type 'host' prevents live migration                                                  |
-| IG0004        | CPU             | Info             | CPU type is outdated (kvm64)                                                             |
-| WG0037        | CPU             | Warning          | Non-host CPU type missing +spec-ctrl/+ssbd/+pcid/+md-clear flags                         |
+| WG0006        | CPU             | Warning          | CPU type 'host' or 'max' prevents live migration                                         |
+| IG0004        | CPU             | Info             | CPU type is outdated (kvm64, also when no CPU type is set)                               |
+| WG0037        | CPU             | Warning          | Spectre/Meltdown flags missing for the node's CPU vendor (Intel: spec-ctrl, ssbd, pcid, md-clear; AMD: ibpb, virt-ssbd) |
 | WG0007        | CPU             | Warning          | CPU hotplug enabled on Windows guest — not supported                                     |
-| CG0004        | CPU             | Critical         | CPU type 'host' is incompatible with HA — live migration required by HA is impossible    |
+| CG0004        | CPU             | Critical         | CPU type 'host' or 'max' is incompatible with HA — live migration required by HA is impossible |
 | WG0036        | CPU             | Warning          | Node vCPU overcommit ratio exceeds configured threshold                                  |
 | IG0005        | Balloon         | Info             | RAM is statically allocated — no memory ballooning                                       |
 | IG0006        | Balloon         | Info             | Balloon has no room to reclaim memory                                                    |
@@ -233,14 +237,14 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0011        | SecureBoot      | Warning          | Windows 11 requires TPM 2.0                                                              |
 | IG0007        | Hardware        | Info             | VM has virtio-rng device — verify this is intentional                                    |
 | IG0008        | Hardware        | Info             | VM has serial console configured — verify this is intentional                            |
-| IG0012        | Hardware        | Info             | Machine type not configured — QEMU will use default which may change across PVE upgrades |
+| IG0012        | Hardware        | Info             | Machine type not set or without a version (e.g. q35) — may change across PVE upgrades   |
 | IG0016        | Hardware        | Info             | Machine type pinned to an old version — newer version available on the node              |
-| WG0012        | Hardware        | Warning          | Passthrough configured — live migration and HA not possible                              |
-| CG0005        | HA              | Critical         | Disk is on non-shared storage but VM is managed by HA — live migration will fail         |
+| WG0012        | Hardware        | Warning          | Host USB/PCI passthrough configured (SPICE USB excluded) — no live migration or HA       |
+| CG0005        | HA              | Critical         | Disk on non-shared storage, VM managed by HA and not replicated — migration will fail    |
 | IG0015        | HA              | Info             | Guest is not managed by any HA resource — will not be restarted on node failure          |
 | WG0043        | Replication     | Warning          | HA guest has no enabled replication job — failover target will have no recent data       |
 | WG0034        | Network         | Warning          | VM has no network interface — completely isolated from network                           |
-| WG0033        | Network         | Warning          | MAC address shared with another VM — causes network conflicts                            |
+| WG0033        | Network         | Warning          | MAC address shared with another VM/CT or interface — causes network conflicts            |
 | WG0013        | Firewall        | Warning          | VM firewall is disabled — exposed to all bridge traffic                                  |
 | IG0009        | Firewall        | Info             | VM can spoof source IP addresses                                                         |
 | WG0016        | StartOnBoot     | Warning          | VM will not start automatically after host reboot                                        |
@@ -248,14 +252,14 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0017        | Backup          | Warning          | VM not included in any backup job                                                        |
 | CG0002        | Backup          | Critical         | A disk has backup disabled                                                               |
 | WG0018        | Hardware        | Warning          | Disk detached from VM but still in storage                                               |
-| WG0019        | Backup          | Warning          | Backup files older than configured days found                                            |
+| WG0019        | Backup          | Warning          | Backup files older than configured days found (protected backups excluded)               |
 | WG0020        | Backup          | Warning          | No backup found in the last configured days                                              |
 | CG0003        | Tasks           | Critical         | Failed tasks found in the last 48 hours                                                  |
 | WG0021        | AutoSnapshot    | Warning          | cv4pve-autosnap not configured                                                           |
 | WG0022        | AutoSnapshot    | Warning          | Old AutoSnap snapshots present — update required                                         |
-| WG0024        | SnapshotOld     | Warning          | Snapshots older than configured age                                                      |
+| WG0023        | SnapshotOld     | Warning          | Snapshots older than configured age                                                      |
 | WG0035        | Snapshot        | Warning          | Snapshot includes RAM state — wastes disk space and blocks storage migration             |
-| WG0023        | SnapshotCount   | Warning          | Snapshot count exceeds configured limit                                                  |
+| WG0024        | SnapshotCount   | Warning          | Snapshot count exceeds configured limit                                                  |
 | WG0025        | Usage           | Warning/Critical | CPU usage above configured threshold                                                     |
 | WG0026        | Usage           | Warning/Critical | Memory usage above configured threshold                                                  |
 | WG0027/WG0028 | Usage           | Warning/Critical | Network throughput above configured threshold                                            |
@@ -276,11 +280,12 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0015 | Status        | Warning          | Container is locked and cannot be managed                                    |
 | WG0039 | Security      | Warning          | Container runs as privileged — root inside has host-level access             |
 | CG0006 | Security      | Critical         | Privileged container has AppArmor disabled — no kernel confinement           |
-| WG0038 | Features      | Warning          | `nesting=1` set but `keyctl=1` missing — keyring isolation incomplete        |
+| IG0017 | Features      | Info             | Unprivileged container with `nesting=1` but no `keyctl=1` — Docker/systemd may not work (replaces `WG0038`) |
 | WG0041 | Config        | Warning          | Container has raw LXC config entries that bypass PVE abstractions            |
 | WG0040 | Memory        | Warning          | Container has no memory limit (Memory=0) — can consume all host RAM          |
-| IG0013 | Config        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
+| IG0013 | Memory        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
 | IG0014 | Config        | Info             | Container has no hostname configured                                         |
+| WG0033 | Network       | Warning          | MAC address shared with another VM/CT or interface — causes network conflicts |
 | WG0013 | Firewall      | Warning          | Container firewall is disabled — exposed to all bridge traffic               |
 | IG0009 | Firewall      | Info             | Container can spoof source IP addresses                                      |
 | WG0016 | StartOnBoot   | Warning          | CT will not start automatically after host reboot                            |
@@ -288,16 +293,17 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0017 | Backup        | Warning          | CT not included in any backup job                                            |
 | CG0002 | Backup        | Critical         | A disk has backup disabled                                                   |
 | WG0018 | Hardware      | Warning          | Disk detached from CT but still in storage                                   |
-| WG0019 | Backup        | Warning          | Backup files older than configured days found                                |
+| WG0019 | Backup        | Warning          | Backup files older than configured days found (protected excluded)           |
 | WG0020 | Backup        | Warning          | No backup found in the last configured days                                  |
 | CG0003 | Tasks         | Critical         | Failed tasks found in the last 48 hours                                      |
+| CG0005 | HA            | Critical         | Disk on non-shared storage, CT managed by HA and not replicated — migration will fail |
 | IG0015 | HA            | Info             | Container is not managed by any HA resource — will not be restarted on node failure |
 | WG0043 | Replication   | Warning          | HA container has no enabled replication job — failover target will have no recent data |
 | WG0021 | AutoSnapshot  | Warning          | cv4pve-autosnap not configured                                               |
 | WG0022 | AutoSnapshot  | Warning          | Old AutoSnap snapshots present — update required                             |
-| WG0024 | SnapshotOld   | Warning          | Snapshots older than configured age                                          |
+| WG0023 | SnapshotOld   | Warning          | Snapshots older than configured age                                          |
 | WG0035 | Snapshot      | Warning          | Snapshot includes RAM state — wastes disk space and blocks storage migration |
-| WG0023 | SnapshotCount | Warning          | Snapshot count exceeds configured limit                                      |
+| WG0024 | SnapshotCount | Warning          | Snapshot count exceeds configured limit                                      |
 | WG0025 | Usage         | Warning/Critical | CPU usage above configured threshold                                         |
 | WG0026 | Usage         | Warning/Critical | Memory usage above configured threshold                                      |
 | WG0027/WG0028 | Usage  | Warning/Critical | Network throughput above configured threshold                                |

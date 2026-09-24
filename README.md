@@ -19,7 +19,7 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 
 > **Health checks and diagnostics for Proxmox VE** — analyzes your entire cluster in one run and tells you what is wrong.
 >
-> Runs **170+ built-in diagnostic checks on every scan** (cluster, nodes, storages, VMs, LXCs — see [docs/checks.md](docs/checks.md)) and tags **40+ findings against 14 compliance frameworks** (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, SOC 2, NIST 800-53, ISO 27017, ISO 27018, CIS Controls, NIST CSF — see [docs/compliance.md](docs/compliance.md)).
+> Runs **170+ built-in diagnostic checks on every scan** (cluster, nodes, storages, VMs, LXCs — see [docs/checks.md](docs/checks.md)) and tags **100+ findings against 17 compliance frameworks** (ISO 27001, NIS2, ACN NIS2 Italy, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, BSI IT-Grundschutz, ISO 22301, SOC 2, NIST 800-53, ISO 27017, ISO 27018, CIS Controls, NIST CSF — see [docs/compliance.md](docs/compliance.md)).
 >
 > **Single-node hosts** will see resilience findings (no HA / no replication / single-node topology) flagged on every run — by design, since a single node is **not compliant** with the business-continuity controls those checks map to. On lab / dev setups, use [ignore rules](docs/ignored-issues.md) to silence them. See [Single-node setups and compliance](docs/compliance.md#single-node-setups-and-compliance).
 
@@ -61,7 +61,7 @@ The cv4pve suite follows the Unix philosophy — each tool does one thing and do
 - **Performance tuning** — `MaxParallelRequests` and `ApiTimeout` for slow / high-latency clusters (see [docs/settings.md#performance-tuning](docs/settings.md#performance-tuning))
 - **Ignore rules** — suppress known/accepted issues by ErrorCode, Id, SubContext or Description (see [docs/ignored-issues.md](docs/ignored-issues.md))
 - **API token** support (Proxmox VE 6.2+)
-- **Compliance mapping** — 40+ findings tagged across 14 frameworks (ISO 27001, NIS2, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, SOC 2, NIST 800-53, ISO 27017, ISO 27018, CIS Controls, NIST CSF); filter and add control ids to the report with `--compliance=<standard>` (see [docs/compliance.md](docs/compliance.md))
+- **Compliance mapping** — 100+ findings tagged across 17 frameworks (ISO 27001, NIS2, ACN NIS2 Italy, DORA, PCI DSS, GDPR, AgID, ENS, BSI C5, BSI IT-Grundschutz, ISO 22301, SOC 2, NIST 800-53, ISO 27017, ISO 27018, CIS Controls, NIST CSF); filter and add control ids to the report with `--compliance=<standard>` (see [docs/compliance.md](docs/compliance.md))
 - **CVE scanning (Proxmox VE only)** — optional NVD lookup for known vulnerabilities affecting the installed Proxmox VE version (see [docs/settings.md#cve-scanning](docs/settings.md#cve-scanning))
 
 ---
@@ -183,23 +183,25 @@ cv4pve-diag @/etc/cv4pve/production.conf execute
 ### Example Output
 
 ```
-+-----------------------------+--------+--------------------------------------------------------------------+---------+-----------------+----------+
-| Id                          | Code   | Description                                                        | Context | SubContext      | Gravity  |
-+-----------------------------+--------+--------------------------------------------------------------------+---------+-----------------+----------+
-| nodes/pve02                 | CN0002 | Nodes package version not equal                                    | Node    | PackageVersions | Critical |
-| nodes/pve02/qemu/203        | CG0002 | Disk 'scsi0' disabled for backup                                   | Qemu    | Backup          | Critical |
-| nodes/pve01/lxc/100         | CG0002 | Disk 'rootfs' disabled for backup                                  | Lxc     | Backup          | Critical |
-| nodes/pve01/qemu/1030       | WG0026 | Memory (rrd Day AVERAGE) usage 92.9% - 5.99 GB of 6.44 GB         | Qemu    | Usage           | Critical |
-| nodes/pve02                 | WN0005 | Nodes hosts configuration not equal                                | Node    | Hosts           | Warning  |
-| nodes/pve01/storage/local   | WS0001 | Image Orphaned 51.54 GB file vm-106-disk-1                         | Storage | Image           | Warning  |
-| nodes/pve01/storage/pbs01   | WS0003 | Storage usage 75% - 2.42 TB of 3.22 TB                            | Storage | Usage           | Warning  |
-| nodes/pve02/qemu/106        | WG0003 | Qemu Agent not enabled                                             | Qemu    | Agent           | Warning  |
-| nodes/pve02/qemu/999        | WG0017 | vzdump backup not configured                                       | Qemu    | Backup          | Warning  |
-| nodes/pve01/qemu/1030       | WG0005 | Cdrom mounted                                                      | Qemu    | Hardware        | Warning  |
-| nodes/pve01/qemu/1010       | WG0002 | OS 'Microsoft Windows 10/2016/2019' not maintained from vendor!    | Qemu    | OSNotMaintained | Warning  |
-| nodes/pve02                 | IN0001 | 26 Update available                                                | Node    | Update          | Info     |
-| nodes/pve01/qemu/1000       | IG0011 | For production environment is better VM Protection = enabled       | Qemu    | Protection      | Info     |
-+-----------------------------+--------+--------------------------------------------------------------------+---------+-----------------+----------+
++------------------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------+---------+-----------------+----------+
+| Id                           | Code   | Description                                                                                                                         | Context | SubContext      | Gravity  |
++------------------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------+---------+-----------------+----------+
+| access/users/root@pam        | CC0004 | root@pam has no TFA configured — full access protected only by password                                                             | Cluster | Access          | Critical |
+| nodes/pve02/lxc/101          | CG0006 | Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access                        | Lxc     | Security        | Critical |
+| nodes/pve02/qemu/203         | CG0002 | Disk 'scsi0' disabled for backup                                                                                                    | Qemu    | Backup          | Critical |
+| nodes/pve02/lxc/100          | CG0002 | Disk 'mp0' disabled for backup                                                                                                      | Lxc     | Backup          | Critical |
+| nodes/pve01/qemu/1104        | WG0026 | Memory (rrd Day Average) usage 93.3% - 10.02 GB of 10.74 GB                                                                         | Qemu    | Usage           | Critical |
+| nodes/pve01                  | WN0013 | Node requires reboot: running kernel '6.8.12-20-pve' but newer kernel '6.8.12-43-pve' is installed                                  | Node    | Reboot          | Warning  |
+| nodes/pve01/storage/datapool | WS0002 | Image Orphaned 51.54 GB file vm-106-disk-1                                                                                          | Storage | Image           | Warning  |
+| nodes/pve01/storage/pbs01    | WS0001 | Storage usage 80% - 2.58 TB of 3.22 TB                                                                                              | Storage | Usage           | Warning  |
+| nodes/pve02/qemu/106         | WG0003 | Qemu Agent not enabled                                                                                                              | Qemu    | Agent           | Warning  |
+| nodes/pve02/qemu/999         | WG0017 | vzdump backup not configured                                                                                                        | Qemu    | Backup          | Warning  |
+| nodes/pve01/qemu/1010        | WG0037 | CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear — add to cpu flags to mitigate Spectre/Meltdown/MDS | Qemu    | CPU             | Warning  |
+| nodes/pve02/qemu/203         | WG0005 | Cdrom mounted on 'ide2' (local:iso/debian-12.6.0-amd64-netinst.iso)                                                                 | Qemu    | Hardware        | Warning  |
+| nodes/pve01/qemu/1013        | WG0002 | OS 'Microsoft Windows 8.x/2012/2012r2' not maintained from vendor!                                                                  | Qemu    | OSNotMaintained | Warning  |
+| nodes/pve02                  | IN0001 | 6 Update available                                                                                                                  | Node    | Update          | Info     |
+| nodes/pve01/qemu/1000        | IG0011 | For production environment is better VM Protection = enabled                                                                        | Qemu    | Protection      | Info     |
++------------------------------+--------+-------------------------------------------------------------------------------------------------------------------------------------+---------+-----------------+----------+
 ```
 
 ---

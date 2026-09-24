@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.RegularExpressions;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
@@ -35,8 +36,16 @@ public partial class DiagnosticEngine
                                    IEnumerable<NodeAptVersion> AptVersions,
                                    NodeStatus Status,
                                    long UtcTime,
+                                   long ClockOffset,
                                    NodeAptRepositories? AptRepositories,
                                    IEnumerable<NodeNetwork> Networks);
+
+    // Node time plus the client's UTC clock (seconds) at the moment the answer arrived.
+    private static async Task<(Result Result, long ClientUtc)> ReadTimeAsync(PveClient.PveNodes.PveNodeItem api)
+    {
+        var result = await api.Time.Time();
+        return (result, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+    }
 
     private record NodeFetchData(ClusterResource Item,
                                  NodeSubscription? Subscription,
@@ -114,18 +123,23 @@ public partial class DiagnosticEngine
                 var statusTask = api.Status.GetAsync();
                 var aptRepositoriesTask = api.Apt.Repositories.GetAsync();
                 var networksTask = api.Network.GetAsync();
-                var timeTask = api.Time.Time();
+                // The client clock is read when the node's time arrives, not when the checks run
+                // (after every other node read): the offset must not include that wait.
+                var timeTask = ReadTimeAsync(api);
                 await Task.WhenAll(versionTask, hostsTask, dnsTask, aptVersionsTask,
                                    statusTask, aptRepositoriesTask, networksTask, timeTask);
 
-                var timeRaw = timeTask.Result.ToData();
+                var (timeResult, clientUtcAtRead) = timeTask.Result;
+                var timeRaw = timeResult.ToData();
+                var nodeUtc = timeRaw.time is long t ? t : 0L;
                 return (item.Node, Data: (NodeCompareData?)new NodeCompareData(versionTask.Result,
                                                              ((string)hostsTask.Result.ToData().data).Split('\n'),
                                                              dnsTask.Result,
                                                              timeRaw.timezone as string ?? "",
                                                              aptVersionsTask.Result,
                                                              statusTask.Result,
-                                                             timeRaw.time is long t ? t : 0L,
+                                                             nodeUtc,
+                                                             nodeUtc > 0 ? nodeUtc - clientUtcAtRead : 0L,
                                                              aptRepositoriesTask.Result,
                                                              networksTask.Result));
             }
@@ -147,6 +161,10 @@ public partial class DiagnosticEngine
         // recorded). Downstream checks index/iterate this dictionary, so it holds only good nodes.
         var nodeCompareData = nodeCompareResults.Where(r => r.Data != null)
                                                 .ToDictionary(r => r.Node, r => r.Data!);
+        foreach (var (nodeName, data) in nodeCompareData)
+        {
+            _cpuModelByNode[nodeName] = data.Status?.CpuInfo?.Model ?? "";
+        }
 
         // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
         var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);
@@ -172,7 +190,7 @@ public partial class DiagnosticEngine
             ComplianceControls.AgId.ABSC_4_4,
             ComplianceControls.Ens.OP_EXP_3,
             ComplianceControls.Ens.OP_EXP_4,
-            ComplianceControls.C5.PI_02,
+            ComplianceControls.C5.OPS_23,
             ComplianceControls.C5.OPS_18,
             ComplianceControls.Soc2.CC8_1,
             ComplianceControls.Soc2.CC7_1,
@@ -182,6 +200,9 @@ public partial class DiagnosticEngine
             ComplianceControls.Cis.C_7,
             ComplianceControls.NistCsf.PR_PS_02,
             ComplianceControls.NistCsf.ID_RA_01,
+            ComplianceControls.Acn.PR_PS_02,
+            ComplianceControls.Acn.PR_PS_01,
+            ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
@@ -237,10 +258,10 @@ public partial class DiagnosticEngine
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Iso27001.A_8_16,
                     ComplianceControls.Nis2.Art_21_c,
-                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Dora.Art_11,
                     ComplianceControls.Gdpr.Art_32_1_b,
                     ComplianceControls.Ens.OP_CONT_2,
-                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.C5.BCM_03,
                     ComplianceControls.Soc2.A1_1,
                     ComplianceControls.Soc2.A1_2,
@@ -249,6 +270,11 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
             if (!item.IsOnline) { continue; }
 
@@ -256,7 +282,7 @@ public partial class DiagnosticEngine
             if (!nodeCompareData.TryGetValue(item.Node, out var compareData)) { continue; }
 
             var nodeApi = client.Nodes[item.Node];
-            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, aptRepositories, networks) = compareData;
+            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, clockOffset, aptRepositories, networks) = compareData;
             if (!int.TryParse(version.Version?.Split(".")[0], out var nodeVersion)) { continue; }
 
             #region End Of Life
@@ -278,6 +304,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_7,
                 ComplianceControls.NistCsf.PR_PS_02,
                 ComplianceControls.NistCsf.ID_RA_01,
+                ComplianceControls.Acn.PR_PS_02,
+                ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
             ];
             if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
@@ -328,6 +356,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.NistCsf.PR_PS_02,
                         ComplianceControls.NistCsf.ID_RA_01,
                         ComplianceControls.Iso27017.CLD_9_5_2,
+                        ComplianceControls.Acn.PR_PS_02,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
                     ]);
             }
             #endregion
@@ -336,7 +366,8 @@ public partial class DiagnosticEngine
             // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
             CheckNodeRrd(settings,
                          id,
-                         await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation));
+                         await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation)
+                                      .ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"RRD data for node '{item.Node}'"));
             #endregion
 
             #region Cross-node comparisons
@@ -363,7 +394,7 @@ public partial class DiagnosticEngine
                     compliance: patchConsistencyControls);
 
                 CreateResult(
-                    isOk: otherNodesData.All(od => string.Concat(hosts) == string.Concat(od.Hosts)),
+                    isOk: otherNodesData.All(od => HostsEntries(hosts).SetEquals(HostsEntries(od.Hosts))),
                     id: id,
                     errorCode: "WN0005",
                     subContext: "Hosts",
@@ -440,14 +471,16 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Network Card
-            // Physical NICs (type=eth) that are down — could mean a cable/switch problem
+            // Physical NICs (type=eth) that are down — could mean a cable/switch problem.
+            // Only NICs that are in use: a spare port with no cable is down by design.
+            var usedInterfaces = UsedInterfaces(networks);
             CreateResultPerItem(
-                items: networks.Where(a => a.Type == "eth").ToList(),
+                items: networks.Where(a => a.Type == "eth" && usedInterfaces.Contains(a.Interface)).ToList(),
                 isItemOk: a => a.Active,
                 itemId: _ => id,
                 itemDescriptionKo: a => $"Network card '{a.Interface}' not active",
                 aggregatedIdOk: id,
-                aggregatedDescriptionOk: _ => "All physical NICs are active",
+                aggregatedDescriptionOk: _ => "All physical NICs in use are active",
                 errorCode: "WN0010",
                 subContext: "Network",
                 context: DiagnosticResultContext.Node,
@@ -456,11 +489,16 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Iso27001.A_8_16,
-                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Dora.Art_11,
                     ComplianceControls.Gdpr.Art_32_1_b,
-                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.Iso27017.CLD_6_3_1,
                     ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
 
             // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
@@ -479,10 +517,10 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Nis2.Art_21_c,
-                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Dora.Art_11,
                     ComplianceControls.Gdpr.Art_32_1_b,
                     ComplianceControls.Ens.OP_CONT_2,
-                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.C5.BCM_03,
                     ComplianceControls.Soc2.A1_1,
                     ComplianceControls.Soc2.A1_2,
@@ -491,6 +529,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
             #endregion
 
@@ -499,19 +540,18 @@ public partial class DiagnosticEngine
             // Skip on single-node setups: no peer to compare to.
             if (onlineNodes.Count(a => a.Node != item.Node) > 0)
             {
-                var packagesMatch = onlineNodes.Where(a => a.Node != item.Node)
-                    .All(a => !nodeCompareData.TryGetValue(a.Node, out var otherPkgData)
-                              || aptVersions.All(pkg => otherPkgData.AptVersions.Any(o => o.Version == pkg.Version
-                                                                                           && o.Title == pkg.Title
-                                                                                           && o.Package == pkg.Package)));
+                var packageDifferences = onlineNodes.Where(a => a.Node != item.Node && nodeCompareData.ContainsKey(a.Node))
+                                                    .SelectMany(a => PackageVersionDifferences(aptVersions, nodeCompareData[a.Node].AptVersions)
+                                                                        .Select(d => $"{d} on '{a.Node}'"))
+                                                    .ToList();
                 CreateResult(
-                    isOk: packagesMatch,
+                    isOk: packageDifferences.Count == 0,
                     id: id,
                     errorCode: "CN0002",
                     subContext: "PackageVersions",
                     context: DiagnosticResultContext.Node,
                     gravityKo: DiagnosticResultGravity.Critical,
-                    descriptionKo: "Nodes package version not equal",
+                    descriptionKo: $"Nodes package version not equal: {string.Join(", ", packageDifferences)}",
                     descriptionOk: "Node package versions match the rest of the cluster",
                     compliance: patchConsistencyControls);
             }
@@ -526,7 +566,8 @@ public partial class DiagnosticEngine
                                     : "chrony");
 
             CreateResultPerItem(
-                items: fetch.Services.Where(a => !serviceExcluded.Contains(a.Name)).ToList(),
+                // unit-state 'not-found': the unit is not installed on this node (PVE lists it anyway).
+                items: fetch.Services.Where(a => !serviceExcluded.Contains(a.Name) && a.UnitState != "not-found").ToList(),
                 isItemOk: a => a.IsRunning,
                 itemId: _ => id,
                 itemDescriptionKo: a => $"Service '{a.Description}' not running",
@@ -546,8 +587,8 @@ public partial class DiagnosticEngine
                     ComplianceControls.Gdpr.Art_32_1_d,
                     ComplianceControls.AgId.ABSC_5_2,
                     ComplianceControls.Ens.OP_EXP_8,
-                    ComplianceControls.Ens.OP_MON_1,
-                    ComplianceControls.C5.OPS_09,
+                    ComplianceControls.Ens.OP_MON_3,
+                    ComplianceControls.C5.OPS_13,
                     ComplianceControls.C5.OPS_10,
                     ComplianceControls.Soc2.CC7_2,
                     ComplianceControls.Nist80053.AU_12,
@@ -557,6 +598,10 @@ public partial class DiagnosticEngine
                     ComplianceControls.NistCsf.DE_CM_01,
                     ComplianceControls.NistCsf.DE_CM_03,
                     ComplianceControls.Iso27017.CLD_12_4_5,
+                    ComplianceControls.Acn.PR_PS_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
             #endregion
 
@@ -571,13 +616,15 @@ public partial class DiagnosticEngine
                 ComplianceControls.Gdpr.Art_5_1_f,
                 ComplianceControls.AgId.ABSC_13_1,
                 ComplianceControls.Ens.MP_COM_2,
-                ComplianceControls.C5.KRY_03,
+                ComplianceControls.C5.CRY_02,
                 ComplianceControls.Soc2.CC6_7,
                 ComplianceControls.Nist80053.SC_8,
                 ComplianceControls.Nist80053.SC_13,
                 ComplianceControls.Iso27018.A_10_1_1,
                 ComplianceControls.Cis.C_3,
                 ComplianceControls.NistCsf.PR_DS_02,
+                ComplianceControls.Acn.PR_DS_02,
+                ComplianceControls.BsiGrundschutz.CON_1_A1,
             ];
             CreateResultPerItem(
                 items: fetch.Certificates,
@@ -613,24 +660,33 @@ public partial class DiagnosticEngine
                 gravityKo: DiagnosticResultGravity.Warning,
                 compliance: cryptoCertControls);
 
-            // Self-signed certificate (issuer == subject) — browsers and API clients will warn / refuse
-            CreateResultPerItem(
-                items: fetch.Certificates.Where(a => !string.IsNullOrWhiteSpace(a.Issuer)).ToList(),
-                isItemOk: a => a.Issuer != a.Subject,
-                itemId: _ => id,
-                itemDescriptionKo: a => $"Certificate '{a.FileName}' is self-signed — consider a CA-signed certificate (e.g. ACME/Let's Encrypt)",
-                aggregatedIdOk: id,
-                aggregatedDescriptionOk: _ => "No self-signed certificate detected",
-                errorCode: "IN0004",
-                subContext: "Certificates",
-                context: DiagnosticResultContext.Node,
-                gravityKo: DiagnosticResultGravity.Info,
-                compliance: cryptoCertControls);
+            // Certificate served by the web interface and API that browsers and API clients do not
+            // trust. pve-root-ca.pem is the cluster CA, self-signed by design: not a finding. The
+            // node certificate pve-ssl.pem is signed by that CA; a custom or ACME certificate is
+            // installed as pveproxy-ssl.pem and replaces it. Skipped when the list could not be read.
+            if (fetch.Certificates.Count > 0)
+            {
+                var proxyCert = fetch.Certificates.FirstOrDefault(a => a.FileName == "pveproxy-ssl.pem");
+                CreateResult(
+                    isOk: proxyCert != null && proxyCert.Issuer != proxyCert.Subject,
+                    id: id,
+                    errorCode: "IN0004",
+                    subContext: "Certificates",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Info,
+                    descriptionKo: proxyCert == null
+                                    ? "The web interface uses the certificate generated by Proxmox VE (signed by the cluster CA, not trusted by browsers) — consider a custom or ACME/Let's Encrypt certificate"
+                                    : "The web interface certificate 'pveproxy-ssl.pem' is self-signed — consider a CA-signed or ACME/Let's Encrypt certificate",
+                    descriptionOk: "The web interface uses a custom CA-signed certificate (pveproxy-ssl.pem)",
+                    compliance: cryptoCertControls);
+            }
             #endregion
 
             #region Replication
             // Replication jobs with errors mean the secondary copy is out of date
-            var replCount = fetch.Replication.Count(a => a.ExtensionData?.ContainsKey("errors") is true);
+            // PVE reports the last failure in 'error' and the retries in 'fail_count' (there is no
+            // 'errors' key: the old lookup never matched, so CN0004 could not fire).
+            var replCount = fetch.Replication.Count(a => !string.IsNullOrWhiteSpace(a.Error) || a.FailCount > 0);
             CreateResult(
                 isOk: replCount == 0,
                 id: id,
@@ -644,10 +700,10 @@ public partial class DiagnosticEngine
                 [
                     ComplianceControls.Iso27001.A_5_30,
                     ComplianceControls.Nis2.Art_21_c,
-                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Dora.Art_11,
                     ComplianceControls.Gdpr.Art_32_1_b,
                     ComplianceControls.Ens.OP_CONT_2,
-                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.C5.BCM_03,
                     ComplianceControls.Soc2.A1_1,
                     ComplianceControls.Soc2.A1_2,
@@ -656,6 +712,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
             #endregion
 
@@ -690,34 +749,33 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Reboot required
-            // If the running kernel release differs from the installed package version, a reboot is needed
-            if (nodeStatus?.CurrentKernel != null && !string.IsNullOrWhiteSpace(nodeStatus.Kversion))
+            // A kernel newer than the running one is installed: it only takes effect after a reboot.
+            // Both kversion and current-kernel describe the running kernel, so they cannot tell this;
+            // the installed kernel images come from the package list.
+            var runningKernel = nodeStatus?.CurrentKernel?.Release ?? "";
+            if (!string.IsNullOrWhiteSpace(runningKernel))
             {
-                // Kversion contains the full uname string; CurrentKernel.Release is the running kernel
-                // Compare the running kernel release against the installed kversion string
-                var runningKernel = nodeStatus.CurrentKernel?.Release ?? "";
-                if (!string.IsNullOrWhiteSpace(runningKernel))
-                {
-                    CreateResult(
-                        isOk: nodeStatus.Kversion.Contains(runningKernel),
-                        id: id,
-                        errorCode: "WN0013",
-                        subContext: "Reboot",
-                        context: DiagnosticResultContext.Node,
-                        gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: $"Node requires reboot: running kernel '{runningKernel}' differs from installed '{nodeStatus.Kversion}'",
-                        descriptionOk: $"Node is running the latest installed kernel ({runningKernel})",
-                        compliance: patchControls);
-                }
+                var newerKernel = NewerInstalledKernel(runningKernel, aptVersions.Select(a => a.Package));
+                CreateResult(
+                    isOk: newerKernel == null,
+                    id: id,
+                    errorCode: "WN0013",
+                    subContext: "Reboot",
+                    context: DiagnosticResultContext.Node,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    descriptionKo: $"Node requires reboot: running kernel '{runningKernel}' but newer kernel '{newerKernel}' is installed",
+                    descriptionOk: $"Node is running the latest installed kernel ({runningKernel})",
+                    compliance: patchControls);
             }
             #endregion
 
             #region NTP
-            // Compare node UTC time against the client machine time — offset > 60s indicates NTP issue.
+            // Compare node UTC time against the clock of the machine running the analysis, read when
+            // the node answered — offset > 60s indicates an NTP issue (or a wrong client clock).
             // Mapped to logging controls: accurate timestamps are a precondition for usable audit logs.
             if (nodeUtcTime > 0)
             {
-                var ntpOffset = Math.Abs(nodeUtcTime - DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                var ntpOffset = Math.Abs(clockOffset);
                 CreateResult(
                     isOk: ntpOffset <= 60,
                     id: id,
@@ -737,8 +795,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.Gdpr.Art_32_1_d,
                         ComplianceControls.AgId.ABSC_5_2,
                         ComplianceControls.Ens.OP_EXP_8,
-                        ComplianceControls.Ens.OP_MON_1,
-                        ComplianceControls.C5.OPS_09,
+                        ComplianceControls.Ens.OP_MON_3,
+                        ComplianceControls.C5.OPS_13,
                         ComplianceControls.C5.OPS_10,
                         ComplianceControls.Soc2.CC7_2,
                         ComplianceControls.Nist80053.AU_12,
@@ -748,22 +806,29 @@ public partial class DiagnosticEngine
                         ComplianceControls.NistCsf.DE_CM_01,
                         ComplianceControls.NistCsf.DE_CM_03,
                         ComplianceControls.Iso27017.CLD_12_4_5,
+                        ComplianceControls.Acn.PR_PS_04,
+                        ComplianceControls.Acn.DE_CM_01,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                        ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_5_A4,
                     ]);
             }
 
             // WN0045 — time drift between cluster nodes. Even when each node looks fine vs the
             // diag client, clocks can have drifted from each other (typical sign: corosync token
             // retransmits, HA fencing instability, broken Kerberos/LDAP, replayable log timestamps).
-            // Compare this node's UTC time against the maximum delta among the other online nodes.
+            // Compare this node's clock against the maximum delta among the other online nodes. The
+            // nodes are read at slightly different moments, so their offsets from the client clock
+            // are compared rather than the raw times; the client clock itself cancels out.
             if (hasCluster && nodeUtcTime > 0)
             {
-                var otherUtcTimes = nodeCompareData
+                var otherOffsets = nodeCompareData
                     .Where(kv => kv.Key != item.Node && kv.Value.UtcTime > 0)
-                    .Select(kv => kv.Value.UtcTime)
+                    .Select(kv => kv.Value.ClockOffset)
                     .ToList();
-                if (otherUtcTimes.Count > 0)
+                if (otherOffsets.Count > 0)
                 {
-                    var maxDrift = otherUtcTimes.Max(t => Math.Abs(nodeUtcTime - t));
+                    var maxDrift = otherOffsets.Max(o => Math.Abs(clockOffset - o));
                     CreateResult(
                         isOk: maxDrift <= 5,
                         id: id,
@@ -783,8 +848,8 @@ public partial class DiagnosticEngine
                             ComplianceControls.Gdpr.Art_32_1_d,
                             ComplianceControls.AgId.ABSC_5_2,
                             ComplianceControls.Ens.OP_EXP_8,
-                            ComplianceControls.Ens.OP_MON_1,
-                            ComplianceControls.C5.OPS_09,
+                            ComplianceControls.Ens.OP_MON_3,
+                            ComplianceControls.C5.OPS_13,
                             ComplianceControls.C5.OPS_10,
                             ComplianceControls.Soc2.CC7_2,
                             ComplianceControls.Nist80053.AU_12,
@@ -794,6 +859,10 @@ public partial class DiagnosticEngine
                             ComplianceControls.NistCsf.DE_CM_01,
                             ComplianceControls.NistCsf.DE_CM_03,
                             ComplianceControls.Iso27017.CLD_12_4_5,
+                            ComplianceControls.Acn.PR_PS_04,
+                            ComplianceControls.Acn.DE_CM_01,
+                            ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                            ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                         ]);
                 }
             }
@@ -892,44 +961,80 @@ public partial class DiagnosticEngine
             //}
         }
 
-        #region Bridge VLAN awareness
-        // If a VM uses a VLAN tag on a bridge that is not VLAN-aware, the tag is silently ignored
-        // Build a flat list of (vm, net) pairs that hit a non-VLAN-aware bridge on their node,
-        // then run a single per-item check so the Ok branch fires when nothing is mismatched.
-        var vlanBridgeIssues = onlineNodes
-            .Where(n => nodeCompareData.TryGetValue(n.Node, out _))
+        #region Guest NICs vs host bridges
+        // Guests on a node, with their config — the input of both bridge checks below.
+        var guestsByNode = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
+                                                 && !a.IsTemplate
+                                                 && _vmConfigs.ContainsKey(a.VmId))
+                                     .ToLookup(a => a.Node);
+
+        // A tag on a non-VLAN-aware Linux bridge is fine: PVE uses the traditional model and builds
+        // vmbrXvN on top of the uplink's .N subinterface. The real trap is a VLAN-aware bridge whose
+        // bridge-vids was narrowed: a VLAN outside that list is not allowed on the bridge uplinks, so
+        // the guest only reaches peers on the same bridge. No bridge-vids means no restriction.
+        var vlanOutsideBridge = onlineNodes
+            .Where(n => nodeCompareData.ContainsKey(n.Node))
             .SelectMany(n =>
             {
-                var nodeData = nodeCompareData[n.Node];
-                var nonVlanBridges = nodeData.Networks
-                                              .Where(net => net.Type == "bridge" && net.BridgeVlanAware is not true)
-                                              .Select(net => net.Interface)
-                                              .ToHashSet();
-                if (nonVlanBridges.Count == 0) { return Enumerable.Empty<(ClusterResource Vm, VmNetwork Net)>(); }
-                return _resources
-                    .Where(a => a.ResourceType == ClusterResourceType.Vm
-                                && a.Node == n.Node
-                                && !a.IsTemplate
-                                && _vmConfigs.ContainsKey(a.VmId))
-                    .SelectMany(vm => _vmConfigs[vm.VmId].Networks
-                                        .Where(net => net.Tag.HasValue
-                                                       && !string.IsNullOrWhiteSpace(net.Bridge)
-                                                       && nonVlanBridges.Contains(net.Bridge))
-                                        .Select(net => (Vm: vm, Net: net)));
+                var allowedByBridge = nodeCompareData[n.Node].Networks
+                                        .Where(net => net.Type == "bridge"
+                                                      && net.BridgeVlanAware is true
+                                                      && !string.IsNullOrWhiteSpace(net.BridgeVids))
+                                        .ToDictionary(net => net.Interface, net => (net.BridgeVids, Ranges: VlanIds.Parse(net.BridgeVids)));
+
+                return guestsByNode[n.Node]
+                    .SelectMany(vm => _vmConfigs[vm.VmId].Networks.Select(net => (Vm: vm, Net: net)))
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Net.Bridge) && allowedByBridge.ContainsKey(x.Net.Bridge))
+                    .Select(x =>
+                    {
+                        var (vids, ranges) = allowedByBridge[x.Net.Bridge];
+                        return (x.Vm, x.Net, Vids: vids, Outside: VlansOutsideBridge(x.Net.Tag, x.Net.Trunks, ranges));
+                    })
+                    .Where(x => x.Outside.Count > 0);
             })
             .ToList();
         CreateResultPerItem(
-            items: vlanBridgeIssues,
+            items: vlanOutsideBridge,
             isItemOk: _ => false,
             itemId: x => x.Vm.GetWebUrl(),
-            itemDescriptionKo: x => $"VM {x.Vm.VmId} interface '{x.Net.Id}' uses VLAN tag {x.Net.Tag} on bridge '{x.Net.Bridge}' which is not VLAN-aware — tag will be silently ignored",
+            itemDescriptionKo: x => $"{(x.Vm.VmType == VmType.Lxc ? "CT" : "VM")} {x.Vm.VmId} interface '{x.Net.Id}' uses VLAN {VlanIds.Format(x.Outside)} "
+                                    + $"not in bridge-vids '{x.Vids}' of VLAN-aware bridge '{x.Net.Bridge}' — that VLAN does not leave the node",
             aggregatedIdOk: "cluster/network",
-            aggregatedDescriptionOk: _ => "No VM interface uses a VLAN tag on a non-VLAN-aware bridge",
-            errorCode: "WN0037",
+            aggregatedDescriptionOk: _ => "Every guest VLAN is allowed by the bridge-vids of its VLAN-aware bridge",
+            errorCode: "WN0046",
             subContext: "Network",
             context: DiagnosticResultContext.Node,
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: []);
+
+        // A bridge that exists on the guest's node but not on a peer: migrating or HA-recovering the
+        // guest to that peer fails. A bridge missing on the guest's own node is skipped on purpose —
+        // SDN vnets are not listed in /nodes/{node}/network, so it cannot be told apart from a vnet.
+        if (nodeCompareData.Count > 1)
+        {
+            var bridgesByNode = nodeCompareData.ToDictionary(kv => kv.Key,
+                                                             kv => kv.Value.Networks
+                                                                           .Where(net => net.Type is "bridge" or "OVSBridge")
+                                                                           .Select(net => net.Interface)
+                                                                           .ToHashSet());
+            var guests = nodeCompareData.Keys
+                                        .SelectMany(node => guestsByNode[node])
+                                        .Select(vm => (vm.Node, vm.VmId, Bridges: _vmConfigs[vm.VmId].Networks.Select(net => net.Bridge)));
+            var nodeUrls = onlineNodes.ToDictionary(n => n.Node, n => n.GetWebUrl());
+
+            CreateResultPerItem(
+                items: FindBridgesMissingOnPeers(bridgesByNode, guests),
+                isItemOk: _ => false,
+                itemId: x => nodeUrls[x.Node],
+                itemDescriptionKo: x => $"Bridge '{x.Bridge}' used by guest(s) {string.Join(", ", x.VmIds)} is missing on node(s) {string.Join(", ", x.MissingOn)} — migration or HA recovery there will fail",
+                aggregatedIdOk: "cluster/network",
+                aggregatedDescriptionOk: _ => "Every bridge used by a guest exists on all online nodes",
+                errorCode: "WN0047",
+                subContext: "Network",
+                context: DiagnosticResultContext.Node,
+                gravityKo: DiagnosticResultGravity.Warning,
+                compliance: []);
+        }
         #endregion
 
         #region Memory overcommit
@@ -939,7 +1044,7 @@ public partial class DiagnosticEngine
             {
                 var nr = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.Node == n.Node);
                 if (nr == null || nr.MemorySize == 0) { return null; }
-                var allocated = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node)
+                var allocated = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node && !a.IsTemplate)
                                           .Aggregate(0UL, (acc, a) => acc + a.MemorySize);
                 return new { NodeItem = n, NodeResource = nr, AllocatedMem = allocated };
             })
@@ -1034,14 +1139,16 @@ public partial class DiagnosticEngine
                     compliance:
                     [
                         ComplianceControls.Iso27001.A_5_30,
-                        ComplianceControls.Dora.Art_12,
+                        ComplianceControls.Dora.Art_11,
                         ComplianceControls.Ens.OP_CONT_2,
                         ComplianceControls.Ens.OP_EXP_3,
-                        ComplianceControls.C5.PI_02,
                         ComplianceControls.Soc2.CC8_1,
                         ComplianceControls.Nist80053.CM_2,
                         ComplianceControls.Iso27017.CLD_6_3_1,
                         ComplianceControls.NistCsf.PR_IR_04,
+                        ComplianceControls.Acn.ID_IM_04,
+                        ComplianceControls.Iso22301.C_8_3_5,
+                        ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                     ]);
             }
         }
@@ -1050,7 +1157,9 @@ public partial class DiagnosticEngine
 
     private void CheckNodeRrd(Settings settings, string id, IEnumerable<NodeRrdData> rrdData)
     {
+        // No data (the RRD fetch failed, already reported as WG0042) means nothing to check.
         var rrdList = rrdData.ToList();
+        if (rrdList.Count == 0) { return; }
 
         CheckThresholdHost(settings.Node,
                            DiagnosticResultContext.Node,
@@ -1061,8 +1170,9 @@ public partial class DiagnosticEngine
                            netInErrorCode: "WN0039",
                            netOutErrorCode: "WN0040");
 
-        // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck
-        CheckThreshold(settings.Node.Cpu,
+        // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck.
+        // Own thresholds: the CPU ones (70/85%) are far above any real iowait problem.
+        CheckThreshold(settings.Node.IoWait,
                        "WN0028",
                        DiagnosticResultContext.Node,
                        "Usage",
@@ -1085,17 +1195,21 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation
-        CheckThreshold(settings.Storage.Threshold,
-                       "WN0030",
-                       DiagnosticResultContext.Node,
-                       "Usage",
-                       [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
-                                               rrdList.Average(a => Convert.ToDouble(a.SwapSize)),
-                                               id,
-                                               $"SWAP (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
-                       false,
-                       true);
+        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation.
+        // No swap (the default on ZFS-root installs) has nothing to measure: 0/0 was an Ok "NaN%".
+        if (rrdList.Any(a => a.SwapSize > 0))
+        {
+            CheckThreshold(settings.Storage.Threshold,
+                           "WN0030",
+                           DiagnosticResultContext.Node,
+                           "Usage",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
+                                                   rrdList.Average(a => Convert.ToDouble(a.SwapSize)),
+                                                   id,
+                                                   $"SWAP (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                           false,
+                           true);
+        }
 
         // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
         // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
@@ -1146,11 +1260,11 @@ public partial class DiagnosticEngine
         var nodeCpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
 
         var nodeRamPct = rrdList.Any(a => a.MemorySize > 0)
-                            ? rrdList.Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
+                            ? rrdList.Where(a => a.MemorySize > 0).Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
                             : 0.0;
 
         var nodeDiskPct = rrdList.Any(a => a.RootSize > 0)
-                            ? rrdList.Average(a => a.RootUsage / a.RootSize * 100.0)
+                            ? rrdList.Where(a => a.RootSize > 0).Average(a => a.RootUsage / a.RootSize * 100.0)
                             : 0.0;
 
         var nodeWeightedLoad = (nodeCpuPct * 0.4) + (nodeRamPct * 0.4) + (nodeDiskPct * 0.2);
@@ -1166,9 +1280,9 @@ public partial class DiagnosticEngine
     [
         ComplianceControls.Iso27001.A_5_30,
         ComplianceControls.Iso27001.A_8_16,
-        ComplianceControls.Dora.Art_12,
+        ComplianceControls.Dora.Art_11,
         ComplianceControls.Gdpr.Art_32_1_b,
-        ComplianceControls.Ens.MP_S_1,
+        ComplianceControls.Ens.OP_CONT_4,
         ComplianceControls.C5.BCM_03,
         ComplianceControls.Soc2.A1_2,
         ComplianceControls.Nist80053.CP_10,
@@ -1176,6 +1290,11 @@ public partial class DiagnosticEngine
         ComplianceControls.Cis.C_11,
         ComplianceControls.NistCsf.PR_IR_04,
         ComplianceControls.NistCsf.PR_DS_11,
+        ComplianceControls.Acn.ID_IM_04,
+        ComplianceControls.Acn.DE_CM_01,
+        ComplianceControls.Iso22301.C_8_3_5,
+        ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+        ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
     ];
 
     private void CheckZfsChildren(string id,
@@ -1188,7 +1307,8 @@ public partial class DiagnosticEngine
             if (!string.IsNullOrWhiteSpace(child.State))
             {
                 CreateResult(
-                    isOk: child.State.Equals("ONLINE", StringComparison.OrdinalIgnoreCase),
+                    // Hot spares are AVAIL (idle) or INUSE (standing in for a failed disk): both expected.
+                    isOk: child.State is "ONLINE" or "AVAIL" or "INUSE",
                     id: id,
                     errorCode: "CN0012",
                     subContext: "Zfs",
@@ -1226,10 +1346,12 @@ public partial class DiagnosticEngine
         var disksAll = fetch.Disks;
 
         CreateResultPerItem(
-            items: disksAll,
+            // UNKNOWN: PVE cannot read S.M.A.R.T. (disk behind a RAID controller or a USB bridge) —
+            // nothing to judge, not a failing disk.
+            items: disksAll.Where(a => !string.Equals(a.Health, "UNKNOWN", StringComparison.OrdinalIgnoreCase)).ToList(),
             isItemOk: a => a.Health == "PASSED" || a.Health == "OK",
             itemId: _ => id,
-            itemDescriptionKo: a => $"Disk '{a.DevPath}' S.M.A.R.T. status problem",
+            itemDescriptionKo: a => $"Disk '{a.DevPath}' S.M.A.R.T. status problem ({a.Health})",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "All disks report a healthy S.M.A.R.T. status",
             errorCode: "WN0016",
@@ -1266,7 +1388,9 @@ public partial class DiagnosticEngine
         if (settings.Node.Smart.Enabled)
         {
             var smartResults = await RunParallelAsync(disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)),
-                                                      d => nodeApi.Disks.Smart.GetAsync(disk: d.DevPath));
+                                                      d => nodeApi.Disks.Smart.GetAsync(disk: d.DevPath)
+                                                                  .ToSafeSingle(_result, id, DiagnosticResultContext.Node,
+                                                                                $"S.M.A.R.T. data of disk '{d.DevPath}' on node '{fetch.Item.Node}'"));
 
             foreach (var (disk, smart) in disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)).ToList().Zip(smartResults))
             {
@@ -1408,7 +1532,9 @@ public partial class DiagnosticEngine
         // Detailed ZFS checks: pool errors and vdev state — one API call per pool
         if (settings.Node.NodeStorage.ZfsDetail && zfsList.Any())
         {
-            var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync());
+            var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync()
+                                                                           .ToSafeSingle(_result, id, DiagnosticResultContext.Node,
+                                                                                         $"ZFS pool '{zfs.Name}' on node '{fetch.Item.Node}'"));
             foreach (var (zfs, detail) in zfsList.Zip(zfsDetails))
             {
                 if (detail == null) { continue; }
@@ -1459,4 +1585,120 @@ public partial class DiagnosticEngine
         }
         #endregion
     }
+
+    /// <summary>
+    /// Packages installed on both nodes with a different version, as "package X vs Y". Kernel image
+    /// packages are left out: each kernel version is its own package, and old kernels kept on one
+    /// node only are normal (the running and newest kernel are checked by WN0013).
+    /// </summary>
+    internal static List<string> PackageVersionDifferences(IEnumerable<NodeAptVersion> mine, IEnumerable<NodeAptVersion> other)
+    {
+        var otherByPackage = other.Where(a => !string.IsNullOrWhiteSpace(a.Package))
+                                  .GroupBy(a => a.Package)
+                                  .ToDictionary(g => g.Key, g => g.First().Version);
+        return [.. mine.Where(a => !string.IsNullOrWhiteSpace(a.Package) && !_kernelImagePackage.IsMatch(a.Package))
+                       .Where(a => otherByPackage.TryGetValue(a.Package, out var v) && v != a.Version)
+                       .Select(a => $"{a.Package} {a.Version} vs {otherByPackage[a.Package]}")
+                       .Distinct()
+                       .Order()];
+    }
+
+    /// <summary>
+    /// Entries of an /etc/hosts file, normalised for comparison: comments and blank lines dropped,
+    /// whitespace collapsed. Two files with the same entries differ only cosmetically.
+    /// </summary>
+    internal static HashSet<string> HostsEntries(IEnumerable<string> lines)
+        => [.. lines.Select(l => (l ?? "").Split('#')[0])
+                    .Select(l => string.Join(' ', l.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)))
+                    .Where(l => l.Length > 0)];
+
+    // Kernel image packages: proxmox-kernel-6.8.12-43-pve-signed, proxmox-kernel-6.2.16-19-pve, pve-kernel-5.15.158-2-pve.
+    private static readonly Regex _kernelImagePackage = new(@"^(?:proxmox|pve)-kernel-(\d+\.\d+\.\d+-\d+)-pve(?:-signed)?$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The newest installed kernel image newer than the running one (e.g. <c>6.8.12-43-pve</c>),
+    /// or null when the node already runs the newest. <paramref name="runningKernel"/> is the
+    /// uname release (<c>6.8.12-20-pve</c>). A kernel pinned with proxmox-boot-tool is not visible here.
+    /// </summary>
+    internal static string? NewerInstalledKernel(string runningKernel, IEnumerable<string> installedPackages)
+    {
+        var running = runningKernel.EndsWith("-pve", StringComparison.Ordinal) ? runningKernel[..^4] : runningKernel;
+        var newest = installedPackages.Select(p => _kernelImagePackage.Match(p ?? ""))
+                                      .Where(m => m.Success)
+                                      .Select(m => m.Groups[1].Value)
+                                      .OrderDescending(Comparer<string>.Create(DebianVersion.Compare))
+                                      .FirstOrDefault();
+        return newest != null && DebianVersion.Compare(newest, running) > 0 ? $"{newest}-pve" : null;
+    }
+
+    /// <summary>
+    /// Interfaces that carry traffic: bridge ports, bond slaves, OVS ports and bond members, the raw
+    /// device under a VLAN interface, and any interface holding an IP of its own. A VLAN name such as
+    /// <c>eno1.100</c> also marks its parent <c>eno1</c> as used.
+    /// </summary>
+    internal static HashSet<string> UsedInterfaces(IEnumerable<NodeNetwork> networks)
+    {
+        var used = new HashSet<string>();
+        void Add(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) { return; }
+            used.Add(name);
+            var dot = name.IndexOf('.');
+            if (dot > 0) { used.Add(name[..dot]); }
+        }
+
+        foreach (var net in networks)
+        {
+            foreach (var name in $"{net.BridgePorts} {net.Slaves} {net.OvsPorts} {net.OvsBonds}".Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                Add(name);
+            }
+
+            if (net.Type == "vlan") { Add(string.IsNullOrWhiteSpace(net.VlanRawDevice) ? net.Interface : net.VlanRawDevice); }
+            if (!string.IsNullOrWhiteSpace(net.OvsBridge)) { Add(net.Interface); }
+            if (!string.IsNullOrWhiteSpace(net.Cidr)
+                || !string.IsNullOrWhiteSpace(net.Address)
+                || !string.IsNullOrWhiteSpace(net.Cidr6)
+                || !string.IsNullOrWhiteSpace(net.Address6))
+            {
+                Add(net.Interface);
+            }
+        }
+        return used;
+    }
+
+    /// <summary>
+    /// VLAN ids a guest NIC uses (its <c>tag</c> plus its <c>trunks</c>) that the bridge's
+    /// <c>bridge-vids</c> does not allow. VLAN 1 is always allowed: it is the bridge's default PVID.
+    /// </summary>
+    internal static IReadOnlyList<int> VlansOutsideBridge(int? tag, string? trunks, IReadOnlyList<(int From, int To)> allowed)
+    {
+        var used = VlanIds.Expand(VlanIds.Parse(trunks)).ToList();
+        if (tag.HasValue) { used.Add(tag.Value); }
+        return [.. used.Where(id => id != 1 && !VlanIds.Contains(allowed, id)).Distinct().Order()];
+    }
+
+    /// <summary>
+    /// Bridges a guest uses that exist on the guest's own node but not on every other node in
+    /// <paramref name="bridgesByNode"/>. One entry per (node, bridge) with the guests using it.
+    /// Bridges absent on the guest's own node are ignored — they may be SDN vnets.
+    /// </summary>
+    internal static List<(string Node, string Bridge, List<long> VmIds, List<string> MissingOn)> FindBridgesMissingOnPeers(
+        IReadOnlyDictionary<string, HashSet<string>> bridgesByNode,
+        IEnumerable<(string Node, long VmId, IEnumerable<string> Bridges)> guests)
+        => [.. guests.Where(g => bridgesByNode.ContainsKey(g.Node))
+                     .SelectMany(g => g.Bridges.Where(b => !string.IsNullOrWhiteSpace(b) && bridgesByNode[g.Node].Contains(b))
+                                               .Distinct()
+                                               .Select(b => (g.Node, Bridge: b, g.VmId)))
+                     .GroupBy(x => (x.Node, x.Bridge))
+                     .Select(g => (g.Key.Node,
+                                   g.Key.Bridge,
+                                   VmIds: g.Select(x => x.VmId).Distinct().Order().ToList(),
+                                   MissingOn: bridgesByNode.Where(kv => kv.Key != g.Key.Node && !kv.Value.Contains(g.Key.Bridge))
+                                                           .Select(kv => kv.Key)
+                                                           .Order()
+                                                           .ToList()))
+                     .Where(x => x.MissingOn.Count > 0)
+                     .OrderBy(x => x.Node)
+                     .ThenBy(x => x.Bridge)];
 }

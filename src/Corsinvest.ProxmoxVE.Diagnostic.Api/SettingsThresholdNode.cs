@@ -27,6 +27,12 @@ public class SettingsThresholdNode : SettingsThresholdHost
     public double ConsolidationMemThreshold { get; set; } = 20.0;
 
     /// <summary>
+    /// CPU IOWait threshold (% of CPU time spent waiting for I/O, averaged over the RRD time frame).
+    /// Sustained values above 10% point to a storage bottleneck (WN0028).
+    /// </summary>
+    public SettingsThreshold<double> IoWait { get; set; } = new() { Warning = 10, Critical = 25 };
+
+    /// <summary>
     /// S.M.A.R.T. disk checks configuration
     /// </summary>
     public SettingsSmartDisk Smart { get; set; } = new();
@@ -37,15 +43,20 @@ public class SettingsThresholdNode : SettingsThresholdHost
     public SettingsNodeStorage NodeStorage { get; set; } = new();
 
     /// <summary>
-    /// RRD fetch settings with node-specific PSI pressure thresholds (lower than VM defaults)
+    /// Node-specific PSI pressure thresholds (lower than VM defaults), set on the inherited
+    /// <see cref="SettingsThresholdHost.Rrd"/>. A 'new Rrd' property here used to hide it: the
+    /// data fetch read this one, the threshold labels read the base one, never deserialized.
     /// </summary>
-    public new SettingsRrd Rrd { get; set; } = new()
+    public SettingsThresholdNode()
     {
-        Pressure = new()
+        Rrd = new()
         {
-            Cpu = new() { Warning = 40, Critical = 70 },
-            IoFull = new() { Warning = 10, Critical = 30 },
-            MemoryFull = new() { Warning = 5, Critical = 15 },
-        }
-    };
+            Pressure = new()
+            {
+                Cpu = new() { Warning = 40, Critical = 70 },
+                IoFull = new() { Warning = 10, Critical = 30 },
+                MemoryFull = new() { Warning = 5, Critical = 15 },
+            }
+        };
+    }
 }

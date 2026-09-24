@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.Json.Serialization;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -17,13 +16,13 @@ public class SettingsRrd
     /// <summary>
     /// Time frame for RRD data (Day or Week)
     /// </summary>
-    [JsonConverter(typeof(StringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public RrdDataTimeFrame TimeFrame { get; set; } = RrdDataTimeFrame.Day;
 
     /// <summary>
     /// Consolidation function: Average (default) or Max (peak detection)
     /// </summary>
-    [JsonConverter(typeof(StringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public RrdDataConsolidation Consolidation { get; set; } = RrdDataConsolidation.Average;
 
     /// <summary>
