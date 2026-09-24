@@ -29,6 +29,14 @@
 - `WG0012` (passthrough) no longer reports SPICE USB redirection, which does not block migration.
 - `IG0002` now reports IDE and SATA disks even when the SCSI controller is VirtIO.
 - README: the example output is now real output of the current version (it showed wrong codes, such as `WS0001` for orphaned images and `WS0003` for storage usage, and results the tool cannot produce). The number of findings tagged with compliance controls is corrected to 100+.
+- An ignore file written as in the documentation (`"Context": "Qemu"`, `"Gravity": "Warning"`) made the tool stop before starting; names and numbers are both accepted now, as are comments and trailing commas. An invalid pattern is reported at start, not after the whole analysis.
+- Ignored findings are now left out of the report, as documented; `--ignored-issues-show` keeps them, marked in a column. `create-ignored-issues` writes a real example rule instead of an empty one that ignored everything.
+- With `--fast` every guest got "'cv4pve-autosnap' not configured": snapshots are not read in that profile. The snapshot checks are now skipped when snapshots were not read.
+- A settings file that sets only part of a section no longer resets the rest of it (for example setting only the VM CPU threshold changed the VM health score thresholds). `"TimeFrame": "Week"` and the other names are accepted, and `create-settings` writes them.
+- The analysis no longer stops when the NVD CVE service is slow, or when a disk (S.M.A.R.T.) or a ZFS pool cannot be read with `--full`.
+- With `--compliance`, the findings saying the analysis is incomplete (API errors, missing permissions) are kept, so an audit report cannot look clean when data was not read.
+- JSON output writes Context and Gravity as names; HTML and Markdown output escape the text.
+- `--fast` and `--full` together are now an error instead of silently using `--fast`.
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

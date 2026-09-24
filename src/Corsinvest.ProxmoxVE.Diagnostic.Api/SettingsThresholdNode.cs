@@ -37,15 +37,20 @@ public class SettingsThresholdNode : SettingsThresholdHost
     public SettingsNodeStorage NodeStorage { get; set; } = new();
 
     /// <summary>
-    /// RRD fetch settings with node-specific PSI pressure thresholds (lower than VM defaults)
+    /// Node-specific PSI pressure thresholds (lower than VM defaults), set on the inherited
+    /// <see cref="SettingsThresholdHost.Rrd"/>. A 'new Rrd' property here used to hide it: the
+    /// data fetch read this one, the threshold labels read the base one, never deserialized.
     /// </summary>
-    public new SettingsRrd Rrd { get; set; } = new()
+    public SettingsThresholdNode()
     {
-        Pressure = new()
+        Rrd = new()
         {
-            Cpu = new() { Warning = 40, Critical = 70 },
-            IoFull = new() { Warning = 10, Critical = 30 },
-            MemoryFull = new() { Warning = 5, Critical = 15 },
-        }
-    };
+            Pressure = new()
+            {
+                Cpu = new() { Warning = 40, Critical = 70 },
+                IoFull = new() { Warning = 10, Critical = 30 },
+                MemoryFull = new() { Warning = 5, Critical = 15 },
+            }
+        };
+    }
 }

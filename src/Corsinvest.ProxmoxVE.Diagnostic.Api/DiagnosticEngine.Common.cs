@@ -19,7 +19,7 @@ public partial class DiagnosticEngine
                                           SettingsThresholdHost thresholdHost,
                                           VmConfig config,
                                           IEnumerable<KeyValue> pending,
-                                          IEnumerable<VmSnapshot> snapshots,
+                                          IEnumerable<VmSnapshot>? snapshots,
                                           IEnumerable<VmRrdData> rrdData,
                                           DiagnosticResultContext context,
                                           string node,
@@ -241,7 +241,9 @@ public partial class DiagnosticEngine
         CheckTaskHistory(tasks, context, id);
         #endregion
 
-        CheckSnapshots(snapshots, settings.Snapshot, _now, id, context);
+        // null = snapshots not read (Snapshot.Enabled off, e.g. --fast, or the fetch failed and
+        // was reported as WG0042): no data is not "no cv4pve-autosnap", skip instead.
+        if (snapshots != null) { CheckSnapshots(snapshots, settings.Snapshot, _now, id, context); }
 
         CheckGuestRrd(thresholdHost, context, id, rrdData);
 

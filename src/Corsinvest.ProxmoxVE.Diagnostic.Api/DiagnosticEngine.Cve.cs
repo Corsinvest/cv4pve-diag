@@ -75,7 +75,10 @@ public partial class DiagnosticEngine
             }
             _nvdCveData = result;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        // TaskCanceledException is an OperationCanceledException: both the 120 s token and the
+        // HttpClient timeout throw it. Nothing else cancels the analysis, so every failure is
+        // caught here instead of aborting the whole run.
+        catch (Exception ex)
         {
             _nvdCveData = [];
             _result.Add(new DiagnosticResult

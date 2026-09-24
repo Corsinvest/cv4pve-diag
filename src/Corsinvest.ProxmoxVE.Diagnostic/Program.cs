@@ -36,11 +36,13 @@ var optCompliance = app.AddOption<ComplianceStandard?>("--compliance",
 
 
 static Settings Profile(bool fast, bool full)
-    => fast
-        ? Settings.Fast()
-        : full
-            ? Settings.Full()
-            : Settings.Standard();
+    => fast && full
+        ? throw new ArgumentException("--fast and --full cannot be used together")
+        : fast
+            ? Settings.Fast()
+            : full
+                ? Settings.Full()
+                : Settings.Standard();
 
 var cmdCreateSettings = app.AddCommand("create-settings", $"Create file settings ({settingsFileName})");
 var optCreateFast = cmdCreateSettings.AddOption<bool>("--fast", "Use fast profile (skips backup content, snapshots and LVM-thin metadata)");
@@ -48,7 +50,7 @@ var optCreateFull = cmdCreateSettings.AddOption<bool>("--full", "Use full profil
 cmdCreateSettings.SetAction((action) =>
    {
        var settings = Profile(action.GetValue(optCreateFast), action.GetValue(optCreateFull));
-       File.WriteAllText(settingsFileName, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+       File.WriteAllText(settingsFileName, JsonSerializer.Serialize(settings, Settings.JsonOptions));
        Console.Out.WriteLine(OutputEngine.PrintEnum("TimeFrame", typeof(RrdDataTimeFrame)));
        Console.Out.WriteLine(OutputEngine.PrintEnum("Consolidation", typeof(RrdDataConsolidation)));
        Console.Out.WriteLine($"Create file: {settingsFileName}");
@@ -57,7 +59,22 @@ cmdCreateSettings.SetAction((action) =>
 app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})")
    .SetAction((_) =>
    {
-       File.WriteAllText(ignoredIssuesFileName, JsonSerializer.Serialize(new[] { new DiagnosticResult() }, new JsonSerializerOptions { WriteIndented = true }));
+       // An empty DiagnosticResult matched every finding (default Context/Gravity mean "any"):
+       // the template is a real, narrow example instead — edit it before use.
+       var example = new DiagnosticResult
+       {
+           ErrorCode = "IG0011",
+           Id = "nodes/pve01/qemu/100",
+           Context = DiagnosticResultContext.Qemu,
+           Gravity = DiagnosticResultGravity.Info,
+       };
+       File.WriteAllText(ignoredIssuesFileName,
+                         JsonSerializer.Serialize(new[] { example },
+                                                  new JsonSerializerOptions
+                                                  {
+                                                      WriteIndented = true,
+                                                      DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                                                  }));
        Console.Out.WriteLine(OutputEngine.PrintEnum("Context", typeof(DiagnosticResultContext)));
        Console.Out.WriteLine(OutputEngine.PrintEnum("Gravity", typeof(DiagnosticResultGravity)));
        Console.Out.WriteLine($"Create file: {ignoredIssuesFileName}");

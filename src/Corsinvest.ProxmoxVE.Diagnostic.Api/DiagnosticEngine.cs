@@ -118,7 +118,8 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                 var ver = await client.Nodes[firstOnlineNode.Node].Version.GetAsync()
                                 .ToSafeSingle(_result, firstOnlineNode.GetWebUrl(), DiagnosticResultContext.Node,
                                               $"PVE version on node '{firstOnlineNode.Node}'");
-                if (ver != null) { _ = int.TryParse(ver.Version?.Split('.')[0], out pveMajorVersion); }
+                // TryParse writes 0 on failure: keep the default instead.
+                if (int.TryParse(ver?.Version?.Split('.')[0], out var major)) { pveMajorVersion = major; }
             }
 
             await FetchCveDataAsync(pveMajorVersion);
@@ -182,7 +183,8 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
     private async Task<TResult[]> RunParallelAsync<T, TResult>(IEnumerable<T> source, Func<T, Task<TResult>> func)
     {
-        var semaphore = new SemaphoreSlim(settings.MaxParallelRequests);
+        // 0 or a negative value in the settings file would hang or throw: run at least one at a time.
+        var semaphore = new SemaphoreSlim(Math.Max(1, settings.MaxParallelRequests));
         return await Task.WhenAll(source.Select(async item =>
         {
             await semaphore.WaitAsync();

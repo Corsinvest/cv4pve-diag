@@ -4,14 +4,14 @@
 
 A common scenario: the tool reports that a specific VM does not have `Protection = enabled` (`IG0011`), but you have decided on purpose to leave it off for that guest. Instead of seeing that finding every run, you add a rule to the ignore file and the next runs skip it.
 
-The matched issues either disappear from the report entirely, or — if you pass `--ignored-issues-show` — are displayed in a separate table so you can still see what was suppressed without polluting the main output.
+The matched issues disappear from the report. With `--ignored-issues-show` they stay in the report, marked with an `X` in an extra `IgnoredIssue` column, so you can check what the rules hide.
 
 ---
 
 ## How to use it
 
 ```bash
-# Generate ignored issues template (writes ignored-issues.json with placeholder rules)
+# Generate ignored issues template (writes ignored-issues.json with one example rule — edit it before use)
 cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid create-ignored-issues
 
 # Run with ignored issues
@@ -29,7 +29,9 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 
 A JSON array of rule objects. A finding is suppressed when **every** field declared on a rule matches the finding (logical AND within the rule). Multiple rules are evaluated independently (logical OR across rules).
 
-All string fields support **regex** patterns — use `.*` to match anything.
+All string fields support **regex** patterns — use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
+
+The file may contain `//` comments and trailing commas. `Context` and `Gravity` accept names (`"Qemu"`, `"Warning"`) or their numbers.
 
 ```json
 [
@@ -37,7 +39,7 @@ All string fields support **regex** patterns — use `.*` to match anything.
     "ErrorCode": "IG0011"
   },
   {
-    "Id": "nodes/pve01/qemu/105",
+    "Id": "^nodes/pve01/qemu/105$",
     "SubContext": "Protection"
   },
   {
@@ -66,6 +68,8 @@ In the example above:
 | `Gravity`     | The severity                                | `"Info"` / `"Warning"` / `"Critical"` |
 
 All fields are optional — only specified fields are matched. An empty object `{}` matches every finding and is almost never what you want.
+
+> **`Node` and `Info` mean "any".** `Context: "Node"` and `Gravity: "Info"` are the default values, so a rule setting them does not filter on them: `{ "Gravity": "Info" }` matches every finding. Filter on `ErrorCode` instead (codes starting with `I` are Info, the second letter `N` is Node — see [checks.md](checks.md#code-nomenclature)).
 
 ---
 

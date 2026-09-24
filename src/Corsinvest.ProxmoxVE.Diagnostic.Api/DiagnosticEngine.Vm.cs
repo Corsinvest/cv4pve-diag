@@ -33,7 +33,7 @@ public partial class DiagnosticEngine
                                VmConfigQemu Config,
                                VmFirewallOptions? Firewall,
                                IReadOnlyList<KeyValue> Pending,
-                               IReadOnlyList<VmSnapshot> Snapshots,
+                               IReadOnlyList<VmSnapshot>? Snapshots,
                                object? AgentInfo);
 
     private async Task<VmFetchData> FetchVmDataAsync(ClusterResource item)
@@ -44,8 +44,8 @@ public partial class DiagnosticEngine
         var firewallTask = vmApi.Firewall.Options.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Qemu, $"firewall options of VM {item.VmId}");
         var pendingTask = vmApi.Pending.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Qemu, $"pending changes of VM {item.VmId}");
         var snapshotTask = settings.Snapshot.Enabled
-                            ? vmApi.Snapshot.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Qemu, $"snapshots of VM {item.VmId}")
-                            : Task.FromResult<IReadOnlyList<VmSnapshot>>([]);
+                            ? vmApi.Snapshot.GetAsync().ToSafeEnumOrNull(_result, id, DiagnosticResultContext.Qemu, $"snapshots of VM {item.VmId}")
+                            : Task.FromResult<IReadOnlyList<VmSnapshot>?>(null);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
 
         object? agentInfo = null;

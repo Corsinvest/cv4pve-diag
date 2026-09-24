@@ -1305,7 +1305,9 @@ public partial class DiagnosticEngine
         if (settings.Node.Smart.Enabled)
         {
             var smartResults = await RunParallelAsync(disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)),
-                                                      d => nodeApi.Disks.Smart.GetAsync(disk: d.DevPath));
+                                                      d => nodeApi.Disks.Smart.GetAsync(disk: d.DevPath)
+                                                                  .ToSafeSingle(_result, id, DiagnosticResultContext.Node,
+                                                                                $"S.M.A.R.T. data of disk '{d.DevPath}' on node '{fetch.Item.Node}'"));
 
             foreach (var (disk, smart) in disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)).ToList().Zip(smartResults))
             {
@@ -1447,7 +1449,9 @@ public partial class DiagnosticEngine
         // Detailed ZFS checks: pool errors and vdev state — one API call per pool
         if (settings.Node.NodeStorage.ZfsDetail && zfsList.Any())
         {
-            var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync());
+            var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync()
+                                                                           .ToSafeSingle(_result, id, DiagnosticResultContext.Node,
+                                                                                         $"ZFS pool '{zfs.Name}' on node '{fetch.Item.Node}'"));
             foreach (var (zfs, detail) in zfsList.Zip(zfsDetails))
             {
                 if (detail == null) { continue; }

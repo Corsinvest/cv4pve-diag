@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
@@ -90,6 +93,20 @@ public class Settings
     /// When false (default), output is identical to the legacy mode — only failures appear.
     /// </summary>
     public bool IncludeOkResult { get; set; }
+
+    /// <summary>
+    /// JSON options for the settings file. A field left out keeps its default, also inside nested
+    /// sections (Populate: without it a partial "Qemu" section reset Qemu.HealthScore to 70/50).
+    /// Enums are written as names and read as names or numbers; comments and trailing commas are allowed.
+    /// </summary>
+    public static JsonSerializerOptions JsonOptions { get; } = new()
+    {
+        WriteIndented = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     /// <summary>
     /// Fast profile — skips the per-guest and per-storage heavy reads: backup content,

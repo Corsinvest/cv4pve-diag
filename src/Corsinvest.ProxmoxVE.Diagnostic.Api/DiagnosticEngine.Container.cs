@@ -17,7 +17,7 @@ public partial class DiagnosticEngine
                                       VmConfigLxc Config,
                                       VmFirewallOptions? Firewall,
                                       IReadOnlyList<KeyValue> Pending,
-                                      IReadOnlyList<VmSnapshot> Snapshots);
+                                      IReadOnlyList<VmSnapshot>? Snapshots);
 
     private async Task<ContainerFetchData> FetchContainerDataAsync(ClusterResource item)
     {
@@ -26,8 +26,8 @@ public partial class DiagnosticEngine
         var firewallTask = vmApi.Firewall.Options.GetAsync().ToSafeSingle(_result, id, DiagnosticResultContext.Lxc, $"firewall options of CT {item.VmId}");
         var pendingTask = vmApi.Pending.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"pending changes of CT {item.VmId}");
         var snapshotTask = settings.Snapshot.Enabled
-                            ? vmApi.Snapshot.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Lxc, $"snapshots of CT {item.VmId}")
-                            : Task.FromResult<IReadOnlyList<VmSnapshot>>([]);
+                            ? vmApi.Snapshot.GetAsync().ToSafeEnumOrNull(_result, id, DiagnosticResultContext.Lxc, $"snapshots of CT {item.VmId}")
+                            : Task.FromResult<IReadOnlyList<VmSnapshot>?>(null);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
         return new ContainerFetchData(item, (VmConfigLxc)_vmConfigs[item.VmId],
                                       firewallTask.Result, pendingTask.Result, snapshotTask.Result);

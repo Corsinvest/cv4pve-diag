@@ -70,15 +70,19 @@ internal static class DiagnosticSafeExtensions
 
         var detail = ex is PveResultException pex ? BuildApiErrorMessage(pex.Result) : ex.Message;
 
-        result.Add(new DiagnosticResult
+        // Fetches run in parallel (RunParallelAsync, Task.WhenAll): List<T> is not thread-safe.
+        lock (result)
         {
-            Id = id,
-            ErrorCode = ApiErrorCode,
-            Description = $"Unable to read {what}: {detail}",
-            Context = context,
-            SubContext = "ApiError",
-            Gravity = DiagnosticResultGravity.Warning,
-        });
+            result.Add(new DiagnosticResult
+            {
+                Id = id,
+                ErrorCode = ApiErrorCode,
+                Description = $"Unable to read {what}: {detail}",
+                Context = context,
+                SubContext = "ApiError",
+                Gravity = DiagnosticResultGravity.Warning,
+            });
+        }
         return true;
     }
 

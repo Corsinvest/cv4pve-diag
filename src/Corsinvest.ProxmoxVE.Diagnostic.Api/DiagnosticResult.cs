@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
@@ -38,7 +37,7 @@ public class DiagnosticResult
     /// Context
     /// </summary>
     /// <value></value>
-    [JsonConverter(typeof(StringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public DiagnosticResultContext Context { get; set; }
 
     /// <summary>
@@ -57,7 +56,7 @@ public class DiagnosticResult
     /// Gravity
     /// </summary>
     /// <value></value>
-    [JsonConverter(typeof(StringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public DiagnosticResultGravity Gravity { get; set; }
 
     /// <summary>
