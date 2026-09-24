@@ -529,7 +529,8 @@ public partial class DiagnosticEngine
                                     : "chrony");
 
             CreateResultPerItem(
-                items: fetch.Services.Where(a => !serviceExcluded.Contains(a.Name)).ToList(),
+                // unit-state 'not-found': the unit is not installed on this node (PVE lists it anyway).
+                items: fetch.Services.Where(a => !serviceExcluded.Contains(a.Name) && a.UnitState != "not-found").ToList(),
                 isItemOk: a => a.IsRunning,
                 itemId: _ => id,
                 itemDescriptionKo: a => $"Service '{a.Description}' not running",
@@ -633,7 +634,9 @@ public partial class DiagnosticEngine
 
             #region Replication
             // Replication jobs with errors mean the secondary copy is out of date
-            var replCount = fetch.Replication.Count(a => a.ExtensionData?.ContainsKey("errors") is true);
+            // PVE reports the last failure in 'error' and the retries in 'fail_count' (there is no
+            // 'errors' key: the old lookup never matched, so CN0004 could not fire).
+            var replCount = fetch.Replication.Count(a => !string.IsNullOrWhiteSpace(a.Error) || a.FailCount > 0);
             CreateResult(
                 isOk: replCount == 0,
                 id: id,
@@ -976,7 +979,7 @@ public partial class DiagnosticEngine
             {
                 var nr = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.Node == n.Node);
                 if (nr == null || nr.MemorySize == 0) { return null; }
-                var allocated = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node)
+                var allocated = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm && a.Node == n.Node && !a.IsTemplate)
                                           .Aggregate(0UL, (acc, a) => acc + a.MemorySize);
                 return new { NodeItem = n, NodeResource = nr, AllocatedMem = allocated };
             })
@@ -1124,17 +1127,21 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation
-        CheckThreshold(settings.Storage.Threshold,
-                       "WN0030",
-                       DiagnosticResultContext.Node,
-                       "Usage",
-                       [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
-                                               rrdList.Average(a => Convert.ToDouble(a.SwapSize)),
-                                               id,
-                                               $"SWAP (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
-                       false,
-                       true);
+        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation.
+        // No swap (the default on ZFS-root installs) has nothing to measure: 0/0 was an Ok "NaN%".
+        if (rrdList.Any(a => a.SwapSize > 0))
+        {
+            CheckThreshold(settings.Storage.Threshold,
+                           "WN0030",
+                           DiagnosticResultContext.Node,
+                           "Usage",
+                           [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
+                                                   rrdList.Average(a => Convert.ToDouble(a.SwapSize)),
+                                                   id,
+                                                   $"SWAP (rrd {settings.Node.Rrd.TimeFrame} {settings.Node.Rrd.Consolidation})")],
+                           false,
+                           true);
+        }
 
         // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
         // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
@@ -1185,11 +1192,11 @@ public partial class DiagnosticEngine
         var nodeCpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
 
         var nodeRamPct = rrdList.Any(a => a.MemorySize > 0)
-                            ? rrdList.Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
+                            ? rrdList.Where(a => a.MemorySize > 0).Average(a => (double)a.MemoryUsage / a.MemorySize * 100.0)
                             : 0.0;
 
         var nodeDiskPct = rrdList.Any(a => a.RootSize > 0)
-                            ? rrdList.Average(a => a.RootUsage / a.RootSize * 100.0)
+                            ? rrdList.Where(a => a.RootSize > 0).Average(a => a.RootUsage / a.RootSize * 100.0)
                             : 0.0;
 
         var nodeWeightedLoad = (nodeCpuPct * 0.4) + (nodeRamPct * 0.4) + (nodeDiskPct * 0.2);
@@ -1227,7 +1234,8 @@ public partial class DiagnosticEngine
             if (!string.IsNullOrWhiteSpace(child.State))
             {
                 CreateResult(
-                    isOk: child.State.Equals("ONLINE", StringComparison.OrdinalIgnoreCase),
+                    // Hot spares are AVAIL (idle) or INUSE (standing in for a failed disk): both expected.
+                    isOk: child.State is "ONLINE" or "AVAIL" or "INUSE",
                     id: id,
                     errorCode: "CN0012",
                     subContext: "Zfs",
@@ -1265,10 +1273,12 @@ public partial class DiagnosticEngine
         var disksAll = fetch.Disks;
 
         CreateResultPerItem(
-            items: disksAll,
+            // UNKNOWN: PVE cannot read S.M.A.R.T. (disk behind a RAID controller or a USB bridge) —
+            // nothing to judge, not a failing disk.
+            items: disksAll.Where(a => !string.Equals(a.Health, "UNKNOWN", StringComparison.OrdinalIgnoreCase)).ToList(),
             isItemOk: a => a.Health == "PASSED" || a.Health == "OK",
             itemId: _ => id,
-            itemDescriptionKo: a => $"Disk '{a.DevPath}' S.M.A.R.T. status problem",
+            itemDescriptionKo: a => $"Disk '{a.DevPath}' S.M.A.R.T. status problem ({a.Health})",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "All disks report a healthy S.M.A.R.T. status",
             errorCode: "WN0016",

@@ -102,8 +102,11 @@ internal static class DebianVersion
     //   '~' sorts before everything, including the empty string (we return a NEGATIVE value).
     //   Letters sort according to their code point.
     //   Other characters (punctuation: +, -, .) sort AFTER letters: we offset by 256.
+    //   A digit met while the other side is still in its non-digit run counts as 0, like the
+    //   end of the string — as in dpkg's order(): "1.2" < "1.a" and "1.2" < "1.+x".
     private static int Order(char c)
     {
+        if (char.IsDigit(c)) { return 0; }
         if (c == '~') { return -1; }
         if (char.IsLetter(c)) { return c; }
         return c + 256;

@@ -49,6 +49,13 @@
 - Disks and backups of a guest whose configuration could not be read are no longer reported as orphaned.
 - Container bind mounts and device mounts are no longer reported as "disk disabled for backup": vzdump never backs them up.
 - Messages about containers say "CT" instead of "VM".
+- CVE checks (`CN0015`, `WN0042`) reported CVEs already fixed in the installed version, or belonging to another version branch: every vulnerable range listed by NVD is now read, with its start and whether its end is the fixed version. If the installed version cannot be read, no CVE is reported instead of all of them.
+- `CN0004` (replication job with errors) could never fire; it now reports failing replication jobs.
+- `WN0011` no longer reports services that are not installed on the node.
+- `WN0036` (memory overcommit) no longer counts templates, which never run.
+- ZFS hot spares (`AVAIL`, `INUSE`) are no longer reported as failed vdevs (`CN0012`).
+- Disks whose S.M.A.R.T. status cannot be read (behind a RAID controller or USB bridge) are no longer reported as failing; the message shows the status value.
+- Nodes without swap no longer get a "SWAP usage NaN%" result, and the health score no longer shows "NaN".
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

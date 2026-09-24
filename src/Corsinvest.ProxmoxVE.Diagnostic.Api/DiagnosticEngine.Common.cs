@@ -556,7 +556,7 @@ public partial class DiagnosticEngine
         // Health score for VM/LXC: 100 - (cpu*0.5 + ram*0.5)
         var cpuPct = rrdList.Average(a => a.CpuUsagePercentage) * 100.0;
         var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
-                        ? rrdList.Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
+                        ? rrdList.Where(a => Convert.ToDouble(a.MemorySize) > 0).Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
                         : 0.0;
         CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
     }
