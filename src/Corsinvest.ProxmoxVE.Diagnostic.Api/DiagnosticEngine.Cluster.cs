@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
@@ -11,21 +12,33 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 public partial class DiagnosticEngine
 {
+    // /access/acl is used by the pool and the access checks: fetched once, shared.
+    private Task<IReadOnlyList<Corsinvest.ProxmoxVE.Api.Shared.Models.Access.AccessAcl>?>? _aclTask;
+    private Task<IReadOnlyList<Corsinvest.ProxmoxVE.Api.Shared.Models.Access.AccessAcl>?> GetAclsAsync()
+        => _aclTask ??= client.Access.Acl.GetAsync().ToSafeEnumOrNull(_result, "access/acl", DiagnosticResultContext.Cluster, "ACL entries");
+
     private async Task<bool> CheckClusterAsync(int pveMajorVersion)
     {
-        var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster config nodes");
-        var clusterBackupTask = client.Cluster.Backup.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster backup jobs");
+        // OrNull: a failed call (already reported as WG0042) must not read as "nothing configured".
+        var clusterConfigNodesTask = client.Cluster.Config.Nodes.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "cluster config nodes");
+        var clusterBackupTask = client.Cluster.Backup.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "cluster backup jobs");
         await Task.WhenAll(clusterConfigNodesTask, clusterBackupTask);
         var clusterConfigNodes = clusterConfigNodesTask.Result;
-        var hasCluster = clusterConfigNodes.Any();
-        _clusterBackups = clusterBackupTask.Result;
 
-        await CheckClusterBackupAsync();
+        // Unreadable corosync config: more than one node in /cluster/resources still means a cluster.
+        var hasCluster = clusterConfigNodes?.Any()
+                         ?? _resources.Count(a => a.ResourceType == ClusterResourceType.Node) > 1;
+
+        _clusterBackupsKnown = clusterBackupTask.Result != null;
+        _clusterBackups = clusterBackupTask.Result ?? [];
+
+        if (_clusterBackupsKnown) { await CheckClusterBackupAsync(); }
+        await CheckClusterTasksAsync();
 
         if (hasCluster)
         {
             var clusterStatus = await client.Cluster.Status.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster status");
-            await CheckClusterQuorumAndHaAsync(clusterStatus, pveMajorVersion);
+            await CheckClusterQuorumAndHaAsync(clusterStatus, pveMajorVersion, clusterConfigNodes);
             await CheckClusterHaAndReplicationAsync();
         }
 
@@ -74,7 +87,8 @@ public partial class DiagnosticEngine
         // External metric server (InfluxDB / Graphite) — required for persistent long-term
         // monitoring beyond the in-node RRD. Auditors want historical evidence of system
         // behaviour for incident investigation; RRD data is short-lived and lost on reboot.
-        var servers = (await client.Cluster.Metrics.Server.GetAsync().ToSafeEnum(_result, "cluster/metrics", DiagnosticResultContext.Cluster, "cluster metric servers")).ToList();
+        // Unreadable list (already reported as WG0042): unknown, not "no metric server".
+        if (await client.Cluster.Metrics.Server.GetAsync().ToSafeEnumOrNull(_result, "cluster/metrics", DiagnosticResultContext.Cluster, "cluster metric servers") is not { } servers) { return; }
 
         ComplianceMapping[] observabilityControls =
         [
@@ -112,23 +126,8 @@ public partial class DiagnosticEngine
             compliance: observabilityControls);
         if (servers.Count == 0) { return; }
 
-        // IC0019 — servers are configured but every one of them is disabled.
-        // The 'disable' field is 1 when the server is off; treat missing/0 as enabled.
-        bool IsEnabled(object server)
-        {
-            var disableProp = server.GetType().GetProperty("Disable");
-            var v = disableProp?.GetValue(server);
-            return v switch
-            {
-                null => true,
-                bool b => !b,
-                int i => i == 0,
-                long l => l == 0,
-                _ => !v.ToString()!.Equals("1", StringComparison.Ordinal),
-            };
-        }
-
-        var enabledCount = servers.Count(s => IsEnabled(s!));
+        // IC0019 — servers are configured but every one of them is disabled ('disable' = 1).
+        var enabledCount = servers.Count(s => !s.Disable);
         CreateResult(
             isOk: enabledCount > 0,
             id: "cluster/metrics",
@@ -181,6 +180,27 @@ public partial class DiagnosticEngine
             ]);
     }
 
+    // Backup compliance controls — reused for WC0002/WC0017/WC0018/IC0012.
+    private static readonly ComplianceMapping[] _backupControls =
+    [
+        ComplianceControls.Iso27001.A_8_13,
+        ComplianceControls.Nis2.Art_21_c,
+        ComplianceControls.Dora.Art_11,
+        ComplianceControls.Dora.Art_12,
+        ComplianceControls.Gdpr.Art_32_1_c,
+        ComplianceControls.AgId.ABSC_10_1,
+        ComplianceControls.AgId.ABSC_10_3,
+        ComplianceControls.AgId.ABSC_10_4,
+        ComplianceControls.Ens.MP_INFO_6,
+        ComplianceControls.C5.OPS_21,
+        ComplianceControls.Soc2.A1_2,
+        ComplianceControls.Nist80053.CP_9,
+        ComplianceControls.Iso27018.A_12_3_1,
+        ComplianceControls.Cis.C_11,
+        ComplianceControls.NistCsf.PR_DS_11,
+        ComplianceControls.NistCsf.RC_RP_01,
+    ];
+
     private async Task CheckClusterBackupAsync()
     {
         var backupList = _clusterBackups.ToList();
@@ -232,27 +252,6 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: []);
 
-        // Backup compliance controls — reused for WC0002/WC0017/WC0018/IC0012.
-        ComplianceMapping[] backupControls =
-        [
-            ComplianceControls.Iso27001.A_8_13,
-            ComplianceControls.Nis2.Art_21_c,
-            ComplianceControls.Dora.Art_11,
-            ComplianceControls.Dora.Art_12,
-            ComplianceControls.Gdpr.Art_32_1_c,
-            ComplianceControls.AgId.ABSC_10_1,
-            ComplianceControls.AgId.ABSC_10_3,
-            ComplianceControls.AgId.ABSC_10_4,
-            ComplianceControls.Ens.MP_INFO_6,
-            ComplianceControls.C5.OPS_21,
-            ComplianceControls.Soc2.A1_2,
-            ComplianceControls.Nist80053.CP_9,
-            ComplianceControls.Iso27018.A_12_3_1,
-            ComplianceControls.Cis.C_11,
-            ComplianceControls.NistCsf.PR_DS_11,
-            ComplianceControls.NistCsf.RC_RP_01,
-        ];
-
         // Backup jobs without retention policy — storage will fill up indefinitely
         CreateResultPerItem(
             items: backupList.Where(a => a.Enabled).ToList(),
@@ -266,7 +265,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            compliance: backupControls);
+            compliance: _backupControls);
 
         // Enabled backup job with no schedule: it will never run automatically.
         CreateResultPerItem(
@@ -280,7 +279,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            compliance: backupControls);
+            compliance: _backupControls);
 
         // Disabled backup jobs: informational, often leftover configuration worth reviewing.
         CreateResultPerItem(
@@ -294,7 +293,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            compliance: backupControls);
+            compliance: _backupControls);
 
         // WC0019 — multiple enabled backup jobs run on the same schedule against the same storage,
         // causing I/O contention and longer job runtime. Schedule is the systemd-calendar string
@@ -319,8 +318,17 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            compliance: backupControls);
+            compliance: _backupControls);
+    }
 
+    // A task that ended with "WARNINGS: n" completed; only other statuses are failures.
+    private static bool TaskSucceeded(string? status)
+        => string.Equals(status, "OK", StringComparison.OrdinalIgnoreCase)
+           || (status ?? "").StartsWith("WARNINGS", StringComparison.OrdinalIgnoreCase);
+
+    // Task feed checks: independent of the backup jobs (the early return there used to skip them).
+    private async Task CheckClusterTasksAsync()
+    {
         // Cluster-wide task feed — used here for recent backup failures and below for task error rate.
         var clusterTasks = (await client.Cluster.Tasks.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster task feed")).ToList();
 
@@ -330,22 +338,22 @@ public partial class DiagnosticEngine
                                        .ToList();
         CreateResultPerItem(
             items: vzdumpTasks,
-            isItemOk: t => string.Equals(t.Status, "OK", StringComparison.OrdinalIgnoreCase),
+            isItemOk: t => TaskSucceeded(t.Status),
             itemId: t => $"nodes/{t.Node}",
-            itemDescriptionKo: t => $"Backup task on node '{t.Node}' by '{t.User}' ended with status '{t.Status}'",
+            itemDescriptionKo: t => $"Backup task{(string.IsNullOrWhiteSpace(t.VmId) ? "" : $" of guest {t.VmId}")} on node '{t.Node}' started {DateTimeOffset.FromUnixTimeSeconds(t.StartTime).LocalDateTime:yyyy-MM-dd HH:mm} by '{t.User}' ended with status '{t.Status}'",
             aggregatedIdOk: "cluster/backup",
             aggregatedDescriptionOk: _ => "No recent backup task failures",
             errorCode: "WC0018",
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            compliance: backupControls);
+            compliance: _backupControls);
 
         // Overall task failure rate — sustained failures across the cluster usually indicate a systemic issue.
         var finishedTasks = clusterTasks.Where(t => t.EndTime > 0).ToList();
         if (finishedTasks.Count >= 10)
         {
-            var failed = finishedTasks.Count(t => !string.Equals(t.Status, "OK", StringComparison.OrdinalIgnoreCase));
+            var failed = finishedTasks.Count(t => !TaskSucceeded(t.Status));
             var ratio = (double)failed / finishedTasks.Count;
             CreateResult(
                 isOk: ratio < 0.10,
@@ -384,19 +392,24 @@ public partial class DiagnosticEngine
     private async Task CheckClusterHaAndReplicationAsync()
     {
         // Cluster without any HA resource configured — no automatic failover on node failure
-        var haResourcesTask = client.Cluster.Ha.Resources.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA resources");
+        var haResourcesTask = client.Cluster.Ha.Resources.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "HA resources");
         var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA status");
-        var replJobsTask = client.Cluster.Replication.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "replication jobs");
+        var replJobsTask = client.Cluster.Replication.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "replication jobs");
         await Task.WhenAll(haResourcesTask, haStatusTask, replJobsTask);
 
+        // null = the call failed (already reported as WG0042): unknown, not "none configured".
+        var haResources = haResourcesTask.Result;
+        var replJobs = replJobsTask.Result;
+        _replicationKnown = replJobs != null;
+
         // Cache the guest ids referenced by HA / enabled replication so per-guest checks don't re-walk them.
-        foreach (var h in haResourcesTask.Result)
+        foreach (var h in haResources ?? [])
         {
             // Sid format is "<type>:<vmid>" — e.g. "vm:100", "ct:200".
             var parts = (h.Sid ?? "").Split(':');
             if (parts.Length == 2 && long.TryParse(parts[1], out var vmid)) { _haVmIds.Add(vmid); }
         }
-        foreach (var r in replJobsTask.Result.Where(r => !r.Disable && !string.IsNullOrWhiteSpace(r.Guest)))
+        foreach (var r in (replJobs ?? []).Where(r => !r.Disable && !string.IsNullOrWhiteSpace(r.Guest)))
         {
             if (long.TryParse(r.Guest, out var vmid)) { _replicatedVmIds.Add(vmid); }
         }
@@ -405,33 +418,36 @@ public partial class DiagnosticEngine
         // Emitted regardless of node count: a single-node host is itself non-compliant with the
         // resilience controls this check maps to (A.5.30, DORA Art.12). IC0017 reports the
         // single-node topology in addition to this finding.
-        var haResourceCount = haResourcesTask.Result.Count;
-        CreateResult(
-            isOk: haResourceCount > 0,
-            id: "cluster",
-            errorCode: "IC0002",
-            subContext: "HA",
-            context: DiagnosticResultContext.Cluster,
-            gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "No HA resources configured — VMs will not automatically restart on node failure",
-            descriptionOk: $"{haResourceCount} HA resource(s) configured",
-            compliance:
-            [
-                ComplianceControls.Iso27001.A_5_30,
-                ComplianceControls.Nis2.Art_21_c,
-                ComplianceControls.Dora.Art_12,
-                ComplianceControls.Gdpr.Art_32_1_b,
-                ComplianceControls.Ens.OP_CONT_2,
-                ComplianceControls.Ens.MP_S_1,
-                ComplianceControls.C5.BCM_03,
-                ComplianceControls.Soc2.A1_1,
-                ComplianceControls.Soc2.A1_2,
-                ComplianceControls.Nist80053.CP_10,
-                ComplianceControls.Iso27017.CLD_6_3_1,
-                ComplianceControls.Cis.C_11,
-                ComplianceControls.NistCsf.PR_IR_04,
-                ComplianceControls.NistCsf.RC_RP_01,
-            ]);
+        if (haResources != null)
+        {
+            var haResourceCount = haResources.Count;
+            CreateResult(
+                isOk: haResourceCount > 0,
+                id: "cluster",
+                errorCode: "IC0002",
+                subContext: "HA",
+                context: DiagnosticResultContext.Cluster,
+                gravityKo: DiagnosticResultGravity.Info,
+                descriptionKo: "No HA resources configured — VMs will not automatically restart on node failure",
+                descriptionOk: $"{haResourceCount} HA resource(s) configured",
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
+                ]);
+        }
 
         // Resilience / business continuity controls.
         ComplianceMapping[] resilienceControls =
@@ -468,23 +484,25 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Critical,
             compliance: resilienceControls);
 
+        if (replJobs == null) { return; }
+
         // Cluster without any replication job — no storage redundancy between nodes.
         // Emitted regardless of node count: like IC0002, a single-node deployment is itself
         // non-compliant with the resilience controls this check maps to.
         CreateResult(
-            isOk: replJobsTask.Result.Any(),
+            isOk: replJobs.Any(),
             id: "cluster",
             errorCode: "IC0003",
             subContext: "Replication",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
             descriptionKo: "No storage replication jobs configured — no redundant copy of VM data across nodes",
-            descriptionOk: $"{replJobsTask.Result.Count} storage replication job(s) configured",
+            descriptionOk: $"{replJobs.Count} storage replication job(s) configured",
             compliance: resilienceControls);
 
         // Disabled replication job — the guest's data is no longer kept in sync on the target node
         CreateResultPerItem(
-            items: replJobsTask.Result,
+            items: replJobs,
             isItemOk: a => !a.Disable,
             itemId: a => $"cluster/replication/{a.Id}",
             itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) is disabled — data is no longer replicated",
@@ -498,7 +516,7 @@ public partial class DiagnosticEngine
 
         // Enabled replication job without a schedule — it will never run automatically
         CreateResultPerItem(
-            items: replJobsTask.Result.Where(a => !a.Disable).ToList(),
+            items: replJobs.Where(a => !a.Disable).ToList(),
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Schedule),
             itemId: a => $"cluster/replication/{a.Id}",
             itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) has no schedule — it will never run automatically",
@@ -512,7 +530,8 @@ public partial class DiagnosticEngine
     }
 
     private async Task CheckClusterQuorumAndHaAsync(IEnumerable<ClusterStatus> clusterStatus,
-                                                    int pveMajorVersion)
+                                                    int pveMajorVersion,
+                                                    IReadOnlyList<ClusterConfigNode>? configNodes)
     {
         ComplianceMapping[] resilienceControls =
         [
@@ -548,21 +567,28 @@ public partial class DiagnosticEngine
                 descriptionOk: "Cluster has quorum",
                 compliance: resilienceControls);
 
-            // Corosync expected_votes must match the number of online nodes.
-            // A mismatch means Corosync still expects votes from nodes that are gone,
-            // which can prevent quorum even when all remaining nodes are online.
-            if (clusterInfo.ExpectedVotes.HasValue)
+            // A node whose loss leaves the others below the vote majority: the cluster stops
+            // (no VM start, migration or HA recovery) as soon as that single node goes down.
+            // /cluster/status carries no expected_votes, so the votes come from the corosync
+            // config. A QDevice adds a vote we cannot see: with one configured, or when its status
+            // cannot be read, the check is skipped instead of guessing.
+            if (configNodes is { Count: > 1 } && !await HasQDeviceOrUnknownAsync())
             {
-                var onlineCount = _resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
-                CreateResult(
-                    isOk: clusterInfo.ExpectedVotes.Value == onlineCount,
-                    id: "cluster",
+                var votes = configNodes.Select(n => (Node: n.Name ?? n.Node ?? "",
+                                                     Votes: int.TryParse(n.QuorumVotes, out var v) ? v : 1))
+                                       .ToList();
+                var total = votes.Sum(a => a.Votes);
+                CreateResultPerItem(
+                    items: NodesBreakingQuorum(votes),
+                    isItemOk: _ => false,
+                    itemId: n => $"nodes/{n.Node}",
+                    itemDescriptionKo: n => $"Losing node '{n.Node}' ({n.Votes} of {total} votes) leaves the cluster without quorum — add a node or a QDevice",
+                    aggregatedIdOk: "cluster",
+                    aggregatedDescriptionOk: _ => $"The cluster keeps quorum when any single node fails ({total} votes)",
                     errorCode: "CC0002",
                     subContext: "Quorum",
                     context: DiagnosticResultContext.Cluster,
                     gravityKo: DiagnosticResultGravity.Critical,
-                    descriptionKo: $"Corosync expected_votes ({clusterInfo.ExpectedVotes.Value}) does not match online node count ({onlineCount}) — quorum may be unstable",
-                    descriptionOk: $"Corosync expected_votes ({clusterInfo.ExpectedVotes.Value}) matches online node count",
                     compliance: resilienceControls);
             }
         }
@@ -600,7 +626,7 @@ public partial class DiagnosticEngine
     private async Task CheckClusterPoolsAsync()
     {
         var poolsTask = client.Pools.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "pools");
-        var aclsTask = client.Access.Acl.GetAsync().ToSafeEnum(_result, "access/acl", DiagnosticResultContext.Cluster, "ACL entries");
+        var aclsTask = GetAclsAsync();
         await Task.WhenAll(poolsTask, aclsTask);
         var pools = poolsTask.Result;
         var acls = aclsTask.Result;
@@ -624,7 +650,7 @@ public partial class DiagnosticEngine
 
         CreateResultPerItem(
             items: pools,
-            isItemOk: a => _resources.Any(r => r.Pool == a.Id),
+            isItemOk: a => _resources.Any(r => r.ResourceType != ClusterResourceType.Pool && r.Pool == a.Id),
             itemId: a => $"cluster/pool/{a.Id}",
             itemDescriptionKo: a => $"Pool '{a.Id}' is empty (no VMs or storage assigned)",
             aggregatedIdOk: "cluster/pools",
@@ -638,13 +664,15 @@ public partial class DiagnosticEngine
         // IC0020 — pools that have members but no ACL entry pointing at /pool/<id>.
         // The pool is being used as an organisational tag rather than as a privilege boundary,
         // which is what pools exist for. Empty pools are handled by IC0004 and skipped here.
+        // Unreadable ACLs (already reported as WG0042): whether a pool has one is unknown.
+        if (acls == null) { return; }
         var poolPathsWithAcl = acls.Where(a => !string.IsNullOrWhiteSpace(a.Path)
                                                 && a.Path.StartsWith("/pool/", StringComparison.OrdinalIgnoreCase))
                                    .Select(a => a.Path.Substring("/pool/".Length).TrimEnd('/'))
                                    .Where(p => !string.IsNullOrWhiteSpace(p))
                                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
         CreateResultPerItem(
-            items: pools.Where(a => _resources.Any(r => r.Pool == a.Id)).ToList(),
+            items: pools.Where(a => _resources.Any(r => r.ResourceType != ClusterResourceType.Pool && r.Pool == a.Id)).ToList(),
             isItemOk: a => poolPathsWithAcl.Contains(a.Id),
             itemId: a => $"cluster/pool/{a.Id}",
             itemDescriptionKo: a => $"Pool '{a.Id}' has members but no ACL entry at '/pool/{a.Id}' — the pool is not used as a privilege boundary",
@@ -712,17 +740,17 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.PR_IR_01,
         ];
 
-        // Inbound and outbound policies should be DROP — ACCEPT allows unmatched traffic through
+        // Inbound policy should drop unmatched traffic. Unset means PVE's default, DROP; REJECT is
+        // as strict. Outbound is not judged: ACCEPT is PVE's default there and the usual setup.
+        var policyIn = string.IsNullOrWhiteSpace(clusterFwOptions.PolicyIn) ? "DROP" : clusterFwOptions.PolicyIn;
         CreateResultPerItem(
-            items: new[] {
-                (Policy: clusterFwOptions.PolicyIn, Direction: "inbound"),
-                (Policy: clusterFwOptions.PolicyOut, Direction: "outbound"),
-            }.Where(p => !string.IsNullOrWhiteSpace(p.Policy)).ToList(),
-            isItemOk: p => p.Policy.Equals("DROP", StringComparison.OrdinalIgnoreCase),
+            items: new[] { (Policy: policyIn, Direction: "inbound") }.ToList(),
+            isItemOk: p => p.Policy.Equals("DROP", StringComparison.OrdinalIgnoreCase)
+                           || p.Policy.Equals("REJECT", StringComparison.OrdinalIgnoreCase),
             itemId: _ => "cluster",
-            itemDescriptionKo: p => $"Cluster firewall {p.Direction} policy is '{p.Policy}' — recommended value is DROP",
+            itemDescriptionKo: p => $"Cluster firewall {p.Direction} policy is '{p.Policy}' — unmatched traffic is let through, use DROP or REJECT",
             aggregatedIdOk: "cluster",
-            aggregatedDescriptionOk: _ => "Cluster firewall inbound and outbound policies are both DROP",
+            aggregatedDescriptionOk: _ => $"Cluster firewall inbound policy is {policyIn}",
             errorCode: "WC0004",
             subContext: "Firewall",
             context: DiagnosticResultContext.Cluster,
@@ -733,12 +761,16 @@ public partial class DiagnosticEngine
         // The per-node fetch is wrapped: a single faulty node degrades to null and is silently skipped
         // (the failure was already recorded as a finding by ToSafeSingle).
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
+        // Raw options: the typed model turns a missing 'enable' into false, while PVE treats a node
+        // firewall without 'enable' as enabled (only enable: 0 turns it off).
+        async Task<Dictionary<string, object>> NodeFirewallOptions(string node)
+            => (await client.Nodes[node].Firewall.Options.GetOptions()).ToModel<Dictionary<string, object>>();
         var nodeFwResults = await RunParallelAsync(onlineNodes,
-            node => client.Nodes[node.Node].Firewall.Options.GetAsync()
+            node => NodeFirewallOptions(node.Node)
                           .ToSafeSingle(_result, node.GetWebUrl(), DiagnosticResultContext.Node, $"firewall options on node '{node.Node}'"));
         CreateResultPerItem(
             items: onlineNodes.Zip(nodeFwResults).Where(p => p.Second != null).ToList(),
-            isItemOk: p => p.Second!.Enable,
+            isItemOk: p => IsNodeFirewallEnabled(p.Second!),
             itemId: p => p.First.GetWebUrl(),
             itemDescriptionKo: p => $"Cluster firewall is enabled but node '{p.First.Node}' has firewall disabled",
             aggregatedIdOk: "cluster",
@@ -751,13 +783,15 @@ public partial class DiagnosticEngine
 
         // Cluster firewall rules with source or dest 0.0.0.0/0 — overly permissive
         var clusterRules = (await client.Cluster.Firewall.Rules.GetAsync().ToSafeEnum(_result, "cluster/firewall/rules", DiagnosticResultContext.Cluster, "cluster firewall rules")).ToList();
+        // Only ACCEPT rules can be permissive: a DROP / REJECT from anywhere is a good rule.
+        static bool IsAnyAddress(string? address) => address is "0.0.0.0/0" or "::/0";
         CreateResultPerItem(
-            items: clusterRules.Where(r => r.Enable).ToList(),
-            isItemOk: r => r.Source != "0.0.0.0/0" && r.Dest != "0.0.0.0/0",
-            itemId: _ => "cluster/firewall/rules",
-            itemDescriptionKo: r => $"Firewall rule #{r.Positon} allows traffic from/to 0.0.0.0/0 — overly permissive",
+            items: clusterRules.Where(r => r.Enable && string.Equals(r.Action, "ACCEPT", StringComparison.OrdinalIgnoreCase)).ToList(),
+            isItemOk: r => !IsAnyAddress(r.Source) && !IsAnyAddress(r.Dest),
+            itemId: r => $"cluster/firewall/rules/{r.Positon}",
+            itemDescriptionKo: r => $"Firewall rule #{r.Positon} accepts traffic from/to any address ({r.Source ?? "any"} → {r.Dest ?? "any"}) — overly permissive",
             aggregatedIdOk: "cluster/firewall/rules",
-            aggregatedDescriptionOk: _ => "No enabled firewall rule allows traffic from/to 0.0.0.0/0",
+            aggregatedDescriptionOk: _ => "No enabled ACCEPT rule allows traffic from/to any address",
             errorCode: "WC0008",
             subContext: "Firewall",
             context: DiagnosticResultContext.Cluster,
@@ -821,16 +855,25 @@ public partial class DiagnosticEngine
     private async Task CheckClusterAccessAsync()
     {
         // Local users (pam/pve realm) without expiration and tokens without expiration are a security risk
-        var accessUsersTask = client.Access.Users.GetAsync().ToSafeEnum(_result, "access/users", DiagnosticResultContext.Cluster, "access users");
-        var tfaEntriesTask = client.Access.Tfa.GetAsync().ToSafeEnum(_result, "access/tfa", DiagnosticResultContext.Cluster, "TFA entries");
-        var aclsTask = client.Access.Acl.GetAsync().ToSafeEnum(_result, "access/acl", DiagnosticResultContext.Cluster, "ACL entries");
+        // full=1: without it PVE leaves out the 'tokens' arrays, and the token checks
+        // (WC0006, IC0006, IC0021, WC0015) never saw a single token.
+        var accessUsersTask = client.Access.Users.GetAsync(full: true).ToSafeEnumOrNull(_result, "access/users", DiagnosticResultContext.Cluster, "access users");
+        var tfaEntriesTask = client.Access.Tfa.GetAsync().ToSafeEnumOrNull(_result, "access/tfa", DiagnosticResultContext.Cluster, "TFA entries");
+        var aclsTask = GetAclsAsync();
         var groupsTask = client.Access.Groups.GetAsync().ToSafeEnum(_result, "access/groups", DiagnosticResultContext.Cluster, "access groups");
         var rolesTask = client.Access.Roles.GetAsync().ToSafeEnum(_result, "access/roles", DiagnosticResultContext.Cluster, "access roles");
         var domainsTask = client.Access.Domains.GetAsync().ToSafeEnum(_result, "access/domains", DiagnosticResultContext.Cluster, "access domains");
         await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask, domainsTask);
-        var accessUsers = accessUsersTask.Result;
-        var tfaEntries = tfaEntriesTask.Result;
-        var acls = aclsTask.Result;
+
+        // Users, TFA entries and ACLs feed almost every check below: with one of them unreadable
+        // (already reported as WG0042) the results would be wrong both ways — a Critical on root and
+        // every admin, or a false Ok. Skip the access checks instead.
+        if (accessUsersTask.Result is not { } accessUsers
+            || tfaEntriesTask.Result is not { } tfaEntries
+            || aclsTask.Result is not { } acls)
+        {
+            return;
+        }
         var groups = groupsTask.Result;
         var roles = rolesTask.Result;
         var domains = domainsTask.Result;
@@ -1197,4 +1240,36 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: accountLifecycleControls);
     }
+
+    /// <summary>
+    /// True when a QDevice is configured, or when that cannot be told (call failed): the check
+    /// relying on the node votes is then skipped. No QDevice answers with an empty object.
+    /// </summary>
+    private async Task<bool> HasQDeviceOrUnknownAsync()
+    {
+        try
+        {
+            var result = await client.Cluster.Config.Qdevice.Status();
+            if (!result.IsSuccessStatusCode) { return true; }
+            return result.Response?.data is IDictionary<string, object> data && data.Count > 0;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) { return true; }
+    }
+
+    /// <summary>
+    /// Nodes whose loss leaves the others below the vote majority (total / 2 + 1). With 1+1 votes
+    /// both nodes are listed; with 2+1 only the node holding 2.
+    /// </summary>
+    internal static List<(string Node, int Votes)> NodesBreakingQuorum(IReadOnlyList<(string Node, int Votes)> votes)
+    {
+        var total = votes.Sum(a => a.Votes);
+        var quorum = total / 2 + 1;
+        return [.. votes.Where(a => total - a.Votes < quorum).OrderBy(a => a.Node)];
+    }
+
+    /// <summary>
+    /// Node firewall state from the raw options: enabled unless 'enable' is explicitly 0.
+    /// </summary>
+    internal static bool IsNodeFirewallEnabled(IReadOnlyDictionary<string, object> options)
+        => !options.TryGetValue("enable", out var value) || Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) != "0";
 }

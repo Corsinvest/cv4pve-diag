@@ -20,6 +20,19 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     private readonly DateTime _now = DateTime.Now;
     private List<ClusterResource> _resources = [];
     private IEnumerable<ClusterBackup> _clusterBackups = [];
+
+    // Backup checks on/off for this run: starts from the settings and is turned off by the permission
+    // pre-check. A field, not settings.Backup.Enabled, so the caller's Settings object is never changed.
+    private bool _backupChecksEnabled = settings.Backup.Enabled;
+
+    // False when /cluster/backup could not be read: the job list is unknown, not empty.
+    private bool _clusterBackupsKnown;
+
+    // False when /cluster/replication could not be read: _replicatedVmIds is then unknown, not empty.
+    private bool _replicationKnown;
+
+    // Ids of all guests in /cluster/resources, including those whose config could not be read.
+    private HashSet<long> _existingGuestIds = [];
     private Dictionary<long, VmConfig> _vmConfigs = [];
     private Dictionary<string, IEnumerable<NodeStorage>> _backupStoragesByNode = [];
 
@@ -132,7 +145,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                                               async node => new
                                                               {
                                                                   node,
-                                                                  storages = settings.Backup.Enabled
+                                                                  storages = _backupChecksEnabled
                                                                                 ? await client.Nodes[node].Storage.GetAsync(content: "backup", enabled: true).ToSafeEnum(_result, $"nodes/{node}", DiagnosticResultContext.Node, $"backup storages on node '{node}'")
                                                                                 : []
                                                               });
@@ -154,6 +167,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             _vmConfigs = vmConfigResults.Where(r => r.config != null)
                                         .ToDictionary(r => r.VmId, r => r.config!);
+
+            // Every guest that exists, before the ones with an unreadable config are dropped below:
+            // the orphan checks must still count them as owners of their disks and backups.
+            _existingGuestIds = [.. _resources.Where(a => a.ResourceType == ClusterResourceType.Vm).Select(a => a.VmId)];
 
             // Guests whose config failed to load are not present in _vmConfigs — skip them in the
             // per-guest checks below instead of indexing a missing key.

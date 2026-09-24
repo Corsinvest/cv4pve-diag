@@ -27,6 +27,9 @@ public partial class DiagnosticEngine
                                           string id,
                                           IEnumerable<NodeStorage> nodeBackupStorages)
     {
+        // "VM" or "CT" in the texts: the same checks run for containers.
+        var guest = context == DiagnosticResultContext.Lxc ? "CT" : "VM";
+
         #region VM State
         // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly
         CreateResultPerItem(
@@ -55,7 +58,7 @@ public partial class DiagnosticEngine
             subContext: "Status",
             context: context,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: $"VM has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
+            descriptionKo: $"{guest} has {pendingChanges.Count} pending config change(s) that require a reboot to apply ({string.Join(", ", pendingChanges.Select(p => p.Key))})",
             descriptionOk: "No pending config changes",
             compliance: []);
         #endregion
@@ -69,8 +72,8 @@ public partial class DiagnosticEngine
             subContext: "Status",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"VM is locked by '{config.Lock}'",
-            descriptionOk: "VM is not locked",
+            descriptionKo: $"{guest} is locked by '{config.Lock}'",
+            descriptionOk: $"{guest} is not locked",
             compliance: []);
         #endregion
 
@@ -95,8 +98,8 @@ public partial class DiagnosticEngine
             subContext: "Protection",
             context: context,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "For production environment is better VM Protection = enabled",
-            descriptionOk: "VM Protection is enabled",
+            descriptionKo: $"For production environment is better {guest} Protection = enabled",
+            descriptionOk: $"{guest} Protection is enabled",
             compliance: []);
         #endregion
 
@@ -121,39 +124,30 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.RC_RP_01,
         ];
 
-        // Check if this VM is covered by at least one enabled backup job (all, by vmid, or by pool)
-        var foundBackupConfig = _clusterBackups.Any(a => a.Enabled && a.All);
-        if (!foundBackupConfig)
+        // Is this guest covered by at least one enabled backup job? Skipped when the job list
+        // could not be read (already reported as WG0042): unknown is not "not configured".
+        if (_clusterBackupsKnown)
         {
-            foundBackupConfig = _clusterBackups.Where(a => a.Enabled && !string.IsNullOrEmpty(a.VmId))
-                                               .SelectMany(a => a.VmId.Split(","))
-                                               .Any(a => long.TryParse(a.Trim(), out var bid) && bid == vmId);
-            if (!foundBackupConfig)
-            {
-                foreach (var poolId in _clusterBackups.Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Pool)).Select(a => a.Pool))
-                {
-                    var poolDetail = await client.Pools[poolId].GetAsync()
-                                           .ToSafeSingle(_result, $"pools/{poolId}", DiagnosticResultContext.Cluster, $"members of pool '{poolId}'");
-                    if (poolDetail == null) { continue; }
-                    foundBackupConfig = poolDetail.Members.Any(a => a.ResourceType == ClusterResourceType.Vm && a.VmId == vmId);
-                    if (foundBackupConfig) { break; }
-                }
-            }
+            var pool = _resources.FirstOrDefault(r => r.ResourceType == ClusterResourceType.Vm && r.VmId == vmId)?.Pool;
+            CreateResult(
+                isOk: IsCoveredByBackupJob(_clusterBackups, vmId, node, pool),
+                id: id,
+                errorCode: "WG0017",
+                subContext: "Backup",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "vzdump backup not configured",
+                descriptionOk: "Guest is covered by at least one enabled backup job",
+                compliance: backupGuestControls);
         }
-        CreateResult(
-            isOk: foundBackupConfig,
-            id: id,
-            errorCode: "WG0017",
-            subContext: "Backup",
-            context: context,
-            gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "vzdump backup not configured",
-            descriptionOk: "Guest is covered by at least one enabled backup job",
-            compliance: backupGuestControls);
 
-        // Individual disks excluded from backup — even if the job exists, these disks won't be saved
+        // Individual disks excluded from backup — even if the job exists, these disks won't be saved.
+        // Container bind mounts (host path) and device mounts (/dev) are never backed up by vzdump:
+        // there is no backup flag to set, so they are not reported.
         CreateResultPerItem(
-            items: config.Disks.Where(a => !a.IsUnused).ToList(),
+            items: config.Disks.Where(a => !a.IsUnused
+                                           && !(context == DiagnosticResultContext.Lxc
+                                                && (!string.IsNullOrEmpty(a.MountSourcePath) || a.Passthrough))).ToList(),
             isItemOk: a => a.Backup,
             itemId: _ => id,
             itemDescriptionKo: a => $"Disk '{a.Id}' disabled for backup",
@@ -188,7 +182,7 @@ public partial class DiagnosticEngine
         // backups are unknown, so "no recent backup" cannot be told apart from "not visible".
         var backupContentUnknown = nodeBackupStorages.Any(a => a.Active
                                                                && _backupContentUnavailable.Contains(BackupStorageKey(node, a.Storage)));
-        if (settings.Backup.Enabled && !backupContentUnknown)
+        if (_backupChecksEnabled && !backupContentUnknown)
         {
             // Reuse already-fetched backup content — filter by vmId in memory, no extra API call.
             // Key is storage name for shared storage, node/storage for non-shared.
@@ -290,8 +284,16 @@ public partial class DiagnosticEngine
             }
 
             // If the guest is in HA on non-shared storage, replication is the only way the failover target
-            // has a recent copy. Flag HA guests with no enabled replication job.
-            if (_haVmIds.Contains(vmId))
+            // has a recent copy. Flag HA guests with no enabled replication job — only when a disk is
+            // on local storage (on Ceph/NFS the target already sees the data, and replication is
+            // ZFS-only anyway) and the replication job list could be read.
+            var sharedStorages = _resources.Where(r => r.ResourceType == ClusterResourceType.Storage && r.Shared)
+                                           .Select(r => r.Storage)
+                                           .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var hasLocalDisk = config.Disks.Any(d => !d.IsUnused
+                                                    && !string.IsNullOrEmpty(d.Storage)
+                                                    && !sharedStorages.Contains(d.Storage));
+            if (_haVmIds.Contains(vmId) && _replicationKnown && hasLocalDisk)
             {
                 CreateResult(
                     isOk: _replicatedVmIds.Contains(vmId),
@@ -461,7 +463,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"{kind} firewall is disabled — {kind.ToLower()} is exposed to all traffic on the node bridge",
+            descriptionKo: $"{kind} firewall is disabled — the guest is exposed to all traffic on the node bridge",
             descriptionOk: $"{kind} firewall is enabled",
             compliance: firewallControls);
 
@@ -474,7 +476,7 @@ public partial class DiagnosticEngine
                 subContext: "Firewall",
                 context: context,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"{kind} firewall IP filter is disabled — {kind.ToLower()} can spoof source IP addresses",
+                descriptionKo: $"{kind} firewall IP filter is disabled — the guest can spoof source IP addresses",
                 descriptionOk: $"{kind} firewall IP filter is enabled",
                 compliance: firewallControls);
         }
@@ -694,4 +696,21 @@ public partial class DiagnosticEngine
         }
     }
 
+    /// <summary>
+    /// True when an enabled vzdump job backs up the guest: the job runs on the guest's node (or on
+    /// every node) and selects it with all=1 (unless listed in exclude), by vmid, or by pool.
+    /// </summary>
+    internal static bool IsCoveredByBackupJob(IEnumerable<ClusterBackup> jobs, long vmId, string node, string? pool)
+    {
+        static bool Lists(string? ids, long vmId)
+            => (ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                          .Any(a => long.TryParse(a, out var id) && id == vmId);
+
+        return jobs.Where(a => a.Enabled)
+                   .Where(a => string.IsNullOrWhiteSpace(a.Node) || string.Equals(a.Node, node, StringComparison.OrdinalIgnoreCase))
+                   .Any(a => a.All
+                                ? !Lists(a.ExtensionData?.TryGetValue("exclude", out var exclude) is true ? exclude?.ToString() : null, vmId)
+                                : Lists(a.VmId, vmId)
+                                  || (!string.IsNullOrWhiteSpace(a.Pool) && string.Equals(a.Pool, pool, StringComparison.OrdinalIgnoreCase)));
+    }
 }

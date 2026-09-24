@@ -37,6 +37,18 @@
 - With `--compliance`, the findings saying the analysis is incomplete (API errors, missing permissions) are kept, so an audit report cannot look clean when data was not read.
 - JSON output writes Context and Gravity as names; HTML and Markdown output escape the text.
 - `--fast` and `--full` together are now an error instead of silently using `--fast`.
+- `CC0002` could never fire. It now reports a node whose loss leaves the cluster without quorum — for example a node holding 2 of 3 votes, or either node of a two-node cluster without a QDevice.
+- The API token checks (`WC0006`, `IC0006`, `IC0021`, `WC0015`) never saw any token and always reported Ok. They now read the tokens.
+- When the list of users, backup jobs, HA resources, replication jobs, metric servers or ACLs cannot be read, the checks that depend on it are skipped (the error is reported as `WG0042`) instead of reporting "nothing configured" — for example "root@pam has no TFA" or "no backup job".
+- `WG0017` (guest not backed up) now honours the job's excluded guests and its node restriction, and no longer reads each pool again for every guest.
+- `IC0004` could never find an empty pool.
+- `WN0001` (node firewall disabled) reported nodes whose firewall is on by default. `WC0004` now checks the inbound policy only, with PVE's default (DROP) when unset; REJECT counts as strict too. `WC0008` reports only rules that accept traffic from/to any address, including `::/0`, one finding per rule.
+- Failed backup tasks: tasks ending with warnings no longer count as failures, and the message names the guest and the time. The cluster task failure rate (`IC0016`) is checked also when no backup job exists.
+- `WG0043` (HA guest without replication) is reported only for guests with disks on local storage.
+- A permission granted only on the backup storage no longer switches off every backup check.
+- Disks and backups of a guest whose configuration could not be read are no longer reported as orphaned.
+- Container bind mounts and device mounts are no longer reported as "disk disabled for backup": vzdump never backs them up.
+- Messages about containers say "CT" instead of "VM".
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

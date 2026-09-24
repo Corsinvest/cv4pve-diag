@@ -122,8 +122,11 @@ public partial class DiagnosticEngine
 
         // Without these the backup listing comes back empty for every guest, so WG0019/WG0020/WS0003
         // would each report the opposite of the truth. One accurate finding beats one wrong finding
-        // per guest, so skip them and explain why.
-        if (missing.Any(a => a.DisablesBackupChecks)) { settings.Backup.Enabled = false; }
+        // per guest, so skip them and explain why. Only when the privilege is missing everywhere:
+        // granted on part of the root (typically the backup storage itself) the checks stay on, and
+        // the WC0020 message says the rest is not covered.
+        var backupChecksOff = missing.Any(a => a.DisablesBackupChecks && !partial.Contains(a));
+        if (backupChecksOff) { _backupChecksEnabled = false; }
 
         foreach (var item in missing)
         {
@@ -143,6 +146,7 @@ public partial class DiagnosticEngine
                       + $"grant {name} on '{item.Root}' to cover everything."
                     : $"Privilege {name} is not granted on '{item.Root}' — {item.Impact}. "
                       + "Proxmox omits these from its response without reporting an error, so the analysis cannot see what is missing. "
+                      + (item.DisablesBackupChecks ? "The backup checks (WG0019, WG0020, WS0003) are skipped. " : "")
                       + "See the permissions section in the README.",
                 Context = DiagnosticResultContext.Cluster,
                 SubContext = "Permissions",

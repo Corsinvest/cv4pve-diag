@@ -111,9 +111,9 @@ public partial class DiagnosticEngine
 
         #region Orphaned Images and Backups
         // Disk images present in storage but not attached to any VM or LXC (wasted space)
-        var activeVmIds = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm)
-                                    .Select(a => a.VmId)
-                                    .ToHashSet();
+        // Every existing guest, including those whose config could not be read: they still own
+        // their disks and backups, which must not be reported as orphaned (delete candidates).
+        var activeVmIds = _existingGuestIds;
 
         // _storageResources is already deduplicated: shared appears once, non-shared once per node.
         // No need for DistinctBy or skip logic — just iterate directly.
@@ -121,7 +121,7 @@ public partial class DiagnosticEngine
         foreach (var item in _storageResources.Where(a => a.IsAvailable
                                                            && a.Content != null
                                                            && (a.Content.Split(",").Contains("images")
-                                                               || (settings.Backup.Enabled && a.Content.Split(",").Contains("backup")))))
+                                                               || (_backupChecksEnabled && a.Content.Split(",").Contains("backup")))))
         {
             var nodeApi = client.Nodes[item.Node];
 
@@ -139,7 +139,7 @@ public partial class DiagnosticEngine
 
             // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage.
             // Collected here per storage; the WS0003 aggregated check runs once after the loop.
-            if (settings.Backup.Enabled && item.Content.Split(",").Contains("backup"))
+            if (_backupChecksEnabled && item.Content.Split(",").Contains("backup"))
             {
                 // Populate _sharedStorageNames for use in BackupStorageKey (CheckCommonAsync)
                 if (item.Shared) { _sharedStorageNames.Add(item.Storage); }
