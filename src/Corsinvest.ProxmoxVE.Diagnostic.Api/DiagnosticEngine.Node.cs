@@ -183,6 +183,9 @@ public partial class DiagnosticEngine
             ComplianceControls.Cis.C_7,
             ComplianceControls.NistCsf.PR_PS_02,
             ComplianceControls.NistCsf.ID_RA_01,
+            ComplianceControls.Acn.PR_PS_02,
+            ComplianceControls.Acn.PR_PS_01,
+            ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
@@ -250,6 +253,11 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
             if (!item.IsOnline) { continue; }
 
@@ -279,6 +287,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_7,
                 ComplianceControls.NistCsf.PR_PS_02,
                 ComplianceControls.NistCsf.ID_RA_01,
+                ComplianceControls.Acn.PR_PS_02,
+                ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
             ];
             if (_pveEndOfLife.TryGetValue(nodeVersion, out var eolDate))
             {
@@ -329,6 +339,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.NistCsf.PR_PS_02,
                         ComplianceControls.NistCsf.ID_RA_01,
                         ComplianceControls.Iso27017.CLD_9_5_2,
+                        ComplianceControls.Acn.PR_PS_02,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
                     ]);
             }
             #endregion
@@ -465,6 +477,11 @@ public partial class DiagnosticEngine
                     ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.Iso27017.CLD_6_3_1,
                     ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
 
             // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
@@ -495,6 +512,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
             #endregion
 
@@ -561,6 +581,10 @@ public partial class DiagnosticEngine
                     ComplianceControls.NistCsf.DE_CM_01,
                     ComplianceControls.NistCsf.DE_CM_03,
                     ComplianceControls.Iso27017.CLD_12_4_5,
+                    ComplianceControls.Acn.PR_PS_04,
+                    ComplianceControls.Acn.DE_CM_01,
+                    ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ]);
             #endregion
 
@@ -582,6 +606,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso27018.A_10_1_1,
                 ComplianceControls.Cis.C_3,
                 ComplianceControls.NistCsf.PR_DS_02,
+                ComplianceControls.Acn.PR_DS_02,
+                ComplianceControls.BsiGrundschutz.CON_1_A1,
             ];
             CreateResultPerItem(
                 items: fetch.Certificates,
@@ -662,6 +688,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
             #endregion
 
@@ -752,6 +781,11 @@ public partial class DiagnosticEngine
                         ComplianceControls.NistCsf.DE_CM_01,
                         ComplianceControls.NistCsf.DE_CM_03,
                         ComplianceControls.Iso27017.CLD_12_4_5,
+                        ComplianceControls.Acn.PR_PS_04,
+                        ComplianceControls.Acn.DE_CM_01,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                        ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_5_A4,
                     ]);
             }
 
@@ -798,6 +832,10 @@ public partial class DiagnosticEngine
                             ComplianceControls.NistCsf.DE_CM_01,
                             ComplianceControls.NistCsf.DE_CM_03,
                             ComplianceControls.Iso27017.CLD_12_4_5,
+                            ComplianceControls.Acn.PR_PS_04,
+                            ComplianceControls.Acn.DE_CM_01,
+                            ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                            ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                         ]);
                 }
             }
@@ -1081,6 +1119,9 @@ public partial class DiagnosticEngine
                         ComplianceControls.Nist80053.CM_2,
                         ComplianceControls.Iso27017.CLD_6_3_1,
                         ComplianceControls.NistCsf.PR_IR_04,
+                        ComplianceControls.Acn.ID_IM_04,
+                        ComplianceControls.Iso22301.C_8_3_5,
+                        ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                     ]);
             }
         }
@@ -1221,6 +1262,11 @@ public partial class DiagnosticEngine
         ComplianceControls.Cis.C_11,
         ComplianceControls.NistCsf.PR_IR_04,
         ComplianceControls.NistCsf.PR_DS_11,
+        ComplianceControls.Acn.ID_IM_04,
+        ComplianceControls.Acn.DE_CM_01,
+        ComplianceControls.Iso22301.C_8_3_5,
+        ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+        ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
     ];
 
     private void CheckZfsChildren(string id,

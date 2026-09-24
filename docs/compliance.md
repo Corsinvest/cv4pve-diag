@@ -57,6 +57,9 @@ Accepted values match the [Standards supported](#standards-supported) list — t
 | `PciDss` | PCI DSS v4.0 |
 | `Gdpr` | GDPR (technical security of processing) |
 | `AgId` | AgID Misure minime ICT (Italian PA) |
+| `Acn` | ACN NIS2 basic security measures (Italy, Determinazione ACN 379907/2025) |
+| `Iso22301` | ISO 22301:2019 (business continuity) |
+| `BsiGrundschutz` | BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany) |
 | `Ens` | Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
 | `C5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) |
 | `Soc2` | AICPA Trust Services Criteria (SOC 2) |
@@ -119,6 +122,9 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 | **PCI DSS v4.0** | 1.2, 4.2, 6.3, 7.2, 8.2, 8.4.2, 10.2 |
 | **GDPR** (EU Regulation 2016/679) | Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only |
 | **AgID** — Misure minime ICT (Italian PA) | ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1 |
+| **ACN** — NIS2 basic security measures (Italy, Determinazione ACN n. 379907/2025) | ID.AM-02, ID.RA-08, ID.IM-04, PR.AA-01/03/05, PR.DS-02/11, PR.PS-01/02/04, PR.IR-01, DE.CM-01 |
+| **ISO 22301:2019** — Business continuity management systems | 8.3.4, 8.3.5, 8.4.5, 8.5, 9.1 |
+| **BSI IT-Grundschutz** — Kompendium Edition 2023 (Germany) | CON.1.A1, CON.3.A5, OPS.1.1.3.A15, OPS.1.1.5.A3/A4, ORP.4.A10/A21, SYS.1.1.A19, SYS.1.5.A4/A17/A20, SYS.1.6.A17, SYS.1.8.A13 |
 | **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) | op.acc.1/2/6, op.exp.1/2/3/4/5/8/9, op.cont.2/3/4, op.pl.4, op.mon.3, mp.com.1/2, mp.info.6 |
 | **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) | IDM-01/02/03/06/09, CRY-01/02, COS-01, OPS-06/10/13/18/23, BCM-03/04 |
 | **SOC 2** — AICPA Trust Services Criteria (2017 + 2022) | CC6.1/2/3/6/7/8, CC7.1/2/3, CC8.1, A1.1/2/3, C1.1/2 |
@@ -212,6 +218,60 @@ Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation clu
 | ABSC 8.1 | Defences against malware (network baseline) | Firewall, patch |
 | ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
 | ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
+
+### ACN — NIS2 basic security measures (Italy)
+
+The measures Italian NIS2 entities must apply under D.Lgs. 138/2024 art. 24, set by **Determinazione ACN n. 379907 of 19 December 2025** (in force from 15 January 2026, replacing n. 164179/2025). Allegato 1 applies to *soggetti importanti*, Allegato 2 to *soggetti essenziali*; Allegato 2 contains every requirement of Allegato 1 plus further ones. Identifiers are the Framework Nazionale / NIST CSF 2.0 subcategory codes the annexes use; each measure has numbered requirements (*punti*), which the report does not split.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| ID.AM-02 | Inventory of software, services and systems | (declared) |
+| ID.RA-08 | Vulnerability disclosures received, analysed and remediated | CVE checks |
+| ID.IM-04 | Business continuity and disaster recovery plans (backups, redundancy) | HA, replication, quorum, single-node, storage availability |
+| PR.AA-01 | Identity and credential management | Account lifecycle, user and API token expiration |
+| PR.AA-03 | Authentication, multi-factor for relevant systems | TFA (root@pam, admins, group, realm) |
+| PR.AA-05 | Least privilege and separate privileged accounts | ACL, container privileged, root@pam token privsep |
+| PR.DS-02 | Protection of data in transit (encryption) | Certificates (expired / expiring), TLS |
+| PR.DS-11 | Backups created, protected, maintained and tested | All backup checks, backup storage availability, disk cache integrity |
+| PR.PS-01 | Secure configuration baselines (essential entities only) | Container isolation, patch consistency across nodes |
+| PR.PS-02 | Supported software and timely security updates | Patch, PVE and OS end of life, CVE, important updates, outdated machine type |
+| PR.PS-04 | Logs generated and kept for continuous monitoring | Cluster log, task history, firewall audit logging |
+| PR.IR-01 | Networks protected from unauthorised access (firewalls) | Cluster/node firewall, guest firewall, duplicate MAC |
+| DE.CM-01 | Networks and services monitored | Metric server, services, NTP |
+
+The measures have no requirement for time synchronisation, capacity management or a log retention period, so those findings carry no ACN control.
+
+### ISO 22301:2019 — Business continuity management systems
+
+Only the clauses a cluster configuration can give evidence for. Clause numbers and titles come from the published table of contents; the requirement text is not public. The standard is under revision (ISO/CD 22301).
+
+| Clause | Title | Where it appears |
+|---|---|---|
+| 8.3.4 | Resource requirements | Storage usage, thin provisioning |
+| 8.3.5 | Implementation of solutions | Backup jobs and coverage, HA, replication, quorum, single-node |
+| 8.4.5 | Recovery | (declared) |
+| 8.5 | Exercise programme | (declared — restore and failover tests are not visible from the API) |
+| 9.1 | Monitoring, measurement, analysis and evaluation | (declared) |
+
+### BSI IT-Grundschutz — Kompendium Edition 2023 (Germany)
+
+Requirements (*Anforderungen*) of the IT-Grundschutz-Kompendium, Edition 2023 — the last edition; it is superseded by Grundschutz++ (published October 2026, certifiable from 2027) and remains certifiable until November 2031. Titles are the German ones of the Kompendium; the letter is the protection level: (B) Basis, (S) Standard, (H) elevated protection needs.
+
+| Requirement | Title | Where it appears |
+|---|---|---|
+| CON.1.A1 | Auswahl geeigneter kryptografischer Verfahren (B) | Certificates, TLS |
+| CON.3.A5 | Regelmäßige Datensicherung (B) | All backup checks |
+| OPS.1.1.3.A15 | Regelmäßige Aktualisierung von IT-Systemen und Software (B) | Patch, PVE and OS end of life, CVE, important updates |
+| OPS.1.1.5.A3 | Konfiguration der Protokollierung auf System- und Netzebene (B) | Cluster log, task history, firewall audit logging |
+| OPS.1.1.5.A4 | Zeitsynchronisation der IT-Systeme (B) | Node time offset (WN0014) |
+| ORP.4.A10 | Schutz von Benutzendenkennungen mit weitreichenden Berechtigungen (S) | ACL, root@pam token privsep |
+| ORP.4.A21 | Mehr-Faktor-Authentisierung (H) | TFA |
+| SYS.1.1.A19 | Einrichtung lokaler Paketfilter (S) | Cluster/node firewall, guest firewall |
+| SYS.1.5.A4 | Sichere Konfiguration eines Netzes für virtuelle Infrastrukturen (B) | Guest firewall, duplicate MAC |
+| SYS.1.5.A17 | Überwachung des Betriebszustands und der Konfiguration der virtuellen Infrastruktur (S) | Metric server, services, monitoring |
+| SYS.1.5.A20 | Verwendung von hochverfügbaren Architekturen (H) | HA, replication, quorum, single-node |
+| SYS.1.6.A17 | Ausführung von Containern ohne Privilegien (S) | Privileged containers, container isolation |
+| SYS.1.8.A13 | Überwachung und Verwaltung von Speicherlösungen (S) | Storage usage, thin provisioning |
 
 ### ENS — Esquema Nacional de Seguridad (Spanish Public Administration baseline, Real Decreto 311/2022)
 

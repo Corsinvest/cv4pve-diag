@@ -123,6 +123,9 @@ public partial class DiagnosticEngine
             ComplianceControls.Cis.C_11,
             ComplianceControls.NistCsf.PR_DS_11,
             ComplianceControls.NistCsf.RC_RP_01,
+            ComplianceControls.Acn.PR_DS_11,
+            ComplianceControls.Iso22301.C_8_3_5,
+            ComplianceControls.BsiGrundschutz.CON_3_A5,
         ];
 
         // Is this guest covered by at least one enabled backup job? Skipped when the job list
@@ -217,6 +220,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_IR_04,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
         }
         #endregion
@@ -311,6 +317,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_11,
                 ComplianceControls.NistCsf.PR_IR_04,
                 ComplianceControls.NistCsf.RC_RP_01,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
             ];
 
             if (_haVmIds.Count > 0)
@@ -389,6 +398,10 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.DE_CM_01,
                 ComplianceControls.NistCsf.DE_CM_03,
                 ComplianceControls.Iso27017.CLD_12_4_5,
+                ComplianceControls.Acn.PR_PS_04,
+                ComplianceControls.Acn.DE_CM_01,
+                ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
             ]);
     }
 
@@ -499,6 +512,9 @@ public partial class DiagnosticEngine
             ComplianceControls.Cis.C_12,
             ComplianceControls.Cis.C_13,
             ComplianceControls.NistCsf.PR_IR_01,
+            ComplianceControls.Acn.PR_IR_01,
+            ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
+            ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
         ];
 
         CreateResult(

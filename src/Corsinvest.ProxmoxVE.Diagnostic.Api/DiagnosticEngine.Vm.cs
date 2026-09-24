@@ -155,6 +155,8 @@ public partial class DiagnosticEngine
                         ComplianceControls.NistCsf.PR_PS_02,
                         ComplianceControls.NistCsf.ID_RA_01,
                         ComplianceControls.Iso27017.CLD_9_5_2,
+                        ComplianceControls.Acn.PR_PS_02,
+                        ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
                     ]);
             }
             #endregion
@@ -349,6 +351,8 @@ public partial class DiagnosticEngine
                             ComplianceControls.Cis.C_7,
                             ComplianceControls.NistCsf.PR_PS_02,
                             ComplianceControls.NistCsf.ID_RA_01,
+                            ComplianceControls.Acn.PR_PS_02,
+                            ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
                         ]);
                 }
                 #endregion
@@ -415,6 +419,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Cis.C_11,
                     ComplianceControls.NistCsf.PR_DS_11,
                     ComplianceControls.NistCsf.RC_RP_01,
+                    ComplianceControls.Acn.PR_DS_11,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.CON_3_A5,
                 ];
 
                 // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
@@ -584,6 +591,8 @@ public partial class DiagnosticEngine
                             ComplianceControls.Cis.C_7,
                             ComplianceControls.NistCsf.PR_PS_02,
                             ComplianceControls.NistCsf.ID_RA_01,
+                            ComplianceControls.Acn.PR_PS_02,
+                            ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
                         ]);
                 }
             }
@@ -684,6 +693,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_12,
                 ComplianceControls.Cis.C_13,
                 ComplianceControls.NistCsf.PR_IR_01,
+                ComplianceControls.Acn.PR_IR_01,
+                ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
             ];
 
         foreach (var x in duplicateMacs)

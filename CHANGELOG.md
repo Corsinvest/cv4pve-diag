@@ -15,6 +15,15 @@
 - `WN0046` — a VM or container uses a VLAN that its bridge does not let out of the node, so it cannot reach the rest of the network on that VLAN.
 - `WN0047` — a VM or container uses a bridge that does not exist on another node: moving it there (migration or HA) would fail.
 
+### Compliance
+
+Three new standards, bringing the total to 17. Use them with `--compliance=Acn`, `--compliance=Iso22301` or `--compliance=BsiGrundschutz`:
+- **ACN (Italy)** — the NIS2 security measures Italian essential and important entities must apply (Determinazione ACN n. 379907 of 19 December 2025, in force from 15 January 2026).
+- **ISO 22301:2019** — business continuity: backup, HA, replication and capacity findings.
+- **BSI IT-Grundschutz** (Germany, Kompendium Edition 2023) — requirements for virtualization, containers, storage, backup, updates, logging, time synchronisation and access.
+
+See [docs/compliance.md](docs/compliance.md) for the controls and where they appear.
+
 ### Fixes
 
 - `WN0037` (VLAN tag on a bridge that is not VLAN-aware) has been removed: it was a false alarm, that configuration works. Ignore rules for `WN0037` can be deleted.

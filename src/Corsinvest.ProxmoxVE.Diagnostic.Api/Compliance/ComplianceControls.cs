@@ -281,6 +281,176 @@ public static class ComplianceControls
     }
 
     /// <summary>
+    /// ACN — Italian NIS2 basic security measures (Determinazione ACN n. 379907 del 19 dicembre 2025,
+    /// replacing n. 164179/2025; D.Lgs. 138/2024 art. 24). Identifiers are the Framework Nazionale /
+    /// NIST CSF 2.0 subcategory codes used by the annexes (Allegato 1 soggetti importanti, Allegato 2
+    /// soggetti essenziali). Measures that apply to essential entities only say so in the title.
+    /// </summary>
+    public static class Acn
+    {
+        /// <summary>ID.AM-02 — Inventories of software, services and systems are maintained.</summary>
+        public static readonly ComplianceMapping ID_AM_02 =
+            new(ComplianceStandard.Acn, "ID.AM-02", "Inventory of software, services and systems");
+
+        /// <summary>ID.RA-08 — Processes for receiving, analysing and responding to vulnerability disclosures.</summary>
+        public static readonly ComplianceMapping ID_RA_08 =
+            new(ComplianceStandard.Acn, "ID.RA-08", "Vulnerability disclosures received, analysed and remediated");
+
+        /// <summary>ID.IM-04 — Business continuity, disaster recovery and crisis plans, including backups and redundancy.</summary>
+        public static readonly ComplianceMapping ID_IM_04 =
+            new(ComplianceStandard.Acn, "ID.IM-04", "Business continuity and disaster recovery plans (backups, redundancy)");
+
+        /// <summary>PR.AA-01 — Identities and credentials of users, services and hardware are managed (recorded, individual, reviewed, revoked).</summary>
+        public static readonly ComplianceMapping PR_AA_01 =
+            new(ComplianceStandard.Acn, "PR.AA-01", "Identity and credential management");
+
+        /// <summary>PR.AA-03 — Users, services and hardware are authenticated; multi-factor authentication at least for relevant systems.</summary>
+        public static readonly ComplianceMapping PR_AA_03 =
+            new(ComplianceStandard.Acn, "PR.AA-03", "Authentication, multi-factor for relevant systems");
+
+        /// <summary>PR.AA-05 — Access permissions follow least privilege and separation of duties; separate privileged accounts.</summary>
+        public static readonly ComplianceMapping PR_AA_05 =
+            new(ComplianceStandard.Acn, "PR.AA-05", "Least privilege and separate privileged accounts");
+
+        /// <summary>PR.DS-02 — Confidentiality, integrity and availability of data in transit are protected.</summary>
+        public static readonly ComplianceMapping PR_DS_02 =
+            new(ComplianceStandard.Acn, "PR.DS-02", "Protection of data in transit (encryption)");
+
+        /// <summary>PR.DS-11 — Backups of data are created, protected, maintained and tested (data and configurations, offline copies).</summary>
+        public static readonly ComplianceMapping PR_DS_11 =
+            new(ComplianceStandard.Acn, "PR.DS-11", "Backups created, protected, maintained and tested");
+
+        /// <summary>PR.PS-01 — Configuration management practices: hardened baseline configurations (essential entities only).</summary>
+        public static readonly ComplianceMapping PR_PS_01 =
+            new(ComplianceStandard.Acn, "PR.PS-01", "Secure configuration baselines (essential entities)");
+
+        /// <summary>PR.PS-02 — Software is maintained, replaced and removed according to risk: supported software only, security updates without undue delay.</summary>
+        public static readonly ComplianceMapping PR_PS_02 =
+            new(ComplianceStandard.Acn, "PR.PS-02", "Supported software and timely security updates");
+
+        /// <summary>PR.PS-04 — Log records are generated and made available for continuous monitoring (administrative access, retention).</summary>
+        public static readonly ComplianceMapping PR_PS_04 =
+            new(ComplianceStandard.Acn, "PR.PS-04", "Logs generated and kept for continuous monitoring");
+
+        /// <summary>PR.IR-01 — Networks and environments are protected from unauthorised logical access (perimeter systems, firewalls).</summary>
+        public static readonly ComplianceMapping PR_IR_01 =
+            new(ComplianceStandard.Acn, "PR.IR-01", "Networks protected from unauthorised access (firewalls)");
+
+        /// <summary>DE.CM-01 — Networks and network services are monitored to find potentially adverse events.</summary>
+        public static readonly ComplianceMapping DE_CM_01 =
+            new(ComplianceStandard.Acn, "DE.CM-01", "Networks and services monitored");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            ID_AM_02, ID_RA_08, ID_IM_04,
+            PR_AA_01, PR_AA_03, PR_AA_05,
+            PR_DS_02, PR_DS_11,
+            PR_PS_01, PR_PS_02, PR_PS_04,
+            PR_IR_01,
+            DE_CM_01,
+        ];
+    }
+
+    /// <summary>
+    /// ISO 22301:2019 — Security and resilience — Business continuity management systems — Requirements.
+    /// Clause numbers and titles as in the published table of contents (the requirement text is not
+    /// public). Only clauses a cluster configuration can give evidence for are listed.
+    /// </summary>
+    public static class Iso22301
+    {
+        /// <summary>8.3.4 — Resource requirements (capacity for the business continuity solutions).</summary>
+        public static readonly ComplianceMapping C_8_3_4 =
+            new(ComplianceStandard.Iso22301, "8.3.4", "Resource requirements");
+
+        /// <summary>8.3.5 — Implementation of solutions (backup, HA, replication in place).</summary>
+        public static readonly ComplianceMapping C_8_3_5 =
+            new(ComplianceStandard.Iso22301, "8.3.5", "Implementation of solutions");
+
+        /// <summary>8.4.5 — Recovery.</summary>
+        public static readonly ComplianceMapping C_8_4_5 =
+            new(ComplianceStandard.Iso22301, "8.4.5", "Recovery");
+
+        /// <summary>8.5 — Exercise programme (restore and failover tests).</summary>
+        public static readonly ComplianceMapping C_8_5 =
+            new(ComplianceStandard.Iso22301, "8.5", "Exercise programme");
+
+        /// <summary>9.1 — Monitoring, measurement, analysis and evaluation.</summary>
+        public static readonly ComplianceMapping C_9_1 =
+            new(ComplianceStandard.Iso22301, "9.1", "Monitoring, measurement, analysis and evaluation");
+
+        internal static IEnumerable<ComplianceMapping> All => [C_8_3_4, C_8_3_5, C_8_4_5, C_8_5, C_9_1];
+    }
+
+    /// <summary>
+    /// BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany). Requirement identifiers are
+    /// &lt;Baustein&gt;.A&lt;n&gt;; titles are the German ones of the Kompendium, with the protection
+    /// level: (B) Basis, (S) Standard, (H) erhöhter Schutzbedarf. The Kompendium is superseded by
+    /// Grundschutz++ (published 2026, certifiable from 2027) but remains certifiable until 2031.
+    /// </summary>
+    public static class BsiGrundschutz
+    {
+        /// <summary>CON.1.A1 — Auswahl geeigneter kryptografischer Verfahren (selection of suitable cryptographic methods).</summary>
+        public static readonly ComplianceMapping CON_1_A1 =
+            new(ComplianceStandard.BsiGrundschutz, "CON.1.A1", "Auswahl geeigneter kryptografischer Verfahren (B)");
+
+        /// <summary>CON.3.A5 — Regelmäßige Datensicherung (regular data backup).</summary>
+        public static readonly ComplianceMapping CON_3_A5 =
+            new(ComplianceStandard.BsiGrundschutz, "CON.3.A5", "Regelmäßige Datensicherung (B)");
+
+        /// <summary>OPS.1.1.3.A15 — Regelmäßige Aktualisierung von IT-Systemen und Software (regular updates).</summary>
+        public static readonly ComplianceMapping OPS_1_1_3_A15 =
+            new(ComplianceStandard.BsiGrundschutz, "OPS.1.1.3.A15", "Regelmäßige Aktualisierung von IT-Systemen und Software (B)");
+
+        /// <summary>OPS.1.1.5.A3 — Konfiguration der Protokollierung auf System- und Netzebene (logging configuration).</summary>
+        public static readonly ComplianceMapping OPS_1_1_5_A3 =
+            new(ComplianceStandard.BsiGrundschutz, "OPS.1.1.5.A3", "Konfiguration der Protokollierung auf System- und Netzebene (B)");
+
+        /// <summary>OPS.1.1.5.A4 — Zeitsynchronisation der IT-Systeme (time synchronisation).</summary>
+        public static readonly ComplianceMapping OPS_1_1_5_A4 =
+            new(ComplianceStandard.BsiGrundschutz, "OPS.1.1.5.A4", "Zeitsynchronisation der IT-Systeme (B)");
+
+        /// <summary>ORP.4.A10 — Schutz von Benutzendenkennungen mit weitreichenden Berechtigungen (protection of privileged accounts).</summary>
+        public static readonly ComplianceMapping ORP_4_A10 =
+            new(ComplianceStandard.BsiGrundschutz, "ORP.4.A10", "Schutz von Benutzendenkennungen mit weitreichenden Berechtigungen (S)");
+
+        /// <summary>ORP.4.A21 — Mehr-Faktor-Authentisierung (multi-factor authentication).</summary>
+        public static readonly ComplianceMapping ORP_4_A21 =
+            new(ComplianceStandard.BsiGrundschutz, "ORP.4.A21", "Mehr-Faktor-Authentisierung (H)");
+
+        /// <summary>SYS.1.1.A19 — Einrichtung lokaler Paketfilter (local packet filters: node and guest firewall).</summary>
+        public static readonly ComplianceMapping SYS_1_1_A19 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.1.A19", "Einrichtung lokaler Paketfilter (S)");
+
+        /// <summary>SYS.1.5.A4 — Sichere Konfiguration eines Netzes für virtuelle Infrastrukturen (virtual infrastructure network).</summary>
+        public static readonly ComplianceMapping SYS_1_5_A4 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.5.A4", "Sichere Konfiguration eines Netzes für virtuelle Infrastrukturen (B)");
+
+        /// <summary>SYS.1.5.A17 — Überwachung des Betriebszustands und der Konfiguration der virtuellen Infrastruktur (monitoring).</summary>
+        public static readonly ComplianceMapping SYS_1_5_A17 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.5.A17", "Überwachung des Betriebszustands und der Konfiguration der virtuellen Infrastruktur (S)");
+
+        /// <summary>SYS.1.5.A20 — Verwendung von hochverfügbaren Architekturen (high-availability architectures).</summary>
+        public static readonly ComplianceMapping SYS_1_5_A20 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.5.A20", "Verwendung von hochverfügbaren Architekturen (H)");
+
+        /// <summary>SYS.1.6.A17 — Ausführung von Containern ohne Privilegien (unprivileged containers).</summary>
+        public static readonly ComplianceMapping SYS_1_6_A17 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.6.A17", "Ausführung von Containern ohne Privilegien (S)");
+
+        /// <summary>SYS.1.8.A13 — Überwachung und Verwaltung von Speicherlösungen (storage monitoring and management).</summary>
+        public static readonly ComplianceMapping SYS_1_8_A13 =
+            new(ComplianceStandard.BsiGrundschutz, "SYS.1.8.A13", "Überwachung und Verwaltung von Speicherlösungen (S)");
+
+        internal static IEnumerable<ComplianceMapping> All =>
+        [
+            CON_1_A1, CON_3_A5,
+            OPS_1_1_3_A15, OPS_1_1_5_A3, OPS_1_1_5_A4,
+            ORP_4_A10, ORP_4_A21,
+            SYS_1_1_A19, SYS_1_5_A4, SYS_1_5_A17, SYS_1_5_A20, SYS_1_6_A17, SYS_1_8_A13,
+        ];
+    }
+
+    /// <summary>
     /// ENS — Esquema Nacional de Seguridad (Real Decreto 311/2022, Spain).
     /// Control identifiers follow the official ENS taxonomy: op.* (operational framework),
     /// mp.* (protection measures). Only the subset technically verifiable on a Proxmox VE
@@ -838,7 +1008,7 @@ public static class ComplianceControls
     // ──────── Lookup ────────
 
     private static readonly FrozenDictionary<(ComplianceStandard, string), ComplianceMapping> _byKey =
-        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Soc2.All, Nist80053.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All }
+        new[] { Iso27001.All, Nis2.All, Dora.All, PciDss.All, Gdpr.All, AgId.All, Ens.All, C5.All, Soc2.All, Nist80053.All, Iso27017.All, Iso27018.All, Cis.All, NistCsf.All, Acn.All, Iso22301.All, BsiGrundschutz.All }
             .SelectMany(x => x)
             .ToFrozenDictionary(m => (m.Standard, m.ControlId));
 

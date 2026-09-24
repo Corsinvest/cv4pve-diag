@@ -94,6 +94,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Ens.OP_MON_3,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Acn.DE_CM_01,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
             ]);
 
         // Storage not reachable from the node — VMs on that node cannot read/write.
@@ -121,6 +126,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Ens.OP_MON_3,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Acn.DE_CM_01,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
             ]);
 
         // Storage usage above configured Warning/Critical thresholds
@@ -145,6 +155,13 @@ public partial class DiagnosticEngine
                 ComplianceControls.Ens.OP_PL_4,
                 ComplianceControls.Iso27017.CLD_6_3_1,
                 ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Acn.DE_CM_01,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.Iso22301.C_8_3_4,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.BsiGrundschutz.SYS_1_8_A13,
             ]);
 
         #region Orphaned Images and Backups
@@ -316,6 +333,11 @@ public partial class DiagnosticEngine
                 ComplianceControls.Ens.OP_PL_4,
                 ComplianceControls.Soc2.A1_1,
                 ComplianceControls.NistCsf.PR_IR_04,
+                ComplianceControls.Acn.ID_IM_04,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.Iso22301.C_8_3_4,
+                ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.BsiGrundschutz.SYS_1_8_A13,
             ]);
         #endregion
 
@@ -349,6 +371,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_11,
                 ComplianceControls.NistCsf.PR_DS_11,
                 ComplianceControls.NistCsf.RC_RP_01,
+                ComplianceControls.Acn.PR_DS_11,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.CON_3_A5,
             ]);
         #endregion
 
@@ -397,6 +422,9 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_11,
                 ComplianceControls.NistCsf.PR_DS_11,
                 ComplianceControls.NistCsf.RC_RP_01,
+                ComplianceControls.Acn.PR_DS_11,
+                ComplianceControls.Iso22301.C_8_3_5,
+                ComplianceControls.BsiGrundschutz.CON_3_A5,
             ]);
         #endregion
 
@@ -436,6 +464,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Ens.OP_CONT_4,
                     ComplianceControls.Iso27017.CLD_6_3_1,
                     ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.Acn.ID_IM_04,
+                    ComplianceControls.Iso22301.C_8_3_5,
+                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ]);
         }
         #endregion

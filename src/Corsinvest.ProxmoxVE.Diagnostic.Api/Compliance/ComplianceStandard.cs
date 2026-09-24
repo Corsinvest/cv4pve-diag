@@ -53,4 +53,13 @@ public enum ComplianceStandard
 
     /// <summary>NIST SP 800-53 rev.5 — Security and Privacy Controls (Moderate baseline subset).</summary>
     Nist80053,
+
+    /// <summary>ACN — Italian NIS2 basic security measures (Determinazione ACN n. 379907/2025).</summary>
+    Acn,
+
+    /// <summary>ISO 22301:2019 — Business continuity management systems.</summary>
+    Iso22301,
+
+    /// <summary>BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany).</summary>
+    BsiGrundschutz,
 }
