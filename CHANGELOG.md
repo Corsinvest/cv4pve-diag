@@ -56,6 +56,16 @@
 - ZFS hot spares (`AVAIL`, `INUSE`) are no longer reported as failed vdevs (`CN0012`).
 - Disks whose S.M.A.R.T. status cannot be read (behind a RAID controller or USB bridge) are no longer reported as failing; the message shows the status value.
 - Nodes without swap no longer get a "SWAP usage NaN%" result, and the health score no longer shows "NaN".
+- VMs with CPU type `max` are treated like `host`: they cannot live-migrate between different CPUs (`WG0006`, `CG0004`) and already get the CPU's security features (`WG0037`).
+- `WG0004` (guest agent not running) is reported only when Proxmox says the agent does not answer. Other errors, such as a missing permission, are shown as "Unable to read" instead.
+- HA guests on local storage (`CG0005`) are no longer reported when a replication job keeps a copy on the other nodes, and containers are now checked too.
+- A VM hibernated on purpose is no longer reported as "never resumed properly" (`CG0001`).
+- Tasks that finished with warnings are no longer counted as failed tasks of the guest (`CG0003`).
+- Pending changes that remove an option are now counted (`IG0010`).
+- `IG0001` (SCSI controller) is checked only on VMs that have SCSI disks.
+- `IG0012` also reports machine types without a version, such as `q35`, which change on upgrade like an unset one. Machine types with options (`viommu`) are now checked by `IG0016`, and its message shows the exact name of the latest version.
+- Duplicate MAC addresses (`WG0033`) are also found between VMs and containers and between two interfaces of the same guest.
+- A usage threshold with only Warning or only Critical set is now checked, instead of being skipped.
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 

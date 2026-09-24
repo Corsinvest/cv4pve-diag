@@ -31,9 +31,10 @@ public partial class DiagnosticEngine
         var guest = context == DiagnosticResultContext.Lxc ? "CT" : "VM";
 
         #region VM State
-        // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly
+        // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly.
+        // A VM hibernated on purpose keeps its vmstate with lock 'suspended' (reported by WG0015).
         CreateResultPerItem(
-            items: pending.Where(a => a.Key == "vmstate").ToList(),
+            items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
             isItemOk: _ => false,
             itemId: _ => id,
             itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
@@ -50,7 +51,7 @@ public partial class DiagnosticEngine
         // Config changes applied via the API are held in "pending" until the VM is rebooted.
         // Calling out pending changes helps operators know a reboot is needed for changes to take effect.
         var pendingChanges = pending.Where(a => a.Key != "vmstate"
-                                                && (a.Pending != null || a.Delete == 1)).ToList();
+                                                && (a.Pending != null || a.Delete > 0)).ToList();
         CreateResult(
             isOk: pendingChanges.Count == 0,
             id: id,
@@ -174,6 +175,50 @@ public partial class DiagnosticEngine
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: []);
+        #endregion
+
+        #region HA with local storage
+        // HA moves the guest to another node: a disk on non-shared storage is not there, unless a
+        // replication job keeps a copy on the other nodes (local ZFS with replication is a
+        // documented setup). Container bind and device mounts are host paths, not guest disks.
+        var guestResource = _resources.FirstOrDefault(r => r.ResourceType == ClusterResourceType.Vm && r.VmId == vmId);
+        if (!string.IsNullOrWhiteSpace(guestResource?.HaState))
+        {
+            var replicated = _replicatedVmIds.Contains(vmId);
+            CreateResultPerItem(
+                items: config.Disks.Where(d => !d.IsUnused
+                                               && !string.IsNullOrWhiteSpace(d.Storage)
+                                               && !(context == DiagnosticResultContext.Lxc
+                                                    && (!string.IsNullOrEmpty(d.MountSourcePath) || d.Passthrough))).ToList(),
+                isItemOk: d => replicated || _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
+                itemId: _ => id,
+                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated — migration and failover will fail",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => replicated
+                                                ? $"HA {guest} is replicated to the other nodes"
+                                                : $"All HA {guest} disks are on shared storage",
+                errorCode: "CG0005",
+                subContext: "HA",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Critical,
+                compliance:
+                [
+                    ComplianceControls.Iso27001.A_5_30,
+                    ComplianceControls.Nis2.Art_21_c,
+                    ComplianceControls.Dora.Art_12,
+                    ComplianceControls.Gdpr.Art_32_1_b,
+                    ComplianceControls.Ens.OP_CONT_2,
+                    ComplianceControls.Ens.MP_S_1,
+                    ComplianceControls.C5.BCM_03,
+                    ComplianceControls.Soc2.A1_1,
+                    ComplianceControls.Soc2.A1_2,
+                    ComplianceControls.Nist80053.CP_10,
+                    ComplianceControls.Iso27017.CLD_6_3_1,
+                    ComplianceControls.Cis.C_11,
+                    ComplianceControls.NistCsf.PR_IR_04,
+                    ComplianceControls.NistCsf.RC_RP_01,
+                ]);
+        }
         #endregion
 
         var nodeApi = client.Nodes[node];
@@ -313,7 +358,8 @@ public partial class DiagnosticEngine
                                   DiagnosticResultContext context,
                                   string id)
     {
-        var tasksCount = tasks.Count(a => !a.StatusOk);
+        // errors=1 also returns tasks that ended with "WARNINGS: n": they completed.
+        var tasksCount = tasks.Count(a => !TaskSucceeded(a.Status));
         CreateResult(
             isOk: tasksCount == 0,
             id: id,
@@ -666,11 +712,13 @@ public partial class DiagnosticEngine
                                 IReadOnlyList<ComplianceMapping>? compliance = null)
     {
         // Both thresholds disabled → skip entirely (no result, not even Ok).
-        if (threshold.Warning == 0 || threshold.Critical == 0) { return; }
+        // A single one set (the other 0) is checked on its own, as in CheckHealthScore.
+        if (threshold.Warning <= 0 && threshold.Critical <= 0) { return; }
 
         var complianceList = compliance ?? [];
 
-        foreach (var a in data)
+        // A size of 0 gives no percentage (0/0 = NaN, which compares as Ok): skip the datapoint.
+        foreach (var a in data.Where(a => isValue || a.Size > 0))
         {
             var pct = Math.Round(isValue ? a.Usage : a.Usage / a.Size * 100.0, 1);
             var description = $"{a.PrefixDescription} usage {pct}%";
@@ -679,8 +727,8 @@ public partial class DiagnosticEngine
                 description += $" - {FormatHelper.FromBytes(a.Usage)} of {FormatHelper.FromBytes(a.Size)}";
             }
 
-            var isCritical = pct >= threshold.Critical;
-            var isWarning = !isCritical && pct >= threshold.Warning;
+            var isCritical = threshold.Critical > 0 && pct >= threshold.Critical;
+            var isWarning = !isCritical && threshold.Warning > 0 && pct >= threshold.Warning;
             var isOk = !isCritical && !isWarning;
 
             CreateResult(

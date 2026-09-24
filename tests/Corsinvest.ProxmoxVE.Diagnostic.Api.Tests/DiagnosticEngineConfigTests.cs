@@ -124,4 +124,33 @@ public class DiagnosticEngineConfigTests
     [InlineData("unused0", false)]
     public void Only_data_disk_buses_are_checked(string id, bool expected)
         => Assert.Equal(expected, DiagnosticEngine.IsDiskBus(id));
+
+    // ----- WG0006 / CG0004 / WG0037: host CPU -----
+    [Theory]
+    [InlineData("host", true)]
+    [InlineData("max", true)]
+    [InlineData("x86-64-v2-aes", false)]
+    [InlineData("kvm64", false)]
+    public void Host_and_max_expose_the_physical_cpu(string cpuType, bool expected)
+        => Assert.Equal(expected, DiagnosticEngine.IsHostCpuType(cpuType));
+
+    // ----- IG0012 / IG0016: machine type -----
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("q35", "q35")]
+    [InlineData("pc-q35-8.1,viommu=intel", "pc-q35-8.1")]
+    [InlineData("type=pc-i440fx-9.0+pve0,viommu=virtio", "pc-i440fx-9.0+pve0")]
+    [InlineData("viommu=virtio", "")]
+    public void Machine_type_is_read_without_its_options(string? machine, string expected)
+        => Assert.Equal(expected, DiagnosticEngine.MachineTypeOf(machine));
+
+    [Theory]
+    [InlineData("pc-q35-8.1", true)]
+    [InlineData("pc-i440fx-9.2+pve1", true)]
+    [InlineData("q35", false)]
+    [InlineData("pc", false)]
+    [InlineData("pc-q35-latest", false)]
+    [InlineData("", false)]
+    public void Only_a_versioned_machine_type_is_pinned(string machine, bool expected)
+        => Assert.Equal(expected, DiagnosticEngine.TryParseMachineVersion(machine, out _, out _));
 }

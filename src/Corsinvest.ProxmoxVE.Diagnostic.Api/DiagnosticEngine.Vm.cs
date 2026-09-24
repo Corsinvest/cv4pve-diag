@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Net;
 using System.Text.RegularExpressions;
+using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Common;
@@ -18,6 +20,7 @@ public partial class DiagnosticEngine
     private const string VirtioPrefix = "virtio";
     private const string CpuTypeHost = "host";
     private const string CpuTypeKvm64 = "kvm64";
+    private const string CpuTypeMax = "max";
     private const string BiosOvmf = "ovmf";
     private const string DiskCacheUnsafe = "unsafe";
     private const string DiskCacheWriteback = "writeback";
@@ -34,7 +37,7 @@ public partial class DiagnosticEngine
                                VmFirewallOptions? Firewall,
                                IReadOnlyList<KeyValue> Pending,
                                IReadOnlyList<VmSnapshot>? Snapshots,
-                               object? AgentInfo);
+                               bool? AgentRunning);
 
     private async Task<VmFetchData> FetchVmDataAsync(ClusterResource item)
     {
@@ -48,14 +51,16 @@ public partial class DiagnosticEngine
                             : Task.FromResult<IReadOnlyList<VmSnapshot>?>(null);
         await Task.WhenAll(firewallTask, pendingTask, snapshotTask);
 
-        object? agentInfo = null;
+        // null = not asked (agent disabled, VM stopped) or the call failed for another reason,
+        // already reported as WG0042: then WG0004 is skipped rather than guessed.
+        bool? agentRunning = null;
         if (config.AgentEnabled && item.IsRunning)
         {
-            try { agentInfo = await vmApi.Agent.Info.GetAsync(); }
-            catch { /* agent not running — handled in check */ }
+            agentRunning = await AgentRespondsAsync(vmApi.Agent.Info.GetAsync())
+                                    .ToSafeSingle(_result, id, DiagnosticResultContext.Qemu, $"guest agent of VM {item.VmId}");
         }
 
-        return new VmFetchData(item, config, firewallTask.Result, pendingTask.Result, snapshotTask.Result, agentInfo);
+        return new VmFetchData(item, config, firewallTask.Result, pendingTask.Result, snapshotTask.Result, agentRunning);
     }
 
     private async Task CheckVmAsync(bool hasCluster)
@@ -132,7 +137,7 @@ public partial class DiagnosticEngine
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Warning,
                     descriptionKo: $"OS '{config.OsTypeDecode}' not maintained from vendor!",
-                    descriptionOk: $"OS '{config.OsTypeDecode}' is supported by the vendor",
+                    descriptionOk: $"OS '{config.OsTypeDecode}' is not a version whose vendor support has ended",
                     compliance:
                     [
                         ComplianceControls.Iso27001.A_8_8,
@@ -166,10 +171,10 @@ public partial class DiagnosticEngine
                 descriptionKo: "Qemu Agent not enabled",
                 descriptionOk: "Qemu Agent is enabled",
                 compliance: []);
-            if (config.AgentEnabled && item.IsRunning)
+            if (fetch.AgentRunning != null)
             {
                 CreateResult(
-                    isOk: fetch.AgentInfo != null,
+                    isOk: fetch.AgentRunning.Value,
                     id: id,
                     errorCode: "WG0004",
                     subContext: "Agent",
@@ -186,16 +191,21 @@ public partial class DiagnosticEngine
             if (config is VmConfigQemu qc)
             {
                 var scsiHwIsVirtIO = (qc.ScsiHw ?? "").StartsWith(VirtioPrefix, StringComparison.OrdinalIgnoreCase);
-                CreateResult(
-                    isOk: scsiHwIsVirtIO,
-                    id: id,
-                    errorCode: "IG0001",
-                    subContext: "VirtIO",
-                    context: DiagnosticResultContext.Qemu,
-                    gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "For more performance switch controller to VirtIO SCSI",
-                    descriptionOk: $"SCSI controller is VirtIO ({qc.ScsiHw})",
-                    compliance: []);
+
+                // The SCSI controller only matters when some disk is attached to it.
+                if (config.Disks.Any(a => IsDiskBus(a.Id) && a.Id.StartsWith("scsi", StringComparison.OrdinalIgnoreCase)))
+                {
+                    CreateResult(
+                        isOk: scsiHwIsVirtIO,
+                        id: id,
+                        errorCode: "IG0001",
+                        subContext: "VirtIO",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: "For more performance switch controller to VirtIO SCSI",
+                        descriptionOk: $"SCSI controller is VirtIO ({qc.ScsiHw})",
+                        compliance: []);
+                }
 
                 // IDE and SATA disks are emulated and slow whatever the controller; SCSI disks are
                 // only as fast as the controller they ride on. Other entries (efidisk, tpmstate) are
@@ -255,18 +265,20 @@ public partial class DiagnosticEngine
             {
                 var cpuType = CpuTypeOf(qemuConfig.Cpu);
 
-                // "host" exposes all physical CPU features to the guest but prevents live migration
-                // between nodes with different CPU models. Only relevant in a multi-node cluster.
+                // "host" (and "max", every feature QEMU can offer on this host) exposes the physical
+                // CPU features to the guest but prevents live migration between nodes with different
+                // CPU models. Only relevant in a multi-node cluster.
+                var isHostCpu = IsHostCpuType(cpuType);
                 if (hasCluster)
                 {
                     CreateResult(
-                        isOk: cpuType != CpuTypeHost,
+                        isOk: !isHostCpu,
                         id: id,
                         errorCode: "WG0006",
                         subContext: "CPU",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: "CPU type 'host' prevents live migration to nodes with a different CPU model",
+                        descriptionKo: $"CPU type '{cpuType}' prevents live migration to nodes with a different CPU model",
                         descriptionOk: $"CPU type '{cpuType}' allows live migration",
                         compliance: []);
 
@@ -275,13 +287,13 @@ public partial class DiagnosticEngine
                     if (haVmIds.Contains(item.VmId))
                     {
                         CreateResult(
-                            isOk: cpuType != CpuTypeHost,
+                            isOk: !isHostCpu,
                             id: id,
                             errorCode: "CG0004",
                             subContext: "CPU",
                             context: DiagnosticResultContext.Qemu,
                             gravityKo: DiagnosticResultGravity.Critical,
-                            descriptionKo: "CPU type 'host' is incompatible with HA — HA requires live migration which needs a portable CPU type",
+                            descriptionKo: $"CPU type '{cpuType}' is incompatible with HA — HA requires live migration which needs a portable CPU type",
                             descriptionOk: $"CPU type '{cpuType}' is compatible with HA live migration",
                             compliance: []);
                     }
@@ -302,9 +314,9 @@ public partial class DiagnosticEngine
                     compliance: []);
 
                 #region CPU security flags
-                // When cpu type is not 'host', security mitigations flags are not inherited automatically.
-                // Missing flags expose guests to Spectre/Meltdown/MDS variants.
-                if (!cpuType.Equals(CpuTypeHost, StringComparison.OrdinalIgnoreCase))
+                // When cpu type is not 'host' or 'max', security mitigations flags are not inherited
+                // automatically. Missing flags expose guests to Spectre/Meltdown/MDS variants.
+                if (!isHostCpu)
                 {
                     var cpuFlags = qemuConfig.Cpu ?? "";
                     var missingFlags = _cpuSecurityFlags
@@ -376,7 +388,9 @@ public partial class DiagnosticEngine
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Info,
                         descriptionKo: "Balloon driver disabled, RAM is statically allocated",
-                        descriptionOk: $"Balloon driver enabled ({qemuConfig.Balloon} MB)",
+                        descriptionOk: qemuConfig.Balloon is > 0
+                                        ? $"Balloon driver enabled (minimum {qemuConfig.Balloon} MB)"
+                                        : "Balloon driver enabled",
                         compliance: []);
                 }
                 #endregion
@@ -513,66 +527,35 @@ public partial class DiagnosticEngine
             }
             #endregion
 
-            #region HA with local storage
-            // HA requires live migration. If any disk is on non-shared storage the migration fails.
-            if (haVmIds.Contains(item.VmId))
-            {
-                CreateResultPerItem(
-                    items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Storage)).ToList(),
-                    isItemOk: d => _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
-                    itemId: _ => id,
-                    itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but VM is managed by HA — live migration will fail",
-                    aggregatedIdOk: id,
-                    aggregatedDescriptionOk: _ => "All HA VM disks are on shared storage",
-                    errorCode: "CG0005",
-                    subContext: "HA",
-                    context: DiagnosticResultContext.Qemu,
-                    gravityKo: DiagnosticResultGravity.Critical,
-                    compliance:
-                    [
-                        ComplianceControls.Iso27001.A_5_30,
-                        ComplianceControls.Nis2.Art_21_c,
-                        ComplianceControls.Dora.Art_12,
-                        ComplianceControls.Gdpr.Art_32_1_b,
-                        ComplianceControls.Ens.OP_CONT_2,
-                        ComplianceControls.Ens.MP_S_1,
-                        ComplianceControls.C5.BCM_03,
-                        ComplianceControls.Soc2.A1_1,
-                        ComplianceControls.Soc2.A1_2,
-                        ComplianceControls.Nist80053.CP_10,
-                        ComplianceControls.Iso27017.CLD_6_3_1,
-                        ComplianceControls.Cis.C_11,
-                        ComplianceControls.NistCsf.PR_IR_04,
-                        ComplianceControls.NistCsf.RC_RP_01,
-                    ]);
-            }
-            #endregion
-
             #region Machine type
             // An empty machine type means QEMU picks the default at startup, which may change across
             // PVE upgrades and cause unexpected guest behaviour after an upgrade.
+            // An alias without a version (q35, pc, pc-q35-latest) moves the same way.
             if (config is VmConfigQemu qemuMachine)
             {
+                var machineType = MachineTypeOf(qemuMachine.Machine);
+                var isPinned = TryParseMachineVersion(machineType, out var family, out var current);
                 CreateResult(
-                    isOk: !string.IsNullOrWhiteSpace(qemuMachine.Machine),
+                    isOk: isPinned,
                     id: id,
                     errorCode: "IG0012",
                     subContext: "Hardware",
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "Machine type not set — QEMU will use the default, which may change across PVE upgrades",
-                    descriptionOk: $"Machine type explicitly set to '{qemuMachine.Machine}'",
+                    descriptionKo: machineType.Length == 0
+                                    ? "Machine type not set — QEMU will use the default, which may change across PVE upgrades"
+                                    : $"Machine type '{machineType}' has no version — it follows the QEMU default, which may change across PVE upgrades",
+                    descriptionOk: $"Machine type pinned to '{machineType}'",
                     compliance: []);
 
                 // IG0016 — pinned machine type lags behind the latest available on the node.
-                // Skipped when the value is empty (IG0012 handles that), when the format isn't
-                // pc-<family>-<X.Y> (e.g. "pc-i440fx-latest", bare "q35", "windows"), or when the
-                // node's machine catalog couldn't be fetched. Pinning is the right thing to do for
+                // Skipped when the type is not pinned to a version (IG0012 handles that) or when
+                // the node's machine catalog couldn't be fetched. Pinning is the right thing to do for
                 // stability, but versions accumulate deprecated security/microcode behaviour and
                 // should be reviewed during planned maintenance windows.
-                if (TryParseMachineVersion(qemuMachine.Machine, out var family, out var current)
+                if (isPinned
                     && _qemuMachinesByNode.TryGetValue(item.Node, out var nodeMachines)
-                    && TryFindLatestVersion(nodeMachines, family, out var latest)
+                    && TryFindLatestVersion(nodeMachines, family, out var latest, out var latestId)
                     && CompareMachineVersions(current, latest) < 0)
                 {
                     CreateResult(
@@ -582,7 +565,7 @@ public partial class DiagnosticEngine
                         subContext: "Hardware",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Info,
-                        descriptionKo: $"Machine type '{qemuMachine.Machine}' is outdated — latest available on node '{item.Node}' is '{family}-{latest}' (upgrade requires VM stop/start)",
+                        descriptionKo: $"Machine type '{machineType}' is outdated — latest available on node '{item.Node}' is '{latestId}' (upgrade requires VM stop/start)",
                         descriptionOk: "",
                         compliance:
                         [
@@ -658,9 +641,9 @@ public partial class DiagnosticEngine
                                      _backupStoragesByNode.GetValueOrDefault(item.Node, []));
         }
 
-        // Duplicate MAC check — collect all MACs across all VMs and flag duplicates
+        // Duplicate MAC check — collect the MACs of every VM and CT (they share the same
+        // networks) and flag duplicates, also between two interfaces of the same guest.
         var allMacs = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
-                                            && a.VmType == VmType.Qemu
                                             && !a.IsTemplate)
                                 .SelectMany(a => _vmConfigs[a.VmId].Networks
                                                     .Where(n => !string.IsNullOrWhiteSpace(n.MacAddress))
@@ -668,25 +651,24 @@ public partial class DiagnosticEngine
                                                     {
                                                         a.VmId,
                                                         Url = a.GetWebUrl(),
+                                                        Context = a.VmType == VmType.Lxc
+                                                                    ? DiagnosticResultContext.Lxc
+                                                                    : DiagnosticResultContext.Qemu,
                                                         Mac = n.MacAddress.ToUpperInvariant()
                                                     }))
                                 .ToList();
 
-        CreateResultPerItem(
-            items: allMacs.GroupBy(x => x.Mac)
-                                       .Where(g => g.Count() > 1)
-                                       .SelectMany(g => g.Select(e => new { Entry = e, Group = g.ToList() }))
-                                       .ToList(),
-            isItemOk: _ => false,
-            itemId: x => x.Entry.Url,
-            itemDescriptionKo: x => $"Duplicate MAC address {x.Entry.Mac} shared with VM(s) {string.Join(", ", x.Group.Where(o => o.VmId != x.Entry.VmId).Select(o => o.VmId))} — causes network conflicts",
-            aggregatedIdOk: "cluster/vms",
-            aggregatedDescriptionOk: _ => "No duplicate MAC addresses across VMs",
-            errorCode: "WG0033",
-            subContext: "Network",
-            context: DiagnosticResultContext.Qemu,
-            gravityKo: DiagnosticResultGravity.Warning,
-            compliance:
+        var duplicateMacs = allMacs.GroupBy(x => x.Mac)
+                                   .Where(g => g.Count() > 1)
+                                   .SelectMany(g => g.Select(e => new
+                                   {
+                                       Entry = e,
+                                       Others = g.Where(o => o.VmId != e.VmId).Select(o => o.VmId).Distinct().ToList()
+                                   }))
+                                   .DistinctBy(x => (x.Entry.VmId, x.Entry.Mac))
+                                   .ToList();
+
+        ComplianceMapping[] macControls =
             [
                 ComplianceControls.Iso27001.A_8_20,
                 ComplianceControls.Iso27001.A_8_22,
@@ -702,7 +684,37 @@ public partial class DiagnosticEngine
                 ComplianceControls.Cis.C_12,
                 ComplianceControls.Cis.C_13,
                 ComplianceControls.NistCsf.PR_IR_01,
-            ]);
+            ];
+
+        foreach (var x in duplicateMacs)
+        {
+            CreateResult(
+                isOk: false,
+                id: x.Entry.Url,
+                errorCode: "WG0033",
+                subContext: "Network",
+                context: x.Entry.Context,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: x.Others.Count > 0
+                                ? $"Duplicate MAC address {x.Entry.Mac} shared with guest(s) {string.Join(", ", x.Others)} — causes network conflicts"
+                                : $"MAC address {x.Entry.Mac} is used by more than one interface of this guest — causes network conflicts",
+                descriptionOk: "",
+                compliance: macControls);
+        }
+
+        if (duplicateMacs.Count == 0)
+        {
+            CreateResult(
+                isOk: true,
+                id: "cluster/vms",
+                errorCode: "WG0033",
+                subContext: "Network",
+                context: DiagnosticResultContext.Qemu,
+                gravityKo: DiagnosticResultGravity.Warning,
+                descriptionKo: "",
+                descriptionOk: "No duplicate MAC addresses across VMs and CTs",
+                compliance: macControls);
+        }
 
         // Template checks — config already pre-fetched
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
@@ -735,12 +747,12 @@ public partial class DiagnosticEngine
     // (e.g. "pc-i440fx-8.0+pve0"). "pc-i440fx-latest", "q35" (no version) and similar
     // intentional aliases return false and are skipped.
 
-    private static bool TryParseMachineVersion(string? machine, out string family, out string version)
+    internal static bool TryParseMachineVersion(string? machine, out string family, out string version)
     {
         family = "";
         version = "";
         if (string.IsNullOrWhiteSpace(machine)) { return false; }
-        var match = System.Text.RegularExpressions.Regex.Match(machine, @"^(?<family>[a-z][a-z0-9-]*?)-(?<ver>\d+(?:\.\d+)+)(?:\+[a-z0-9.+-]+)?$");
+        var match = Regex.Match(machine, @"^(?<family>[a-z][a-z0-9-]*?)-(?<ver>\d+(?:\.\d+)+)(?:\+[a-z0-9.+-]+)?$");
         if (!match.Success) { return false; }
         family = match.Groups["family"].Value;
         version = match.Groups["ver"].Value;
@@ -749,20 +761,41 @@ public partial class DiagnosticEngine
 
     private static bool TryFindLatestVersion(IEnumerable<NodeCapabilitiesQemuMachine> machines,
                                              string family,
-                                             out string latestVersion)
+                                             out string latestVersion,
+                                             out string latestId)
     {
         latestVersion = "";
+        latestId = "";
         string? best = null;
         foreach (var m in machines)
         {
             if (string.IsNullOrWhiteSpace(m.Id)) { continue; }
             if (!TryParseMachineVersion(m.Id, out var f, out var v)) { continue; }
             if (!string.Equals(f, family, StringComparison.OrdinalIgnoreCase)) { continue; }
-            if (best == null || CompareMachineVersions(v, best) > 0) { best = v; }
+            if (best == null || CompareMachineVersions(v, best) > 0)
+            {
+                best = v;
+                latestId = m.Id;
+            }
         }
         if (best == null) { return false; }
         latestVersion = best;
         return true;
+    }
+
+    /// <summary>
+    /// Machine type of a VM from its <c>machine</c> option, which may carry options
+    /// (<c>pc-q35-8.1,viommu=intel</c>) or name the type explicitly (<c>type=q35,viommu=virtio</c>).
+    /// </summary>
+    internal static string MachineTypeOf(string? machine)
+    {
+        foreach (var part in (machine ?? "").Split(','))
+        {
+            var p = part.Trim();
+            if (p.StartsWith("type=", StringComparison.OrdinalIgnoreCase)) { return p["type=".Length..]; }
+            if (p.Length > 0 && !p.Contains('=')) { return p; }
+        }
+        return "";
     }
 
     private static int CompareMachineVersions(string a, string b)
@@ -789,6 +822,21 @@ public partial class DiagnosticEngine
         var type = (cpu ?? "").Split(',')[0].Trim().ToLowerInvariant();
         if (type.StartsWith("cputype=", StringComparison.Ordinal)) { type = type["cputype=".Length..]; }
         return type.Length == 0 ? CpuTypeKvm64 : type;
+    }
+
+    // "host" and "max" hand the guest the features of the physical CPU it runs on.
+    internal static bool IsHostCpuType(string cpuType) => cpuType is CpuTypeHost or CpuTypeMax;
+
+    // True when the guest agent answers, false when PVE reports it is not running (500);
+    // any other failure (permission, timeout) is left to the caller to report.
+    private static async Task<bool> AgentRespondsAsync(Task call)
+    {
+        try
+        {
+            await call;
+            return true;
+        }
+        catch (PveResultException ex) when (ex.Result.StatusCode == HttpStatusCode.InternalServerError) { return false; }
     }
 
     /// <summary>

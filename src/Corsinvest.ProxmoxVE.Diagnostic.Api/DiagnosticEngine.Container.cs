@@ -109,18 +109,14 @@ public partial class DiagnosticEngine
 
                 if (!lxc.Unprivileged)
                 {
-                    // Privileged container with AppArmor explicitly disabled via features=apparmor=0
-                    // or via raw lxc.apparmor.profile=unconfined — no kernel confinement at all
-                    var appArmorDisabledViaFeatures = (lxc.Features ?? "")
-                        .Split(',')
-                        .Any(p => p.Trim().Equals("apparmor=0", StringComparison.OrdinalIgnoreCase));
-
-                    var appArmorDisabledViaRaw = RawLxcEntries(lxcConfig).Any(kv =>
+                    // Privileged container with AppArmor disabled via raw lxc.apparmor.profile=unconfined
+                    // — no kernel confinement at all. pve-container has no feature flag for AppArmor.
+                    var appArmorDisabled = RawLxcEntries(lxcConfig).Any(kv =>
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
                         && kv.Value.Equals("unconfined", StringComparison.OrdinalIgnoreCase));
 
                     CreateResult(
-                        isOk: !(appArmorDisabledViaFeatures || appArmorDisabledViaRaw),
+                        isOk: !appArmorDisabled,
                         id: id,
                         errorCode: "CG0006",
                         subContext: "Security",

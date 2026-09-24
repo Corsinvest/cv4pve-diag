@@ -209,7 +209,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 
 | Code          | SubContext      | Gravity          | Description                                                                              |
 | ------------- | --------------- | ---------------- | ---------------------------------------------------------------------------------------- |
-| CG0001        | VM State        | Critical         | Hibernated VM state left in pending — VM was suspended and never resumed                 |
+| CG0001        | VM State        | Critical         | Hibernated VM state left in pending — VM was suspended and never resumed (not when hibernated on purpose) |
 | IG0010        | Status          | Info             | Config changes pending reboot to take effect                                             |
 | WG0015        | Status          | Warning          | VM is locked and cannot be managed                                                       |
 | WG0001        | OS              | Warning          | VM OS type is not configured                                                             |
@@ -220,11 +220,11 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | IG0002        | VirtIO          | Info             | Disk on IDE/SATA, or on SCSI with a non-VirtIO controller                                |
 | IG0003        | VirtIO          | Info             | Network interface not using VirtIO driver                                                |
 | WG0005        | Hardware        | Warning          | CD-ROM drive has an image mounted                                                        |
-| WG0006        | CPU             | Warning          | CPU type 'host' prevents live migration                                                  |
+| WG0006        | CPU             | Warning          | CPU type 'host' or 'max' prevents live migration                                         |
 | IG0004        | CPU             | Info             | CPU type is outdated (kvm64, also when no CPU type is set)                               |
-| WG0037        | CPU             | Warning          | Non-host CPU type missing +spec-ctrl/+ssbd/+pcid/+md-clear flags                         |
+| WG0037        | CPU             | Warning          | CPU type other than 'host'/'max' missing +spec-ctrl/+ssbd/+pcid/+md-clear flags          |
 | WG0007        | CPU             | Warning          | CPU hotplug enabled on Windows guest — not supported                                     |
-| CG0004        | CPU             | Critical         | CPU type 'host' is incompatible with HA — live migration required by HA is impossible    |
+| CG0004        | CPU             | Critical         | CPU type 'host' or 'max' is incompatible with HA — live migration required by HA is impossible |
 | WG0036        | CPU             | Warning          | Node vCPU overcommit ratio exceeds configured threshold                                  |
 | IG0005        | Balloon         | Info             | RAM is statically allocated — no memory ballooning                                       |
 | IG0006        | Balloon         | Info             | Balloon has no room to reclaim memory                                                    |
@@ -234,14 +234,14 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0011        | SecureBoot      | Warning          | Windows 11 requires TPM 2.0                                                              |
 | IG0007        | Hardware        | Info             | VM has virtio-rng device — verify this is intentional                                    |
 | IG0008        | Hardware        | Info             | VM has serial console configured — verify this is intentional                            |
-| IG0012        | Hardware        | Info             | Machine type not configured — QEMU will use default which may change across PVE upgrades |
+| IG0012        | Hardware        | Info             | Machine type not set or without a version (e.g. q35) — may change across PVE upgrades   |
 | IG0016        | Hardware        | Info             | Machine type pinned to an old version — newer version available on the node              |
 | WG0012        | Hardware        | Warning          | Host USB/PCI passthrough configured (SPICE USB excluded) — no live migration or HA       |
-| CG0005        | HA              | Critical         | Disk is on non-shared storage but VM is managed by HA — live migration will fail         |
+| CG0005        | HA              | Critical         | Disk on non-shared storage, VM managed by HA and not replicated — migration will fail    |
 | IG0015        | HA              | Info             | Guest is not managed by any HA resource — will not be restarted on node failure          |
 | WG0043        | Replication     | Warning          | HA guest has no enabled replication job — failover target will have no recent data       |
 | WG0034        | Network         | Warning          | VM has no network interface — completely isolated from network                           |
-| WG0033        | Network         | Warning          | MAC address shared with another VM — causes network conflicts                            |
+| WG0033        | Network         | Warning          | MAC address shared with another VM/CT or interface — causes network conflicts            |
 | WG0013        | Firewall        | Warning          | VM firewall is disabled — exposed to all bridge traffic                                  |
 | IG0009        | Firewall        | Info             | VM can spoof source IP addresses                                                         |
 | WG0016        | StartOnBoot     | Warning          | VM will not start automatically after host reboot                                        |
@@ -282,6 +282,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0040 | Memory        | Warning          | Container has no memory limit (Memory=0) — can consume all host RAM          |
 | IG0013 | Config        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
 | IG0014 | Config        | Info             | Container has no hostname configured                                         |
+| WG0033 | Network       | Warning          | MAC address shared with another VM/CT or interface — causes network conflicts |
 | WG0013 | Firewall      | Warning          | Container firewall is disabled — exposed to all bridge traffic               |
 | IG0009 | Firewall      | Info             | Container can spoof source IP addresses                                      |
 | WG0016 | StartOnBoot   | Warning          | CT will not start automatically after host reboot                            |
@@ -292,6 +293,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0019 | Backup        | Warning          | Backup files older than configured days found                                |
 | WG0020 | Backup        | Warning          | No backup found in the last configured days                                  |
 | CG0003 | Tasks         | Critical         | Failed tasks found in the last 48 hours                                      |
+| CG0005 | HA            | Critical         | Disk on non-shared storage, CT managed by HA and not replicated — migration will fail |
 | IG0015 | HA            | Info             | Container is not managed by any HA resource — will not be restarted on node failure |
 | WG0043 | Replication   | Warning          | HA container has no enabled replication job — failover target will have no recent data |
 | WG0021 | AutoSnapshot  | Warning          | cv4pve-autosnap not configured                                               |
