@@ -75,6 +75,9 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.PR_PS_01,
                     ComplianceControls.BsiGrundschutz.ORP_4_A10,
                     ComplianceControls.BsiGrundschutz.SYS_1_6_A17,
+                    ComplianceControls.Nis2Ir.C_11_2,
+                    ComplianceControls.Nis2Ir.C_11_3,
+                    ComplianceControls.Nis2Ir.C_6_3,
                 ];
 
                 #region Nesting without keyctl

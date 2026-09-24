@@ -80,6 +80,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.ID_IM_04,
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                ComplianceControls.Nis2Ir.C_4_2,
             ]);
 
         return hasCluster;
@@ -118,6 +119,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.DE_CM_01,
             ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
             ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+            ComplianceControls.Nis2Ir.C_3_2,
         ];
 
         // IC0018 — no metric server configured at all.
@@ -188,6 +190,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.DE_CM_01,
                 ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.Nis2Ir.C_3_2,
             ]);
     }
 
@@ -213,6 +216,7 @@ public partial class DiagnosticEngine
         ComplianceControls.Acn.PR_DS_11,
         ComplianceControls.Iso22301.C_8_3_5,
         ComplianceControls.BsiGrundschutz.CON_3_A5,
+        ComplianceControls.Nis2Ir.C_4_2,
     ];
 
     private async Task CheckClusterBackupAsync()
@@ -250,6 +254,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.PR_DS_11,
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.CON_3_A5,
+                ComplianceControls.Nis2Ir.C_4_2,
             ]);
         if (backupList.Count == 0) { return; }
 
@@ -443,6 +448,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.DE_CM_01,
                     ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                    ComplianceControls.Nis2Ir.C_3_2,
                 ]);
         }
     }
@@ -507,6 +513,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.ID_IM_04,
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.Nis2Ir.C_4_2,
                 ]);
         }
 
@@ -530,6 +537,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.ID_IM_04,
             ComplianceControls.Iso22301.C_8_3_5,
             ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+            ComplianceControls.Nis2Ir.C_4_2,
         ];
 
         // HA service in error state — the resource is not running and will not be recovered automatically
@@ -615,6 +623,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.ID_IM_04,
             ComplianceControls.Iso22301.C_8_3_5,
             ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+            ComplianceControls.Nis2Ir.C_4_2,
         ];
 
         // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
@@ -713,6 +722,8 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.PR_AA_05,
             ComplianceControls.Acn.PR_AA_05,
             ComplianceControls.BsiGrundschutz.ORP_4_A10,
+            ComplianceControls.Nis2Ir.C_11_2,
+            ComplianceControls.Nis2Ir.C_11_3,
         ];
 
         CreateResultPerItem(
@@ -788,6 +799,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.PR_IR_01,
                 ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
+                ComplianceControls.Nis2Ir.C_6_7,
+                ComplianceControls.Nis2Ir.C_6_8,
             ]);
         if (!clusterFwOptions.Enable) { return; }
 
@@ -811,6 +824,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.PR_IR_01,
             ComplianceControls.BsiGrundschutz.SYS_1_1_A19,
             ComplianceControls.BsiGrundschutz.SYS_1_5_A4,
+            ComplianceControls.Nis2Ir.C_6_7,
+            ComplianceControls.Nis2Ir.C_6_8,
         ];
 
         // Inbound policy should drop unmatched traffic. Unset means PVE's default, DROP; REJECT is
@@ -912,6 +927,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.DE_CM_01,
                     ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                    ComplianceControls.Nis2Ir.C_3_2,
                 ]);
         }
 
@@ -992,6 +1008,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.NistCsf.PR_AA_03,
                 ComplianceControls.Acn.PR_AA_03,
                 ComplianceControls.BsiGrundschutz.ORP_4_A21,
+                ComplianceControls.Nis2Ir.C_11_7,
             ]);
 
         // Admin users without TFA — fetch ACLs once to find users with Administrator role
@@ -1017,6 +1034,8 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.ID_AM_02,
             ComplianceControls.Acn.PR_AA_05,
             ComplianceControls.BsiGrundschutz.ORP_4_A10,
+            ComplianceControls.Nis2Ir.C_11_2,
+            ComplianceControls.Nis2Ir.C_11_3,
         ];
         // TFA controls (WC0007, WC0013, IC0011): aligned with CC0004.
         ComplianceMapping[] tfaControls =
@@ -1038,6 +1057,7 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.PR_AA_03,
             ComplianceControls.Acn.PR_AA_03,
             ComplianceControls.BsiGrundschutz.ORP_4_A21,
+            ComplianceControls.Nis2Ir.C_11_7,
         ];
         // Account / identity lifecycle (WC0006, WC0016, IC0005, IC0006).
         ComplianceMapping[] accountLifecycleControls =
@@ -1056,6 +1076,8 @@ public partial class DiagnosticEngine
             ComplianceControls.NistCsf.PR_AA_01,
             ComplianceControls.Acn.PR_AA_01,
             ComplianceControls.Acn.PR_AA_05,
+            ComplianceControls.Nis2Ir.C_11_2,
+            ComplianceControls.Nis2Ir.C_11_5,
         ];
 
         // ACL Administrator role assigned at root path '/' — too permissive, prefer scoped permissions
@@ -1189,6 +1211,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.PR_AA_01,
                 ComplianceControls.BsiGrundschutz.OPS_1_1_5_A3,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.Nis2Ir.C_3_2,
+                ComplianceControls.Nis2Ir.C_11_5,
             ]);
 
         // Empty groups — no users assigned, usually leftover configuration

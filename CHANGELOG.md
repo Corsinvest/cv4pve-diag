@@ -17,8 +17,9 @@
 
 ### Compliance
 
-Three new standards, bringing the total to 17. Use them with `--compliance=Acn`, `--compliance=Iso22301` or `--compliance=BsiGrundschutz`:
+Four new standards, bringing the total to 18. Use them with `--compliance=Acn`, `--compliance=Nis2Ir`, `--compliance=Iso22301` or `--compliance=BsiGrundschutz`:
 - **ACN (Italy)** — the NIS2 security measures Italian essential and important entities must apply (Determinazione ACN n. 379907 of 19 December 2025, in force from 15 January 2026).
+- **NIS2 Implementing Regulation (EU) 2024/2690** — the detailed NIS2 requirements for cloud, data centre, managed service providers and the other digital providers it covers.
 - **ISO 22301:2019** — business continuity: backup, HA, replication and capacity findings.
 - **BSI IT-Grundschutz** (Germany, Kompendium Edition 2023) — requirements for virtualization, containers, storage, backup, updates, logging, time synchronisation and access.
 

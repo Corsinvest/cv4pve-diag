@@ -222,6 +222,8 @@ public partial class DiagnosticEngine
             ComplianceControls.Acn.PR_PS_02,
             ComplianceControls.Acn.ID_RA_08,
             ComplianceControls.BsiGrundschutz.OPS_1_1_3_A15,
+            ComplianceControls.Nis2Ir.C_6_6,
+            ComplianceControls.Nis2Ir.C_6_10,
         ];
 
         // Applicable CVEs: those whose vulnerable range covers the installed pve-manager version.

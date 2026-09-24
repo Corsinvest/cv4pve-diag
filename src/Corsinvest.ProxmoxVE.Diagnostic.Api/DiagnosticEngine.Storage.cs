@@ -99,6 +99,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.Nis2Ir.C_4_2,
+                ComplianceControls.Nis2Ir.C_3_2,
             ]);
 
         // Storage not reachable from the node — VMs on that node cannot read/write.
@@ -131,6 +133,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
+                ComplianceControls.Nis2Ir.C_4_2,
+                ComplianceControls.Nis2Ir.C_3_2,
             ]);
 
         // Storage usage above configured Warning/Critical thresholds
@@ -162,6 +166,8 @@ public partial class DiagnosticEngine
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A17,
                 ComplianceControls.BsiGrundschutz.SYS_1_8_A13,
+                ComplianceControls.Nis2Ir.C_4_2,
+                ComplianceControls.Nis2Ir.C_3_2,
             ]);
 
         #region Orphaned Images and Backups
@@ -338,6 +344,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Iso22301.C_8_3_4,
                 ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
                 ComplianceControls.BsiGrundschutz.SYS_1_8_A13,
+                ComplianceControls.Nis2Ir.C_4_2,
             ]);
         #endregion
 
@@ -374,6 +381,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.PR_DS_11,
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.CON_3_A5,
+                ComplianceControls.Nis2Ir.C_4_2,
             ]);
         #endregion
 
@@ -425,6 +433,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Acn.PR_DS_11,
                 ComplianceControls.Iso22301.C_8_3_5,
                 ComplianceControls.BsiGrundschutz.CON_3_A5,
+                ComplianceControls.Nis2Ir.C_4_2,
             ]);
         #endregion
 
@@ -467,6 +476,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Acn.ID_IM_04,
                     ComplianceControls.Iso22301.C_8_3_5,
                     ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
+                    ComplianceControls.Nis2Ir.C_4_2,
                 ]);
         }
         #endregion
