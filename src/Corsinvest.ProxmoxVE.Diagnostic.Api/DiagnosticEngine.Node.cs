@@ -36,8 +36,16 @@ public partial class DiagnosticEngine
                                    IEnumerable<NodeAptVersion> AptVersions,
                                    NodeStatus Status,
                                    long UtcTime,
+                                   long ClockOffset,
                                    NodeAptRepositories? AptRepositories,
                                    IEnumerable<NodeNetwork> Networks);
+
+    // Node time plus the client's UTC clock (seconds) at the moment the answer arrived.
+    private static async Task<(Result Result, long ClientUtc)> ReadTimeAsync(PveClient.PveNodes.PveNodeItem api)
+    {
+        var result = await api.Time.Time();
+        return (result, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+    }
 
     private record NodeFetchData(ClusterResource Item,
                                  NodeSubscription? Subscription,
@@ -115,18 +123,23 @@ public partial class DiagnosticEngine
                 var statusTask = api.Status.GetAsync();
                 var aptRepositoriesTask = api.Apt.Repositories.GetAsync();
                 var networksTask = api.Network.GetAsync();
-                var timeTask = api.Time.Time();
+                // The client clock is read when the node's time arrives, not when the checks run
+                // (after every other node read): the offset must not include that wait.
+                var timeTask = ReadTimeAsync(api);
                 await Task.WhenAll(versionTask, hostsTask, dnsTask, aptVersionsTask,
                                    statusTask, aptRepositoriesTask, networksTask, timeTask);
 
-                var timeRaw = timeTask.Result.ToData();
+                var (timeResult, clientUtcAtRead) = timeTask.Result;
+                var timeRaw = timeResult.ToData();
+                var nodeUtc = timeRaw.time is long t ? t : 0L;
                 return (item.Node, Data: (NodeCompareData?)new NodeCompareData(versionTask.Result,
                                                              ((string)hostsTask.Result.ToData().data).Split('\n'),
                                                              dnsTask.Result,
                                                              timeRaw.timezone as string ?? "",
                                                              aptVersionsTask.Result,
                                                              statusTask.Result,
-                                                             timeRaw.time is long t ? t : 0L,
+                                                             nodeUtc,
+                                                             nodeUtc > 0 ? nodeUtc - clientUtcAtRead : 0L,
                                                              aptRepositoriesTask.Result,
                                                              networksTask.Result));
             }
@@ -265,7 +278,7 @@ public partial class DiagnosticEngine
             if (!nodeCompareData.TryGetValue(item.Node, out var compareData)) { continue; }
 
             var nodeApi = client.Nodes[item.Node];
-            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, aptRepositories, networks) = compareData;
+            var (version, hosts, dns, timezone, aptVersions, nodeStatus, nodeUtcTime, clockOffset, aptRepositories, networks) = compareData;
             if (!int.TryParse(version.Version?.Split(".")[0], out var nodeVersion)) { continue; }
 
             #region End Of Life
@@ -746,11 +759,12 @@ public partial class DiagnosticEngine
             #endregion
 
             #region NTP
-            // Compare node UTC time against the client machine time — offset > 60s indicates NTP issue.
+            // Compare node UTC time against the clock of the machine running the analysis, read when
+            // the node answered — offset > 60s indicates an NTP issue (or a wrong client clock).
             // Mapped to logging controls: accurate timestamps are a precondition for usable audit logs.
             if (nodeUtcTime > 0)
             {
-                var ntpOffset = Math.Abs(nodeUtcTime - DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                var ntpOffset = Math.Abs(clockOffset);
                 CreateResult(
                     isOk: ntpOffset <= 60,
                     id: id,
@@ -792,16 +806,18 @@ public partial class DiagnosticEngine
             // WN0045 — time drift between cluster nodes. Even when each node looks fine vs the
             // diag client, clocks can have drifted from each other (typical sign: corosync token
             // retransmits, HA fencing instability, broken Kerberos/LDAP, replayable log timestamps).
-            // Compare this node's UTC time against the maximum delta among the other online nodes.
+            // Compare this node's clock against the maximum delta among the other online nodes. The
+            // nodes are read at slightly different moments, so their offsets from the client clock
+            // are compared rather than the raw times; the client clock itself cancels out.
             if (hasCluster && nodeUtcTime > 0)
             {
-                var otherUtcTimes = nodeCompareData
+                var otherOffsets = nodeCompareData
                     .Where(kv => kv.Key != item.Node && kv.Value.UtcTime > 0)
-                    .Select(kv => kv.Value.UtcTime)
+                    .Select(kv => kv.Value.ClockOffset)
                     .ToList();
-                if (otherUtcTimes.Count > 0)
+                if (otherOffsets.Count > 0)
                 {
-                    var maxDrift = otherUtcTimes.Max(t => Math.Abs(nodeUtcTime - t));
+                    var maxDrift = otherOffsets.Max(o => Math.Abs(clockOffset - o));
                     CreateResult(
                         isOk: maxDrift <= 5,
                         id: id,

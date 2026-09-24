@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Globalization;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
 using Corsinvest.ProxmoxVE.Api.Shared.Models.Cluster;
@@ -72,6 +73,13 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     {
         var originalTimeout = client.Timeout;
         if (settings.ApiTimeout > 0) { client.Timeout = TimeSpan.FromSeconds(settings.ApiTimeout); }
+
+        // Numbers in the descriptions ("80.9%", "2.61 TB") must not depend on the machine's regional
+        // settings: ignore rules match descriptions with a regex, and reports are compared across
+        // runs. The culture flows with the async context, so every check below uses it and the
+        // caller's culture is restored on return.
+        var originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
         try
         {
@@ -199,6 +207,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
         finally
         {
             client.Timeout = originalTimeout;
+            CultureInfo.CurrentCulture = originalCulture;
         }
     }
 

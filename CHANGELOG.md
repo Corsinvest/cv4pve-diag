@@ -84,6 +84,9 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 - `WS0007` no longer reports disabled backup jobs, or nodes a job does not run on.
 - `WS0005` no longer reports a shared storage restricted to one node on purpose.
 - Thin provisioning (`WS0004`) compares each node's pool with the disks of that node's guests, instead of adding up the guests of every node.
+- Numbers in the messages (`80.9%`, `2.61 TB`) no longer depend on the regional settings of the machine running the analysis. The same cluster gave "80,9%" on one PC and "80.9%" on another, so ignore rules written on one did not match on the other.
+- Node clock checks (`WN0014`, `WN0045`) compared times read at different moments: on a slow cluster, or with `--full`, the wait for the other reads was counted as clock drift. The clocks are now compared at the moment each node answers.
+- `docs/checks.md` had `WG0023` and `WG0024` swapped; `docs/settings.md` described `Storage.Rrd` as used by the storage check, which reads the current usage.
 - Compliance references corrected against the official texts, so audit reports cite the right controls:
   - DORA: the titles of Art. 11 (response and recovery) and Art. 12 (backup) were swapped. High availability, replication and storage availability findings now cite Art. 11.
   - NIS2: Art. 21(d) is supply-chain security; account findings now cite Art. 21(i).

@@ -257,9 +257,9 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | CG0003        | Tasks           | Critical         | Failed tasks found in the last 48 hours                                                  |
 | WG0021        | AutoSnapshot    | Warning          | cv4pve-autosnap not configured                                                           |
 | WG0022        | AutoSnapshot    | Warning          | Old AutoSnap snapshots present — update required                                         |
-| WG0024        | SnapshotOld     | Warning          | Snapshots older than configured age                                                      |
+| WG0023        | SnapshotOld     | Warning          | Snapshots older than configured age                                                      |
 | WG0035        | Snapshot        | Warning          | Snapshot includes RAM state — wastes disk space and blocks storage migration             |
-| WG0023        | SnapshotCount   | Warning          | Snapshot count exceeds configured limit                                                  |
+| WG0024        | SnapshotCount   | Warning          | Snapshot count exceeds configured limit                                                  |
 | WG0025        | Usage           | Warning/Critical | CPU usage above configured threshold                                                     |
 | WG0026        | Usage           | Warning/Critical | Memory usage above configured threshold                                                  |
 | WG0027/WG0028 | Usage           | Warning/Critical | Network throughput above configured threshold                                            |
@@ -283,7 +283,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0038 | Features      | Warning          | `nesting=1` set but `keyctl=1` missing — keyring isolation incomplete        |
 | WG0041 | Config        | Warning          | Container has raw LXC config entries that bypass PVE abstractions            |
 | WG0040 | Memory        | Warning          | Container has no memory limit (Memory=0) — can consume all host RAM          |
-| IG0013 | Config        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
+| IG0013 | Memory        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
 | IG0014 | Config        | Info             | Container has no hostname configured                                         |
 | WG0033 | Network       | Warning          | MAC address shared with another VM/CT or interface — causes network conflicts |
 | WG0013 | Firewall      | Warning          | Container firewall is disabled — exposed to all bridge traffic               |
@@ -301,9 +301,9 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0043 | Replication   | Warning          | HA container has no enabled replication job — failover target will have no recent data |
 | WG0021 | AutoSnapshot  | Warning          | cv4pve-autosnap not configured                                               |
 | WG0022 | AutoSnapshot  | Warning          | Old AutoSnap snapshots present — update required                             |
-| WG0024 | SnapshotOld   | Warning          | Snapshots older than configured age                                          |
+| WG0023 | SnapshotOld   | Warning          | Snapshots older than configured age                                          |
 | WG0035 | Snapshot      | Warning          | Snapshot includes RAM state — wastes disk space and blocks storage migration |
-| WG0023 | SnapshotCount | Warning          | Snapshot count exceeds configured limit                                      |
+| WG0024 | SnapshotCount | Warning          | Snapshot count exceeds configured limit                                      |
 | WG0025 | Usage         | Warning/Critical | CPU usage above configured threshold                                         |
 | WG0026 | Usage         | Warning/Critical | Memory usage above configured threshold                                      |
 | WG0027/WG0028 | Usage  | Warning/Critical | Network throughput above configured threshold                                |

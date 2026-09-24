@@ -29,7 +29,7 @@ public class SettingsSmartDisk
 
     /// <summary>
     /// SSD wearout threshold — percentage of life consumed (100 - wearout reported by PVE).
-    /// Warning at 70%, Critical at 80%.
+    /// Warning at 70%, Critical at 85%.
     /// </summary>
     public SettingsThreshold<double> SsdWearout { get; set; } = new() { Warning = 70, Critical = 85 };
 }
