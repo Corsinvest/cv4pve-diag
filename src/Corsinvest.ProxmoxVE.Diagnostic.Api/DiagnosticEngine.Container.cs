@@ -78,22 +78,22 @@ public partial class DiagnosticEngine
                 ];
 
                 #region Nesting without keyctl
-                // nesting=1 allows Docker/nested containers inside LXC.
-                // keyctl=1 is required alongside nesting for proper isolation of kernel keyrings
-                // between nested containers. Without keyctl the inner containers share the host
-                // keyring and may leak secrets or fail cryptographic operations.
-                if (lxc.HasNesting)
+                // nesting=1 is what Docker and nested containers need. In an unprivileged container
+                // they usually also need keyctl=1, which allows the keyctl() system call (PVE docs:
+                // "for unprivileged containers only"); without it Docker or systemd services may fail.
+                // It is not an isolation measure. Replaces WG0038, which reported it as a security gap.
+                if (lxc.HasNesting && lxc.Unprivileged)
                 {
                     CreateResult(
                         isOk: lxc.HasKeyctl,
                         id: id,
-                        errorCode: "WG0038",
+                        errorCode: "IG0017",
                         subContext: "Features",
                         context: DiagnosticResultContext.Lxc,
-                        gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: "Container has nesting=1 but keyctl=1 is not enabled — kernel keyring isolation may be incomplete",
-                        descriptionOk: "Container has nesting=1 with keyctl=1 — kernel keyring isolation is in place",
-                        compliance: containerIsolationControls);
+                        gravityKo: DiagnosticResultGravity.Info,
+                        descriptionKo: "Container has nesting=1 without keyctl=1 — Docker or systemd inside the container may not work",
+                        descriptionOk: "Container has nesting=1 with keyctl=1",
+                        compliance: []);
                 }
                 #endregion
 

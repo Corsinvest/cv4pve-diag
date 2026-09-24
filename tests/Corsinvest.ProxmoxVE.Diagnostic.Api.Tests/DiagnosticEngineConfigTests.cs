@@ -134,6 +134,17 @@ public class DiagnosticEngineConfigTests
     public void Host_and_max_expose_the_physical_cpu(string cpuType, bool expected)
         => Assert.Equal(expected, DiagnosticEngine.IsHostCpuType(cpuType));
 
+    // ----- WG0037: Spectre/Meltdown flags by node CPU vendor -----
+    [Theory]
+    [InlineData("kvm64", "Intel(R) Xeon(R) Silver 4210 CPU @ 2.20GHz", "+spec-ctrl,+ssbd,+pcid,+md-clear")]
+    [InlineData("skylake-server-ibrs", "Intel(R) Xeon(R) Gold 6230", "+ssbd,+pcid,+md-clear")]
+    [InlineData("x86-64-v2-aes", "AMD EPYC 7302 16-Core Processor", "+ibpb,+virt-ssbd")]
+    [InlineData("epyc-ibpb", "AMD EPYC 7302 16-Core Processor", "+virt-ssbd")]
+    [InlineData("kvm64", "", "")]
+    [InlineData("kvm64", null, "")]
+    public void Security_flags_follow_the_node_cpu_vendor(string cpuType, string? hostModel, string expected)
+        => Assert.Equal(expected, string.Join(",", DiagnosticEngine.CpuSecurityFlags(cpuType, hostModel)));
+
     // ----- IG0012 / IG0016: machine type -----
     [Theory]
     [InlineData(null, "")]

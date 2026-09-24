@@ -25,7 +25,6 @@ public partial class DiagnosticEngine
     private const string DiskCacheUnsafe = "unsafe";
     private const string DiskCacheWriteback = "writeback";
     private const string OsTypeWin11 = "win11";
-    private static readonly string[] _cpuSecurityFlags = ["+spec-ctrl", "+ssbd", "+pcid", "+md-clear"];
 
     // PVE ostype values whose vendor support has fully ended.
     // win10 covers Win10/2016/2019 — Server 2016/2019 still supported, so excluded.
@@ -318,10 +317,12 @@ public partial class DiagnosticEngine
                 #region CPU security flags
                 // When cpu type is not 'host' or 'max', security mitigations flags are not inherited
                 // automatically. Missing flags expose guests to Spectre/Meltdown/MDS variants.
-                if (!isHostCpu)
+                // The flags depend on the CPU vendor of the node; skipped when it is unknown.
+                var securityFlags = CpuSecurityFlags(cpuType, _cpuModelByNode.GetValueOrDefault(item.Node));
+                if (!isHostCpu && securityFlags.Length > 0)
                 {
                     var cpuFlags = qemuConfig.Cpu ?? "";
-                    var missingFlags = _cpuSecurityFlags
+                    var missingFlags = securityFlags
                                         .Where(f => !cpuFlags.Contains(f, StringComparison.OrdinalIgnoreCase))
                                         .ToList();
 
@@ -834,6 +835,31 @@ public partial class DiagnosticEngine
         var type = (cpu ?? "").Split(',')[0].Trim().ToLowerInvariant();
         if (type.StartsWith("cputype=", StringComparison.Ordinal)) { type = type["cputype=".Length..]; }
         return type.Length == 0 ? CpuTypeKvm64 : type;
+    }
+
+    /// <summary>
+    /// Spectre/Meltdown/MDS flags a VM needs on a node with the given CPU model, as listed in the
+    /// PVE documentation ("Meltdown / Spectre related CPU flags"). Intel: spec-ctrl (built into
+    /// the -IBRS models), ssbd, pcid, md-clear. AMD: ibpb (built into the -IBPB models) and
+    /// virt-ssbd; amd-no-ssb only fits hosts that are not vulnerable, so it is not required.
+    /// Empty when the vendor is unknown.
+    /// </summary>
+    internal static string[] CpuSecurityFlags(string cpuType, string? hostCpuModel)
+    {
+        var model = hostCpuModel ?? "";
+        if (model.Contains("AMD", StringComparison.OrdinalIgnoreCase))
+        {
+            return cpuType.EndsWith("-ibpb", StringComparison.OrdinalIgnoreCase)
+                    ? ["+virt-ssbd"]
+                    : ["+ibpb", "+virt-ssbd"];
+        }
+        if (model.Contains("Intel", StringComparison.OrdinalIgnoreCase))
+        {
+            return cpuType.Contains("-ibrs", StringComparison.OrdinalIgnoreCase)
+                    ? ["+ssbd", "+pcid", "+md-clear"]
+                    : ["+spec-ctrl", "+ssbd", "+pcid", "+md-clear"];
+        }
+        return [];
     }
 
     // "host" and "max" hand the guest the features of the physical CPU it runs on.

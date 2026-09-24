@@ -62,6 +62,10 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // Storage names that are shared — used in CheckCommonAsync to build the correct lookup key.
     private readonly HashSet<string> _sharedStorageNames = new(StringComparer.OrdinalIgnoreCase);
 
+    // CPU model of each node ("Intel(R) Xeon ...", "AMD EPYC ..."), from the node status read by
+    // CheckNodesAsync; CheckVmAsync picks the Spectre/Meltdown flags (WG0037) by vendor.
+    private readonly Dictionary<string, string> _cpuModelByNode = new(StringComparer.OrdinalIgnoreCase);
+
     // QEMU machine types available on each node, keyed by node name. Populated by FetchNodeDataAsync,
     // consumed by CheckVmAsync (IG0016 outdated machine type). Empty list = node had no data or fetch failed.
     private readonly Dictionary<string, IReadOnlyList<NodeCapabilitiesQemuMachine>> _qemuMachinesByNode = new(StringComparer.OrdinalIgnoreCase);

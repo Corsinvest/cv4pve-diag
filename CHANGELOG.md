@@ -84,6 +84,9 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 - `WS0007` no longer reports disabled backup jobs, or nodes a job does not run on.
 - `WS0005` no longer reports a shared storage restricted to one node on purpose.
 - Thin provisioning (`WS0004`) compares each node's pool with the disks of that node's guests, instead of adding up the guests of every node.
+- Old backups (`WG0019`) no longer include protected backups, which are kept on purpose and never pruned.
+- `WG0038` (nesting without keyctl) described keyctl as a security measure, but it only lets Docker and systemd work inside unprivileged containers. It is replaced by `IG0017` (Info), checked on unprivileged containers only. Ignore rules for `WG0038` no longer match anything.
+- `WG0037` (CPU security flags) asked for Intel flags on AMD nodes too. It now asks for the flags of the node's CPU vendor, as listed in the Proxmox VE documentation (AMD: `ibpb`, `virt-ssbd`), and no longer asks for flags already included in the CPU model (`-IBRS`, `-IBPB`).
 - Numbers in the messages (`80.9%`, `2.61 TB`) no longer depend on the regional settings of the machine running the analysis. The same cluster gave "80,9%" on one PC and "80.9%" on another, so ignore rules written on one did not match on the other.
 - Node clock checks (`WN0014`, `WN0045`) compared times read at different moments: on a slow cluster, or with `--full`, the wait for the other reads was counted as clock drift. The clocks are now compared at the moment each node answers.
 - `docs/checks.md` had `WG0023` and `WG0024` swapped; `docs/settings.md` described `Storage.Rrd` as used by the storage check, which reads the current usage.

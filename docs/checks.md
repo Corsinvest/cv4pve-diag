@@ -225,7 +225,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0005        | Hardware        | Warning          | CD-ROM drive has an image mounted                                                        |
 | WG0006        | CPU             | Warning          | CPU type 'host' or 'max' prevents live migration                                         |
 | IG0004        | CPU             | Info             | CPU type is outdated (kvm64, also when no CPU type is set)                               |
-| WG0037        | CPU             | Warning          | CPU type other than 'host'/'max' missing +spec-ctrl/+ssbd/+pcid/+md-clear flags          |
+| WG0037        | CPU             | Warning          | Spectre/Meltdown flags missing for the node's CPU vendor (Intel: spec-ctrl, ssbd, pcid, md-clear; AMD: ibpb, virt-ssbd) |
 | WG0007        | CPU             | Warning          | CPU hotplug enabled on Windows guest — not supported                                     |
 | CG0004        | CPU             | Critical         | CPU type 'host' or 'max' is incompatible with HA — live migration required by HA is impossible |
 | WG0036        | CPU             | Warning          | Node vCPU overcommit ratio exceeds configured threshold                                  |
@@ -252,7 +252,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0017        | Backup          | Warning          | VM not included in any backup job                                                        |
 | CG0002        | Backup          | Critical         | A disk has backup disabled                                                               |
 | WG0018        | Hardware        | Warning          | Disk detached from VM but still in storage                                               |
-| WG0019        | Backup          | Warning          | Backup files older than configured days found                                            |
+| WG0019        | Backup          | Warning          | Backup files older than configured days found (protected backups excluded)               |
 | WG0020        | Backup          | Warning          | No backup found in the last configured days                                              |
 | CG0003        | Tasks           | Critical         | Failed tasks found in the last 48 hours                                                  |
 | WG0021        | AutoSnapshot    | Warning          | cv4pve-autosnap not configured                                                           |
@@ -280,7 +280,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0015 | Status        | Warning          | Container is locked and cannot be managed                                    |
 | WG0039 | Security      | Warning          | Container runs as privileged — root inside has host-level access             |
 | CG0006 | Security      | Critical         | Privileged container has AppArmor disabled — no kernel confinement           |
-| WG0038 | Features      | Warning          | `nesting=1` set but `keyctl=1` missing — keyring isolation incomplete        |
+| IG0017 | Features      | Info             | Unprivileged container with `nesting=1` but no `keyctl=1` — Docker/systemd may not work (replaces `WG0038`) |
 | WG0041 | Config        | Warning          | Container has raw LXC config entries that bypass PVE abstractions            |
 | WG0040 | Memory        | Warning          | Container has no memory limit (Memory=0) — can consume all host RAM          |
 | IG0013 | Memory        | Info             | Container has swap disabled — OOM killer risk under memory pressure          |
@@ -293,7 +293,7 @@ A few additional codes do not follow the `<Severity><Area>` scheme:
 | WG0017 | Backup        | Warning          | CT not included in any backup job                                            |
 | CG0002 | Backup        | Critical         | A disk has backup disabled                                                   |
 | WG0018 | Hardware      | Warning          | Disk detached from CT but still in storage                                   |
-| WG0019 | Backup        | Warning          | Backup files older than configured days found                                |
+| WG0019 | Backup        | Warning          | Backup files older than configured days found (protected excluded)           |
 | WG0020 | Backup        | Warning          | No backup found in the last configured days                                  |
 | CG0003 | Tasks         | Critical         | Failed tasks found in the last 48 hours                                      |
 | CG0005 | HA            | Critical         | Disk on non-shared storage, CT managed by HA and not replicated — migration will fail |

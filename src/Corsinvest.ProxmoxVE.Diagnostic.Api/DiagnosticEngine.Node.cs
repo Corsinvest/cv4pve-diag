@@ -161,6 +161,10 @@ public partial class DiagnosticEngine
         // recorded). Downstream checks index/iterate this dictionary, so it holds only good nodes.
         var nodeCompareData = nodeCompareResults.Where(r => r.Data != null)
                                                 .ToDictionary(r => r.Node, r => r.Data!);
+        foreach (var (nodeName, data) in nodeCompareData)
+        {
+            _cpuModelByNode[nodeName] = data.Status?.CpuInfo?.Model ?? "";
+        }
 
         // Pre-fetch all per-node data in parallel (subscription, services, certs, replication, apt, pci, tasks, disks)
         var nodeFetchResults = await RunParallelAsync(onlineNodes, FetchNodeDataAsync);

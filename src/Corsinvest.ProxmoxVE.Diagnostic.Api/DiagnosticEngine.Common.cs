@@ -246,7 +246,9 @@ public partial class DiagnosticEngine
             // Old backups still present waste storage space
             if (settings.Backup.MaxAgeDays > 0)
             {
-                var oldBackups = backupContents.Where(a => a.CreationDate.Date <= _now.Date.AddDays(-settings.Backup.MaxAgeDays)).ToList();
+                // Protected backups are kept on purpose (prune never removes them): not reported.
+                var oldBackups = backupContents.Where(a => !a.Protected
+                                                           && a.CreationDate.Date <= _now.Date.AddDays(-settings.Backup.MaxAgeDays)).ToList();
                 CreateResult(
                     isOk: oldBackups.Count == 0,
                     id: id,
