@@ -1,4 +1,4 @@
-# cv4pve-diag
+# <img src="icon.png" alt="" height="36" align="top"> cv4pve-diag
 
 ```
      ______                _                      __

@@ -8,8 +8,8 @@
     "preview": "astro preview"
   },
   "devDependencies": {
-    "@astrojs/markdown-satteri": "^0.4.2",
     "@astrojs/starlight": "^0.42.4",
+    "@corsinvest/cv4pve-docs-theme": "github:Corsinvest/cv4pve-docs-theme#semver:^1.0.0",
     "astro": "^7.3.5"
   }
 }

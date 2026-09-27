@@ -3,40 +3,22 @@ title: Permissions
 description: The Proxmox VE user, API token and privileges cv4pve-diag needs — and why PVEAuditor alone cannot see backups.
 ---
 
+import ApiTokenSetup from '@corsinvest/cv4pve-docs-theme/components/ApiTokenSetup.astro';
+
 cv4pve-diag reads the cluster through the API, so what it can check is exactly what its account is
 allowed to see. Use a dedicated user with an API token rather than `root@pam`.
 
 ## Create the user and the token
 
-Run these on any node (or do the same from **Datacenter → Permissions** in the web UI):
+<ApiTokenSetup
+  tool="cv4pve-diag"
+  user="diag@pve"
+  role="CV4PVEDiag"
+  tokenId="audit"
+  privileges={['VM.Audit','Datastore.Audit','Sys.Audit','Pool.Audit','Datastore.AllocateSpace','VM.Backup','Sys.Modify']}
+/>
 
-```bash
-# 1. A user for the tool — it never logs in with a password, only through its token
-pveum user add diag@pve --comment "cv4pve-diag"
-
-# 2. A role with the privileges listed below
-pveum role add CV4PVEDiag --privs "VM.Audit,Datastore.Audit,Sys.Audit,Pool.Audit,Datastore.AllocateSpace,VM.Backup,Sys.Modify"
-
-# 3. The role on the whole cluster
-pveum acl modify / --users diag@pve --roles CV4PVEDiag
-
-# 4. The token — --privsep 0 makes it inherit the user's permissions
-pveum user token add diag@pve audit --privsep 0
-```
-
-The last command prints the token value once: keep it. You then pass `--api-token='diag@pve!audit=<value>'`.
-
-:::caution[Tokens with privilege separation]
-A token created with privilege separation (`--privsep 1`, the default in the web UI) does **not**
-inherit the user's permissions: it has only the ones granted to the token itself. In that case add
-the role to the token too:
-
-```bash
-pveum acl modify / --tokens 'diag@pve!audit' --roles CV4PVEDiag
-```
-
-Without it the token sees an empty cluster, and cv4pve-diag reports `WC0020` for every privilege.
-:::
+A token that sees an empty cluster makes cv4pve-diag report `WC0020` for every privilege.
 
 ## Privileges
 

@@ -1,6 +1,9 @@
 ---
+import { Badge } from '@astrojs/starlight/components';
+
 /*
- * An excerpt of a real report, to explain it on the docs pages.
+ * An excerpt of a real report, to explain it on the docs pages: a plain table styled by Starlight,
+ * with Starlight badges for the gravity. The command that produces it is a code block in the page.
  *
  * Rows come from a real run (the README example). Columns are the real ones, but reordered to read
  * left to right as "how bad → which control → which check → where → what": the actual text output
@@ -70,6 +73,9 @@ const allRows: {
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
 ];
 
+/** Starlight badge variant for each gravity. */
+const VARIANT = { Critical: 'danger', Warning: 'caution', Info: 'note', Ok: 'success' } as const;
+
 const SAMPLE = ['CC0004', 'CG0002', 'WN0013', 'WS0001', 'WS0002', 'WG0037', 'IC0002', 'IN0001', 'WC0001', 'WC0003', 'WG0017'];
 
 // The compliance view filters the same rows the plain view shows, as the real --compliance does.
@@ -77,145 +83,53 @@ const withOk = ok;
 const shown = (short ? allRows.filter((r) => SAMPLE.includes(r.code)) : allRows)
   .filter((r) => withOk || !r.ok);
 const rows = standard ? shown.filter((r) => r.controls?.[standard]) : shown;
-const command = `cv4pve-diag --host=pve01 --api-token=…${standard ? ` --compliance=${standard}` : ''} execute${ok ? ' --full' : ''}`;
+
 ---
 
-<div class="cv-terminal not-content" aria-label="Example cv4pve-diag report">
-  <div class="cv-terminal-bar">
-    <em>{command}</em>
-  </div>
-  <div class="cv-scroll">
-    <table>
-      <thead>
+<table class="report">
+  <thead>
+    <tr>
+      <th>Gravity</th>
+      {standard && <th>ControlId</th>}
+      <th>Code</th><th>Id</th><th>Description</th><th>Context</th><th>SubContext</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((r) => (
         <tr>
-          <th>Gravity</th>
-          {standard && <th>ControlId</th>}
-          <th>Code</th><th>Id</th><th>Description</th><th>Context</th><th>SubContext</th>
+          <td><Badge text={r.gravity} variant={VARIANT[r.gravity as keyof typeof VARIANT]} /></td>
+          {standard && <td><strong>{r.controls?.[standard]}</strong></td>}
+          <td><code>{r.code}</code></td>
+          <td><code>{r.id}</code></td>
+          <td class="desc">{r.text}</td>
+          <td>{r.context}</td>
+          <td>{r.sub}</td>
         </tr>
-      </thead>
-      <tbody>
-        {
-          rows.map((r) => (
-            <tr>
-              <td><span class={`cv-gravity ${r.gravity.toLowerCase()}`}>{r.gravity}</span></td>
-              {standard && <td class="cv-control">{r.controls?.[standard]}</td>}
-              <td class="cv-code">{r.code}</td>
-              <td class="cv-id">{r.id}</td>
-              <td class="cv-desc">{r.text}</td>
-              <td>{r.context}</td>
-              <td>{r.sub}</td>
-            </tr>
-          ))
-        }
-      </tbody>
-    </table>
-  </div>
-  {
-    withOk && note && (
-      <div class="cv-terminal-foot">
-        One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding in the same row.
-        <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.
-      </div>
-    )
-  }
-</div>
+      ))
+    }
+  </tbody>
+</table>
+{
+  withOk && note && (
+    <p>
+      One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding
+      in the same row. <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.
+    </p>
+  )
+}
 
 <style>
-  .cv-terminal {
-    margin: 1rem 0 2rem;
-    border: 1px solid var(--cv-card-border);
-    border-radius: 8px;
-    background: #0b1b2b;
-    color: #d6e2ee;
-    box-shadow: 0 20px 48px color-mix(in srgb, var(--cv-blue) 25%, transparent);
-    overflow: hidden;
-    font-family: var(--sl-font-mono);
-    font-size: 0.75rem;
-  }
-  .cv-terminal-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.7rem 1rem;
-    background: #10263b;
-  }
-  .cv-terminal-bar em {
-    font-style: normal;
-    color: #8fa9c2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  /* The real output is wide: scroll sideways on narrow screens rather than wrap. */
-  .cv-scroll {
-    overflow-x: auto;
-    padding: 0.5rem 0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
+  /* One line per cell, as in the tool output; only the description wraps. The table scrolls
+     sideways on narrow screens (Starlight makes content tables scrollable). */
+  .report {
     white-space: nowrap;
   }
-  th {
-    padding: 0.4rem 0.75rem;
-    text-align: left;
-    font-weight: 600;
-    color: #8fa9c2;
-    border-bottom: 1px solid rgb(125 178 232 / 0.18);
+  .report td {
+    vertical-align: middle;
   }
-  td {
-    padding: 0.4rem 0.75rem;
-    border-bottom: 1px solid rgb(125 178 232 / 0.06);
-  }
-  tbody tr:hover {
-    background: rgb(42 111 174 / 0.12);
-  }
-  .cv-id {
-    color: #a9c4dd;
-  }
-  .cv-control {
-    color: #f2c462;
-    font-weight: 600;
-  }
-  .cv-code {
-    color: #7db2e8;
-  }
-  .cv-desc {
+  .report .desc {
     white-space: normal;
-    min-width: 22rem;
-  }
-  .cv-gravity {
-    padding: 0.1rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .cv-gravity.critical {
-    background: rgb(214 69 69 / 0.18);
-    color: #ff8a8a;
-  }
-  .cv-gravity.warning {
-    background: rgb(224 165 38 / 0.18);
-    color: #f2c462;
-  }
-  .cv-gravity.ok {
-    background: rgb(74 190 120 / 0.18);
-    color: #86d9a4;
-  }
-  .cv-terminal-foot {
-    padding: 0.7rem 1rem;
-    border-top: 1px solid rgb(125 178 232 / 0.12);
-    color: #8fa9c2;
-    font-family: var(--sl-font);
-    font-size: 0.8rem;
-  }
-  .cv-terminal-foot code {
-    color: #d6e2ee;
-  }
-  .cv-gravity.info {
-    background: rgb(74 144 217 / 0.18);
-    color: #8fc0f2;
+    min-width: 18rem;
   }
 </style>
