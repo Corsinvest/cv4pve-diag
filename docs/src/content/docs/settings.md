@@ -1,4 +1,7 @@
-# Settings Reference
+---
+title: Settings Reference
+description: Every field of the cv4pve-diag settings file, its default and what it changes.
+---
 
 `cv4pve-diag` runs with a default settings profile that produces a useful baseline on most clusters. For more control you can pass a JSON settings file via `--settings-file=/path/settings.json`.
 
@@ -10,16 +13,16 @@ This document describes every field, its default, and what changes when you tune
 
 The `IncludeOkResult` top-level flag controls whether passing checks also produce a result entry:
 
-- `false` (default) — only failures are emitted, as in earlier versions.
-- `true` — every diagnostic check (compliance-mapped or operational) also emits an `Ok` result with `Gravity = Ok` on success. Useful for full audit reports where you need to prove that controls were verified, not just violated.
+- `false` (default) — only failures are reported.
+- `true` — checks also report an `Ok` result (`Gravity = Ok`) when they pass. Useful for audit reports where you need to prove that controls were verified, not just violated. A few checks never report Ok: the S.M.A.R.T. attribute checks, LVM-thin metadata, `WC0020`, and any threshold check disabled with `0/0`.
 
-See [compliance.md](compliance.md) for the catalog of compliance mappings attached to each check.
+See [Compliance Mapping](../compliance/) for the catalog of compliance mappings attached to each check.
 
 ---
 
 ## Profiles
 
-Three built-in profiles cover the common cases, as in cv4pve-report. Use them directly on `execute`, or as the starting point of a settings file:
+Three built-in profiles cover the common cases. Use them on `execute` — they go **after** the command — or as the starting point of a settings file:
 
 | Profile | Option | What it does | For |
 |---|---|---|---|
@@ -69,28 +72,27 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
 ```jsonc
 {
   "Storage": {
-    "Rrd": {
-      "TimeFrame": "Day",         // not used yet: WS0001 checks the current storage usage
-      "Consolidation": "Average", // RRD function: Average (smooth) or Maximum (peak detection)
-    },
-    "Threshold": {
-      "Warning": 70,              // storage usage % above which WS0001 warns
-      "Critical": 85,             // storage usage % above which WS0001 becomes critical
+    "Rrd": { ... },               // written by create-settings but not used: storage checks read the current usage
+    "Threshold": {                // used by WS0001 (storage usage), WN0029 (node root filesystem),
+                                  // WN0030 (node swap) and WN0044 (ZFS pool usage)
+      "Warning": 70,              // usage % above which the check warns
+      "Critical": 85,             // usage % above which it becomes critical
     },
   },
   "Node": {
-    "Smart": {                                              // one extra API call per disk per node — off by default
-      "Enabled": false,                                     // enable per-attribute SMART parsing (temperature, reallocated, pending, CRC, …)
+    "Smart": {
+      "Enabled": false,                                     // per-attribute SMART checks (temperature, reallocated, pending, CRC, …):
+                                                            // one extra API call per disk per node, off by default
       "Temperature": { "Warning": 55, "Critical": 65 },     // disk temperature °C (WN0019 / CN0007); set Warning to 0 to skip
-      "SsdWearout":  { "Warning": 70, "Critical": 85 },     // SSD life consumed % (WN0018)
+      "SsdWearout":  { "Warning": 70, "Critical": 85 },     // SSD life consumed % (WN0018) — runs even when Enabled is false
     },
     "NodeStorage": {
       "ZfsDetail": false,         // per-pool vdev state and I/O error checks (CN0012, WN0024, WN0025); 1 API call per pool
       "LvmThinMetadata": true,    // LVM-thin metadata usage check (WN0026 / CN0013); 1 API call per node
     },
     "MaxVCpuRatio": 4.0,                  // vCPU overcommit ratio (sum vCPU / physical CPU) above which WG0036 fires
-    "ConsolidationCpuThreshold": 10.0,    // node CPU % below which the node is flagged as consolidation candidate (IN0003)
-    "ConsolidationMemThreshold": 20.0,    // node RAM % below which the node is flagged as consolidation candidate
+    "ConsolidationCpuThreshold": 10.0,    // IN0003 fires when current node CPU % is below this
+    "ConsolidationMemThreshold": 20.0,    // ... AND current node RAM % is below this
     "IoWait": { "Warning": 10, "Critical": 25 }, // average CPU iowait % over the RRD time frame (WN0028)
     "Rrd": {                                                  // node-specific PSI defaults — tighter than VM/CT (PVE 9.0+ only)
       "TimeFrame": "Day",
@@ -103,7 +105,7 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
     },
     "Cpu":         { "Warning": 70, "Critical": 85 },         // node CPU % over RRD window (WN0027)
     "Memory":      { "Warning": 70, "Critical": 85 },         // node memory % (WN0038)
-    "Network":     { "Warning": 0,  "Critical": 0  },         // network throughput threshold in bytes/sec; 0 disables
+    "Network":     { "Warning": 0,  "Critical": 0  },         // network throughput in bytes/sec, in (WN0039) and out (WN0040); 0 disables
     "HealthScore": { "Warning": 70, "Critical": 50 },         // composite score (CPU 40% + RAM 40% + disk 20%); lower = worse (WG0032)
   },
   "Qemu": {                                                   // VM thresholds — same structure as Node, different defaults
@@ -118,7 +120,7 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
     },
     "Cpu":         { "Warning": 70, "Critical": 85 },         // VM CPU % over RRD window (WG0025)
     "Memory":      { "Warning": 70, "Critical": 85 },         // VM memory % (WG0026)
-    "Network":     { "Warning": 0,  "Critical": 0  },         // VM network bytes/sec; 0 disables
+    "Network":     { "Warning": 0,  "Critical": 0  },         // VM network bytes/sec, in (WG0027) and out (WG0028); 0 disables
     "HealthScore": { "Warning": 60, "Critical": 40 },         // VM composite score (CPU 50% + RAM 50%) (WG0032)
   },
   "Lxc": {                                                    // container thresholds — same structure and defaults as Qemu
@@ -151,10 +153,17 @@ Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults —
   "IncludeOkResult": false,           // when true every check also emits an Ok result on success — useful for full audit-style reports (see compliance.md)
   "Cve": {
     "NvdEnabled": false,              // check for CVEs specific to Proxmox VE (NVD API 2.0); requires internet access from the host running cv4pve-diag
-    "MinCvssScore": 7.0,              // ignore CVEs below this CVSS score; 0 reports everything (very noisy). CN0015 ≥ 9.0, WN0042 7.0–8.9
+    "MinCvssScore": 7.0,              // ignore CVEs below this CVSS score; 0 reports everything (very noisy). CN0015 ≥ 9.0, WN0042 below 9.0
   },
 }
 ```
+
+### Allowed values
+
+- `TimeFrame`: `Hour`, `Day`, `Week`, `Month`, `Year` — the RRD window the averages are computed on.
+- `Consolidation`: `Average` (smooths peaks) or `Maximum` (catches peaks).
+
+`create-settings` prints both lists. LVM-thin metadata limits (`WN0026` at 90%, `CN0013` at 95%) are fixed and cannot be changed.
 
 ### Health Score Formula
 
@@ -212,7 +221,7 @@ cv4pve-diag can optionally check your cluster for Proxmox VE specific CVEs via t
 ```
 
 - CVSS score ≥ 9.0 → **Critical** (`CN0015`)
-- CVSS score ≥ 7.0 → **Warning** (`WN0042`)
+- any lower score, down to `MinCvssScore` → **Warning** (`WN0042`)
 
 Only CVEs that apply to your installed `pve-manager` version are reported (matched against the NVD version range).
 

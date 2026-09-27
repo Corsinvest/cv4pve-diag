@@ -16,7 +16,7 @@ public class SettingsProfilesTests
     [Fact]
     public void Standard_reads_backups_and_snapshots_but_no_optional_detail()
     {
-        // The values docs/settings.md documents for the standard profile.
+        // The values docs/src/content/docs/settings.md documents for the standard profile.
         var standard = Settings.Standard();
 
         Assert.True(standard.Backup.Enabled);

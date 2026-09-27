@@ -1,0 +1,89 @@
+---
+title: Permissions
+description: The Proxmox VE user, API token and privileges cv4pve-diag needs — and why PVEAuditor alone cannot see backups.
+---
+
+cv4pve-diag reads the cluster through the API, so what it can check is exactly what its account is
+allowed to see. Use a dedicated user with an API token rather than `root@pam`.
+
+## Create the user and the token
+
+Run these on any node (or do the same from **Datacenter → Permissions** in the web UI):
+
+```bash
+# 1. A user for the tool — it never logs in with a password, only through its token
+pveum user add diag@pve --comment "cv4pve-diag"
+
+# 2. A role with the privileges listed below
+pveum role add CV4PVEDiag --privs "VM.Audit,Datastore.Audit,Sys.Audit,Pool.Audit,Datastore.AllocateSpace,VM.Backup,Sys.Modify"
+
+# 3. The role on the whole cluster
+pveum acl modify / --users diag@pve --roles CV4PVEDiag
+
+# 4. The token — --privsep 0 makes it inherit the user's permissions
+pveum user token add diag@pve audit --privsep 0
+```
+
+The last command prints the token value once: keep it. You then pass `--api-token='diag@pve!audit=<value>'`.
+
+:::caution[Tokens with privilege separation]
+A token created with privilege separation (`--privsep 1`, the default in the web UI) does **not**
+inherit the user's permissions: it has only the ones granted to the token itself. In that case add
+the role to the token too:
+
+```bash
+pveum acl modify / --tokens 'diag@pve!audit' --roles CV4PVEDiag
+```
+
+Without it the token sees an empty cluster, and cv4pve-diag reports `WC0020` for every privilege.
+:::
+
+## Privileges
+
+| Privilege | On | Used for | Without it |
+|---|---|---|---|
+| `VM.Audit` | `/vms` | Configuration and status of VMs and containers | Guests are missing from the analysis; orphaned disk and backup checks (`WS0002`, `WS0003`) are skipped |
+| `Datastore.Audit` | `/storage` | Storage capacity, disk images | Storages are missing from the analysis |
+| `Sys.Audit` | `/nodes` | Node services, disks, certificates, versions, APT repositories | Node checks cannot run |
+| `Pool.Audit` | `/pool` | Pools | Backup jobs based on pools cannot be resolved to their guests |
+| `Datastore.AllocateSpace` (or `Datastore.Allocate`) | `/storage` | Listing backup files | Backup checks are skipped — see below |
+| `VM.Backup` | `/vms` | Listing backup files | Backup checks are skipped — see below |
+| `Sys.Modify` | `/nodes` | Listing the updates available on each node (`IN0001`, `WN0012`) | Those two checks fail with `WG0042` |
+
+`VM.Backup`, `Datastore.AllocateSpace` and `Sys.Modify` are more than read-only: they also allow
+starting backups, allocating space and changing node settings. If your policy requires a strictly
+read-only account, leave them out and accept that the backup and update checks will not run —
+the report says so explicitly instead of showing false results.
+
+:::caution[PVEAuditor alone is not enough to see backups]
+The built-in `PVEAuditor` role grants only the `*.Audit` privileges. Proxmox VE lists a backup
+volume only to a caller that has **both** `Datastore.AllocateSpace` on the storage and `VM.Backup` on the
+guest (see [`check_volume_access`](https://github.com/proxmox/pve-storage/blob/master/src/PVE/Storage.pm)) — and it
+does not return an error: it returns the list without those volumes.
+
+cv4pve-diag checks for these two privileges first. When they are missing it reports `WC0020` as a
+**Warning** and skips the backup checks (`WG0019`, `WG0020`, `WS0003`), instead of flagging every guest as
+having no backups. The check is skipped when backups are not analysed anyway (`Backup.Enabled: false`, or `--fast`).
+:::
+
+## How missing privileges are reported
+
+Proxmox VE answers a request the caller is only partly entitled to by *filtering the response*, not
+by failing it. `/cluster/resources` drops the guests, storages and pools you cannot audit; a storage
+listing drops the backup volumes you cannot access. Both return `200 OK`, so a filtered result looks
+exactly like an empty one — a guest missing `VM.Audit` simply does not appear in the report.
+
+That is why cv4pve-diag checks the audit and backup privileges up front, and reports `WC0020` for each
+one the account does not hold on its root path:
+
+- **Info** for the `*.Audit` privileges. Restricting an account to part of the cluster — an ACL on some
+  guests or storages only — is a valid choice: the finding states what the analysis covers.
+- **Warning** for the backup privileges, also when granted on part of `/storage` or `/vms` only: there
+  the backup checks still run, and their results for the rest of the cluster cannot be trusted.
+
+Privileges that make a request fail outright, such as `Sys.Modify` for the update list, show up as
+`WG0042` on the object whose data could not be read. If the account cannot even read its own
+permissions, that is reported as `WG0042` too.
+
+To analyse the whole cluster, grant the privileges on `/` as above, or on each root (`/vms`,
+`/storage`, `/nodes`, `/pool`).
