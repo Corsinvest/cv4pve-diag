@@ -14,3 +14,8 @@ License: MIT
 
 [ClosedXML](https://github.com/ClosedXML/ClosedXML)
 License: MIT
+
+## Artwork
+
+The stethoscope pictogram in `icon.svg` / `icon.png` comes from [Lucide](https://lucide.dev) (icon `stethoscope`)
+License: ISC

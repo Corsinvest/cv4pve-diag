@@ -13,6 +13,10 @@ The diagnostic logic is unchanged: same checks, same severity, same descriptions
 Pick a framework with `--compliance` and the report keeps only the findings that relate to it, each
 with the controls it concerns. An example report with `--compliance=Nis2`:
 
+```bash
+cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…' --compliance=Nis2 execute --full
+```
+
 <ReportPreview standard="Nis2" ok />
 
 Frameworks covered: ISO 27001 · NIS2 · NIS2 Implementing Regulation 2024/2690 · ACN NIS2 Italy · DORA ·
