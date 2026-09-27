@@ -1,0 +1,101 @@
+---
+import proxmoxLogo from '../assets/proxmox-logo.svg';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+/* The original Proxmox logo (horizontal lockup from the media kit, as in corsinvest-web), never
+   recoloured: it is black and orange, so it sits on a white plate to stay legible on the blue band.
+   It links to Corsinvest's entry in the partner directory so the claim can be checked. It is here,
+   next to the support offer, not in the header: the tool is not a Proxmox product. */
+const PROXMOX_PARTNER_URL = 'https://www.proxmox.com/en/partners/find-partner/all/partner/corsinvest';
+---
+
+<div class="cv-cta not-content">
+  <div>
+    <h2>Run your first diagnostic</h2>
+    <p>Download the binary, point it at any node, read the report.</p>
+    <a class="cv-partner" href={PROXMOX_PARTNER_URL} title="Official Proxmox partner — see our entry on the Proxmox site">
+      <span class="cv-partner-plate">
+        <img src={proxmoxLogo.src} alt="Proxmox" width="150" height="25" loading="lazy" />
+      </span>
+      <span>Made by Corsinvest,<br />official Proxmox partner</span>
+    </a>
+  </div>
+  <div class="cv-cta-actions">
+    <a class="cv-cta-primary" href={`${base}/getting-started/`}>Get started</a>
+    <a class="cv-cta-ghost" href="https://www.corsinvest.it/en/cv4pve/">Professional support</a>
+  </div>
+</div>
+
+<style>
+  .cv-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin: 3rem 0 1rem;
+    padding: 2.5rem;
+    border-radius: 8px;
+    color: #fff;
+    background:
+      radial-gradient(ellipse 60% 120% at 100% 0%, rgb(42 111 174 / 0.55), transparent 60%),
+      linear-gradient(135deg, var(--cv-blue-deep), var(--cv-surface-dark));
+  }
+  .cv-cta h2 {
+    margin: 0;
+    font-family: var(--cv-font-display);
+    font-size: 2rem;
+    color: #fff;
+  }
+  .cv-cta p {
+    margin: 0.5rem 0 0;
+    color: #c4d6e8;
+  }
+  .cv-partner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+    color: #c4d6e8;
+    font-size: var(--sl-text-sm);
+    line-height: 1.3;
+    text-decoration: none;
+  }
+  .cv-partner:hover {
+    color: #fff;
+  }
+  .cv-partner-plate {
+    display: inline-flex;
+    padding: 0.55rem 0.8rem;
+    border-radius: 4px;
+    background: #fff;
+  }
+  .cv-partner-plate img {
+    display: block;
+    width: 150px;
+    height: auto;
+  }
+  .cv-cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .cv-cta a {
+    padding: 0.75rem 1.5rem;
+    font-family: var(--cv-font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+  }
+  .cv-cta-primary {
+    background: #fff;
+    color: var(--cv-blue-deep);
+  }
+  .cv-cta-ghost {
+    border: 1px solid rgb(255 255 255 / 0.35);
+    color: #fff;
+  }
+</style>

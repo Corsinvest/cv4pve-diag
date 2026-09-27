@@ -1,0 +1,221 @@
+---
+/*
+ * An excerpt of a real report, to explain it on the docs pages.
+ *
+ * Rows come from a real run (the README example). Columns are the real ones, but reordered to read
+ * left to right as "how bad → which control → which check → where → what": the actual text output
+ * starts with Id (OutputEngine.CreateTable), as Getting started shows.
+ *
+ * `standard` shows the output of --compliance=<standard>: only the findings mapped to it, plus the
+ * ControlId column (all the controls of that standard in one cell). --compliance takes one standard
+ * per run: to show several frameworks, use one preview per standard. `controls` holds the real mapping of each check in the engine — keep it in step
+ * with DiagnosticEngine*.cs when a mapping changes.
+ */
+type Standard = 'Nis2' | 'Iso27001' | 'Dora';
+
+interface Props {
+  standard?: Standard;
+  /** Include the Ok rows, as a run with --full (IncludeOkResult) does. */
+  ok?: boolean;
+  /** Show the note under the table. */
+  note?: boolean;
+  /** Only a sample of each severity (home page). */
+  short?: boolean;
+}
+
+const { standard, ok = false, note = true, short = false } = Astro.props;
+
+const allRows: {
+  id: string;
+  code: string;
+  text: string;
+  context: string;
+  sub: string;
+  gravity: string;
+  controls?: Partial<Record<Standard, string>>;
+  /** Reported only with IncludeOkResult: true — shown in the compliance views only. */
+  ok?: boolean;
+}[] = [
+  { id: 'access/users/root@pam', code: 'CC0004', text: 'root@pam has no TFA configured — full access protected only by password', context: 'Cluster', sub: 'Access', gravity: 'Critical',
+    controls: { Nis2: 'Art.21(j)', Iso27001: 'A.5.17, A.8.5', Dora: 'Art.9' } },
+  { id: 'nodes/pve02/lxc/101', code: 'CG0006', text: 'Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access', context: 'Lxc', sub: 'Security', gravity: 'Critical',
+    controls: { Nis2: 'Art.21(i)', Iso27001: 'A.5.15, A.8.2' } },
+  { id: 'nodes/pve02/qemu/203', code: 'CG0002', text: "Disk 'scsi0' disabled for backup", context: 'Qemu', sub: 'Backup', gravity: 'Critical',
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
+  { id: 'nodes/pve01/qemu/1104', code: 'WG0026', text: 'Memory (rrd Day Average) usage 93.3% - 10.02 GB of 10.74 GB', context: 'Qemu', sub: 'Usage', gravity: 'Critical' },
+  { id: 'nodes/pve01', code: 'WN0013', text: "Node requires reboot: running kernel '6.8.12-20-pve' but newer kernel '6.8.12-43-pve' is installed", context: 'Node', sub: 'Reboot', gravity: 'Warning',
+    controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
+  { id: 'nodes/pve01/storage/datapool', code: 'WS0002', text: 'Image Orphaned 51.54 GB file vm-106-disk-1', context: 'Storage', sub: 'Image', gravity: 'Warning' },
+  { id: 'nodes/pve01/storage/pbs01', code: 'WS0001', text: 'Storage usage 80% - 2.58 TB of 3.22 TB', context: 'Storage', sub: 'Usage', gravity: 'Warning',
+    controls: { Iso27001: 'A.5.30, A.8.16', Dora: 'Art.11' } },
+  { id: 'nodes/pve02/qemu/106', code: 'WG0003', text: 'Qemu Agent not enabled', context: 'Qemu', sub: 'Agent', gravity: 'Warning' },
+  { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
+    controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
+  { id: 'nodes/pve02/qemu/999', code: 'WG0017', text: 'vzdump backup not configured', context: 'Qemu', sub: 'Backup', gravity: 'Warning',
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
+  { id: 'nodes/pve01/qemu/1013', code: 'WG0002', text: "OS 'Microsoft Windows 8.x/2012/2012r2' not maintained from vendor!", context: 'Qemu', sub: 'OSNotMaintained', gravity: 'Warning',
+    controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
+  { id: 'cluster', code: 'IC0002', text: 'No HA resources configured — VMs will not automatically restart on node failure', context: 'Cluster', sub: 'HA', gravity: 'Info',
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.5.30', Dora: 'Art.11' } },
+  { id: 'nodes/pve02', code: 'IN0001', text: '6 Update available', context: 'Node', sub: 'Update', gravity: 'Info' },
+  { id: 'nodes/pve01/qemu/1000', code: 'IG0011', text: 'For production environment is better VM Protection = enabled', context: 'Qemu', sub: 'Protection', gravity: 'Info' },
+  // Ok rows. Cluster-level checks give one row; per-guest checks (WG0017) give one row per guest.
+  { id: 'cluster/backup', code: 'WC0001', text: '3 backup job(s) configured at cluster level', context: 'Cluster', sub: 'Backup', gravity: 'Ok', ok: true,
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
+  { id: 'cluster', code: 'WC0003', text: 'Cluster firewall is enabled', context: 'Cluster', sub: 'Firewall', gravity: 'Ok', ok: true,
+    controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.20, A.8.22' } },
+  { id: 'nodes/pve01/qemu/100', code: 'WG0017', text: 'Guest is covered by at least one enabled backup job', context: 'Qemu', sub: 'Backup', gravity: 'Ok', ok: true,
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
+  { id: 'nodes/pve01/qemu/101', code: 'WG0017', text: 'Guest is covered by at least one enabled backup job', context: 'Qemu', sub: 'Backup', gravity: 'Ok', ok: true,
+    controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
+];
+
+const SAMPLE = ['CC0004', 'CG0002', 'WN0013', 'WS0001', 'WS0002', 'WG0037', 'IC0002', 'IN0001', 'WC0001', 'WC0003', 'WG0017'];
+
+// The compliance view filters the same rows the plain view shows, as the real --compliance does.
+const withOk = ok;
+const shown = (short ? allRows.filter((r) => SAMPLE.includes(r.code)) : allRows)
+  .filter((r) => withOk || !r.ok);
+const rows = standard ? shown.filter((r) => r.controls?.[standard]) : shown;
+const command = `cv4pve-diag --host=pve01 --api-token=…${standard ? ` --compliance=${standard}` : ''} execute${ok ? ' --full' : ''}`;
+---
+
+<div class="cv-terminal not-content" aria-label="Example cv4pve-diag report">
+  <div class="cv-terminal-bar">
+    <em>{command}</em>
+  </div>
+  <div class="cv-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Gravity</th>
+          {standard && <th>ControlId</th>}
+          <th>Code</th><th>Id</th><th>Description</th><th>Context</th><th>SubContext</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr>
+              <td><span class={`cv-gravity ${r.gravity.toLowerCase()}`}>{r.gravity}</span></td>
+              {standard && <td class="cv-control">{r.controls?.[standard]}</td>}
+              <td class="cv-code">{r.code}</td>
+              <td class="cv-id">{r.id}</td>
+              <td class="cv-desc">{r.text}</td>
+              <td>{r.context}</td>
+              <td>{r.sub}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  {
+    withOk && note && (
+      <div class="cv-terminal-foot">
+        One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding in the same row.
+        <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .cv-terminal {
+    margin: 1rem 0 2rem;
+    border: 1px solid var(--cv-card-border);
+    border-radius: 8px;
+    background: #0b1b2b;
+    color: #d6e2ee;
+    box-shadow: 0 20px 48px color-mix(in srgb, var(--cv-blue) 25%, transparent);
+    overflow: hidden;
+    font-family: var(--sl-font-mono);
+    font-size: 0.75rem;
+  }
+  .cv-terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1rem;
+    background: #10263b;
+  }
+  .cv-terminal-bar em {
+    font-style: normal;
+    color: #8fa9c2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The real output is wide: scroll sideways on narrow screens rather than wrap. */
+  .cv-scroll {
+    overflow-x: auto;
+    padding: 0.5rem 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+  }
+  th {
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #8fa9c2;
+    border-bottom: 1px solid rgb(125 178 232 / 0.18);
+  }
+  td {
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid rgb(125 178 232 / 0.06);
+  }
+  tbody tr:hover {
+    background: rgb(42 111 174 / 0.12);
+  }
+  .cv-id {
+    color: #a9c4dd;
+  }
+  .cv-control {
+    color: #f2c462;
+    font-weight: 600;
+  }
+  .cv-code {
+    color: #7db2e8;
+  }
+  .cv-desc {
+    white-space: normal;
+    min-width: 22rem;
+  }
+  .cv-gravity {
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .cv-gravity.critical {
+    background: rgb(214 69 69 / 0.18);
+    color: #ff8a8a;
+  }
+  .cv-gravity.warning {
+    background: rgb(224 165 38 / 0.18);
+    color: #f2c462;
+  }
+  .cv-gravity.ok {
+    background: rgb(74 190 120 / 0.18);
+    color: #86d9a4;
+  }
+  .cv-terminal-foot {
+    padding: 0.7rem 1rem;
+    border-top: 1px solid rgb(125 178 232 / 0.12);
+    color: #8fa9c2;
+    font-family: var(--sl-font);
+    font-size: 0.8rem;
+  }
+  .cv-terminal-foot code {
+    color: #d6e2ee;
+  }
+  .cv-gravity.info {
+    background: rgb(74 144 217 / 0.18);
+    color: #8fc0f2;
+  }
+</style>
