@@ -70,7 +70,7 @@ const libraries = [
               {t.name === current ? (
                 <strong>{t.name}</strong>
               ) : (
-                <a href={toolUrl(t.name)}>{t.name}</a>
+                <a href={toolUrl(t.name)} target="_blank" rel="noopener noreferrer">{t.name}</a>
               )}
               <span>{t.text}</span>
             </li>
@@ -83,7 +83,7 @@ const libraries = [
     <h3>API libraries</h3>
     <p>The same Proxmox VE API calls, from whichever language you already use.</p>
     <div class="cv-libs">
-      {libraries.map((l) => <a href={`https://github.com/Corsinvest/${l.repo}`}>{l.label}</a>)}
+      {libraries.map((l) => <a href={`https://github.com/Corsinvest/${l.repo}`} target="_blank" rel="noopener noreferrer">{l.label}</a>)}
     </div>
   </section>
 </div>
