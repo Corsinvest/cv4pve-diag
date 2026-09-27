@@ -19,7 +19,7 @@ Diagnostic Tool for Proxmox VE (Made in Italy)
 
 > **Health checks and diagnostics for Proxmox VE** — reads your whole cluster through the API and tells you what is wrong.
 >
-> 📖 **Documentation: [corsinvest.github.io/cv4pve-diag](https://corsinvest.github.io/cv4pve-diag/)**
+> 📖 **[Documentation](https://corsinvest.github.io/cv4pve-diag/)**
 
 ---
 
