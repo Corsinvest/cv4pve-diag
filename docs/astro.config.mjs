@@ -1,10 +1,34 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { satteri } from '@astrojs/markdown-satteri';
+
+const site = 'https://corsinvest.github.io';
+const base = '/cv4pve-diag';
+
+// Links leaving the site open in a new tab, so the reader keeps the page they were on
+// (as corsinvest-web does). Astro 7 renders Markdown with Sätteri, which ignores
+// markdown.rehypePlugins: the plugin is a Sätteri hast plugin instead.
+const externalLinksInNewTab = {
+  name: 'external-links-new-tab',
+  element: {
+    filter: ['a'],
+    /** @param {any} node @param {any} ctx */
+    visit(node, ctx) {
+      const href = node.properties?.href;
+      if (typeof href !== 'string' || !/^https?:\/\//.test(href) || href.startsWith(site + base)) return;
+      ctx.setProperty(node, 'target', '_blank');
+      ctx.setProperty(node, 'rel', ['noopener', 'noreferrer']);
+    },
+  },
+};
 
 export default defineConfig({
-  site: 'https://corsinvest.github.io',
-  base: '/cv4pve-diag',
+  site,
+  base,
+  markdown: {
+    processor: satteri({ hastPlugins: [externalLinksInNewTab] }),
+  },
   integrations: [
     starlight({
       title: 'cv4pve-diag',
