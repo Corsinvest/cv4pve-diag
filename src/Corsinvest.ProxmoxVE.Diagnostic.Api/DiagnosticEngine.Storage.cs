@@ -218,36 +218,41 @@ public partial class DiagnosticEngine
         if (_orphanChecksEnabled)
         {
             // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage.
-            // Every existing guest counts, including those whose config could not be read.
-            // One finding per guest and storage, not per backup file: a retention of 30 would
-            // otherwise give 30 findings for the same deleted guest.
-            var orphanedBackups = _backupContentByStorage
-                .SelectMany(kv => kv.Value
-                                    .Where(b => !_existingGuestIds.Contains(b.VmId))
-                                    .GroupBy(b => b.VmId)
-                                    .Select(g => (StorageKey: kv.Key, VmId: g.Key, Backups: g.ToList())))
-                .ToList();
-            CreateResultPerItem(
-                items: orphanedBackups,
-                isItemOk: _ => false,
-                itemId: ob =>
-                {
-                    // storageKey is either "<storage>" (shared) or "<node>/<storage>" (non-shared)
-                    var parts = ob.StorageKey.Split('/');
-                    var node = parts.Length == 2 ? parts[0] : _storageResources.FirstOrDefault(s => s.Storage == ob.StorageKey)?.Node ?? "";
-                    var storage = parts.Length == 2 ? parts[1] : ob.StorageKey;
-                    return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
-                },
-                itemDescriptionKo: ob => ob.Backups.Count == 1
-                                            ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
-                                            : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
-                aggregatedIdOk: "cluster/storage",
-                aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
-                errorCode: "WS0003",
-                subContext: "Backup",
-                context: DiagnosticResultContext.Storage,
-                gravityKo: DiagnosticResultGravity.Warning,
-                compliance: []);
+            // Skipped with the backup checks (Backup.Enabled off, or backup privileges missing): the
+            // backup files were not read, and an empty list would read as "no orphaned backups".
+            if (_backupChecksEnabled)
+            {
+                // Every existing guest counts, including those whose config could not be read.
+                // One finding per guest and storage, not per backup file: a retention of 30 would
+                // otherwise give 30 findings for the same deleted guest.
+                var orphanedBackups = _backupContentByStorage
+                    .SelectMany(kv => kv.Value
+                                        .Where(b => !_existingGuestIds.Contains(b.VmId))
+                                        .GroupBy(b => b.VmId)
+                                        .Select(g => (StorageKey: kv.Key, VmId: g.Key, Backups: g.ToList())))
+                    .ToList();
+                CreateResultPerItem(
+                    items: orphanedBackups,
+                    isItemOk: _ => false,
+                    itemId: ob =>
+                    {
+                        // storageKey is either "<storage>" (shared) or "<node>/<storage>" (non-shared)
+                        var parts = ob.StorageKey.Split('/');
+                        var node = parts.Length == 2 ? parts[0] : _storageResources.FirstOrDefault(s => s.Storage == ob.StorageKey)?.Node ?? "";
+                        var storage = parts.Length == 2 ? parts[1] : ob.StorageKey;
+                        return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
+                    },
+                    itemDescriptionKo: ob => ob.Backups.Count == 1
+                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
+                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
+                    aggregatedIdOk: "cluster/storage",
+                    aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
+                    errorCode: "WS0003",
+                    subContext: "Backup",
+                    context: DiagnosticResultContext.Storage,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    compliance: []);
+            }
 
             // Volumes referenced by a guest config — every entry (data disks, CD-ROM, cloud-init,
             // unused) — with the nodes of the guests that reference them.

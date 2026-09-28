@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- `WN0019`/`CN0019` (disk temperature): with `Critical` set to `0` every disk was reported Critical. A level set to `0` is now off, and `0`/`0` turns the check off, as for the other thresholds.
+- `WC0008` (permissive firewall rule): a rule with an empty source, which in Proxmox VE means any address, was not reported. Now every enabled inbound `ACCEPT` rule of the cluster firewall from any source is reported; the destination is no longer judged, because on an inbound rule an empty destination is the host itself.
+- `WS0003` (orphaned backups): with `Backup.Enabled` off or the backup privileges missing, the backup files are not read, yet an Ok "No orphaned backup files" was reported. The check is now skipped, like the other backup checks.
+- `CG0001` (leftover hibernation state) ran on containers too, which cannot hibernate: it only produced an Ok row labelled "VM State". VMs only now.
+- Excel report: rows are sorted by gravity, context and subcontext, as in the other formats.
+
 ### Critical codes for threshold checks
 
 The first letter of a code is now always the severity of the finding. Checks with a warning and a critical threshold used to report both levels with their `W` code; the critical level now has its own `C` code, with the same number as the `W` code (`WN0027` → `CN0027`). **Breaking:** ignore rules on the `W` codes no longer hide the critical findings — add the `C` code to them.
