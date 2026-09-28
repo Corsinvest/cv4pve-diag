@@ -1423,12 +1423,15 @@ public partial class DiagnosticEngine
                     switch (attr.Id)
                     {
                         // Temperature (ID 194) or Airflow Temperature (ID 190)
-                        case "194" or "190" when settings.Node.Smart.Temperature.Warning > 0:
+                        // Same rules as CheckThreshold: a level set to 0 is off, 0/0 turns the check off.
+                        case "194" or "190" when settings.Node.Smart.Temperature.Warning > 0
+                                                 || settings.Node.Smart.Temperature.Critical > 0:
                             if (int.TryParse(attr.Raw?.Split(' ')[0], out var temp) && temp > 0)
                             {
-                                var tempGravity = temp >= settings.Node.Smart.Temperature.Critical
+                                var tempThreshold = settings.Node.Smart.Temperature;
+                                var tempGravity = tempThreshold.Critical > 0 && temp >= tempThreshold.Critical
                                                     ? DiagnosticResultGravity.Critical
-                                                    : temp >= settings.Node.Smart.Temperature.Warning
+                                                    : tempThreshold.Warning > 0 && temp >= tempThreshold.Warning
                                                         ? DiagnosticResultGravity.Warning
                                                         : DiagnosticResultGravity.Info;
 

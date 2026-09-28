@@ -63,7 +63,7 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 |---|---|---|---|
 | `WC0003` | Firewall | <Severity level="Warning" /> | Cluster-level firewall is completely disabled |
 | `WC0004` | Firewall | <Severity level="Warning" /> | Inbound policy is ACCEPT — unmatched incoming traffic is let through (outbound is not judged) |
-| `WC0008` | Firewall | <Severity level="Warning" /> | Cluster firewall rule with overly permissive source or destination |
+| `WC0008` | Firewall | <Severity level="Warning" /> | Enabled inbound `ACCEPT` rule of the cluster firewall from any source (empty, `0.0.0.0/0` or `::/0`) |
 | `IC0013` | Firewall | <Severity level="Info" /> | Cluster firewall has enabled rules but none configure logging |
 | `IC0014` | Firewall | <Severity level="Info" /> | Cluster firewall has 10+ disabled rules — stale configuration |
 

@@ -33,18 +33,22 @@ public partial class DiagnosticEngine
         #region VM State
         // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly.
         // A VM hibernated on purpose keeps its vmstate with lock 'suspended' (reported by WG0015).
-        CreateResultPerItem(
-            items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
-            isItemOk: _ => false,
-            itemId: _ => id,
-            itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
-            aggregatedIdOk: id,
-            aggregatedDescriptionOk: _ => "No leftover vmstate (hibernate) entries",
-            errorCode: "CG0001",
-            subContext: "VM State",
-            context: context,
-            gravityKo: DiagnosticResultGravity.Critical,
-            compliance: []);
+        // Containers cannot hibernate: VMs only.
+        if (context == DiagnosticResultContext.Qemu)
+        {
+            CreateResultPerItem(
+                items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
+                isItemOk: _ => false,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "No leftover vmstate (hibernate) entries",
+                errorCode: "CG0001",
+                subContext: "VM State",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Critical,
+                compliance: []);
+        }
         #endregion
 
         #region Pending config changes

@@ -869,17 +869,21 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: firewallControls);
 
-        // Cluster firewall rules with source or dest 0.0.0.0/0 — overly permissive
+        // Cluster firewall rules that accept incoming traffic from any address — overly permissive.
+        // Only enabled inbound ACCEPT rules count: a DROP / REJECT from anywhere is a good rule. An empty
+        // source means any address in PVE, like 0.0.0.0/0. The destination is not judged: on an inbound
+        // rule an empty destination is the host itself.
         var clusterRules = (await client.Cluster.Firewall.Rules.GetAsync().ToSafeEnum(_result, "cluster/firewall/rules", DiagnosticResultContext.Cluster, "cluster firewall rules")).ToList();
-        // Only ACCEPT rules can be permissive: a DROP / REJECT from anywhere is a good rule.
-        static bool IsAnyAddress(string? address) => address is "0.0.0.0/0" or "::/0";
+        static bool IsAnyAddress(string? address) => string.IsNullOrWhiteSpace(address) || address is "0.0.0.0/0" or "::/0";
         CreateResultPerItem(
-            items: clusterRules.Where(r => r.Enable && string.Equals(r.Action, "ACCEPT", StringComparison.OrdinalIgnoreCase)).ToList(),
-            isItemOk: r => !IsAnyAddress(r.Source) && !IsAnyAddress(r.Dest),
+            items: clusterRules.Where(r => r.Enable
+                                           && string.Equals(r.Action, "ACCEPT", StringComparison.OrdinalIgnoreCase)
+                                           && string.Equals(r.Type, "in", StringComparison.OrdinalIgnoreCase)).ToList(),
+            isItemOk: r => !IsAnyAddress(r.Source),
             itemId: r => $"cluster/firewall/rules/{r.Positon}",
-            itemDescriptionKo: r => $"Firewall rule #{r.Positon} accepts traffic from/to any address ({r.Source ?? "any"} → {r.Dest ?? "any"}) — overly permissive",
+            itemDescriptionKo: r => $"Firewall rule #{r.Positon} accepts incoming traffic from any address ({(string.IsNullOrWhiteSpace(r.Source) ? "any" : r.Source)}{(string.IsNullOrWhiteSpace(r.Macro) ? "" : $", {r.Macro}")}{(string.IsNullOrWhiteSpace(r.DestinationPort) ? "" : $", port {r.DestinationPort}")}) — overly permissive",
             aggregatedIdOk: "cluster/firewall/rules",
-            aggregatedDescriptionOk: _ => "No enabled ACCEPT rule allows traffic from/to any address",
+            aggregatedDescriptionOk: _ => "No enabled inbound ACCEPT rule allows traffic from any address",
             errorCode: "WC0008",
             subContext: "Firewall",
             context: DiagnosticResultContext.Cluster,
