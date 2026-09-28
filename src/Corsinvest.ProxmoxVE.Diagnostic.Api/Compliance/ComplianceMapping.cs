@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+using System.Text.Json.Serialization;
+
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 
 /// <summary>
@@ -13,4 +15,6 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 /// <param name="Standard">The standard family (ISO 27001, NIS2, DORA, …).</param>
 /// <param name="ControlId">The control identifier as published by the standard (e.g. "A.5.17", "Art.21(j)").</param>
 /// <param name="ControlTitle">Short human-readable title of the control.</param>
-public sealed record ComplianceMapping(ComplianceStandard Standard, string ControlId, string ControlTitle);
+public sealed record ComplianceMapping([property: JsonConverter(typeof(JsonStringEnumConverter))] ComplianceStandard Standard,
+                                       string ControlId,
+                                       string ControlTitle);

@@ -102,4 +102,14 @@ public class JsonFilesTests
         Assert.Contains("\"Day\"", written);
         Assert.Equal(written, JsonSerializer.Serialize(read, Settings.JsonOptions));
     }
+
+    // ----- compliance mapping -----
+    [Fact]
+    public void Compliance_standard_is_written_as_its_name()
+    {
+        var json = JsonSerializer.Serialize(new Compliance.ComplianceMapping(Compliance.ComplianceStandard.Nis2, "Art.21(j)", "MFA"));
+
+        Assert.Contains("\"Standard\":\"Nis2\"", json);
+        Assert.Equal(Compliance.ComplianceStandard.Nis2, JsonSerializer.Deserialize<Compliance.ComplianceMapping>(json)!.Standard);
+    }
 }
