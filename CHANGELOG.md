@@ -2,6 +2,13 @@
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Windows executable icon
+- NuGet package description
+- Project metadata, symbols (Source Link, `.snupkg`) and code style aligned with the other cv4pve tools
+
 ## [2.7.0] — 2026-09-28
 
 ### Critical codes for threshold checks

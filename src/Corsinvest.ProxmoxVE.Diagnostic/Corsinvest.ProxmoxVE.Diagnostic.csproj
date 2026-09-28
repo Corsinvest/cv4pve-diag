@@ -5,11 +5,11 @@
     <AssemblyName>cv4pve-diag</AssemblyName>
     <Product>Corsinvest for Proxmox VE Diagnostic</Product>
     <AssemblyTitle>Corsinvest for Proxmox VE Diagnostic</AssemblyTitle>
-    <Description>Corsinvest for Proxmox VE Diagnostic</Description>
+    <Description>Diagnostic tool for Proxmox VE — checks nodes, VMs, LXC containers and storage for common issues</Description>
+    <ApplicationIcon>..\..\icon.ico</ApplicationIcon>
+    <IsPackable>false</IsPackable>
     <InvariantGlobalization>true</InvariantGlobalization>
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
-    <RepositoryUrl>https://github.com/Corsinvest/cv4pve-diag</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup >
