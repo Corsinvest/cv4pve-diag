@@ -35,7 +35,7 @@ A JSON array of rule objects. A finding is suppressed when **every** field decla
 
 All string fields support **regex** patterns, **case-sensitive** — use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
 
-The file may contain `//` comments and trailing commas. `Context` and `Gravity` accept names (`"Qemu"`, `"Warning"`) or their numbers.
+The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`): `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read.
 
 ```json
 [
