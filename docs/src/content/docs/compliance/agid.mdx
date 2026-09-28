@@ -18,14 +18,14 @@ Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation clu
 | Control | Title | Where it appears |
 |---|---|---|
 | ABSC 2.3 | Authorised software list and EOL tracking | OS not maintained, PVE EOL, CVE |
-| ABSC 3.1 | Use secure standard configurations | Container privileged, raw lxc config |
-| ABSC 3.2 | Keep configurations aligned and up to date | Patch, version/kernel/package mismatch |
+| ABSC 3.1 | Use secure standard configurations | (declared) |
+| ABSC 3.2 | Keep configurations aligned and up to date | (declared) |
 | ABSC 4.1 / 4.4 | Vulnerability scanning and remediation | CVE, important updates |
 | ABSC 5.1 | Limit administrative privileges | ACL, container privileged, root@pam token privsep |
 | ABSC 5.2 | Track administrator actions | Cluster log, task history, firewall audit logging |
 | ABSC 5.7 | MFA for administrators | TFA (root@pam, admin, group, realm) |
 | ABSC 5.10 | Limit local authentication and credential lifetime | Local user expiration, API token expiration |
-| ABSC 8.1 | Defences against malware (network baseline) | Firewall, patch |
+| ABSC 8.1 | Defences against malware (network baseline) | Cluster/node firewall, guest firewall, IP spoofing, duplicate MAC |
 | ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
 | ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
 

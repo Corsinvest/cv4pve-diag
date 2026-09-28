@@ -12,11 +12,11 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
 | `WC0001` | Backup | <Severity level="Warning" /> | No automated backup job for any VM/CT |
-| `IC0001` | Backup | <Severity level="Info" /> | Backup job has no compression configured |
+| `IC0001` | Backup | <Severity level="Info" /> | Enabled backup job has no compression configured (jobs to Proxmox Backup Server excluded: it always compresses) |
 | `WC0002` | Backup | <Severity level="Warning" /> | Neither the backup job nor its storage has a retention (prune-backups) — storage will fill up |
 | `WC0017` | Backup | <Severity level="Warning" /> | Enabled backup job has no schedule — will never run |
 | `IC0012` | Backup | <Severity level="Info" /> | Backup job is disabled |
-| `WC0018` | Backup | <Severity level="Warning" /> | Recent vzdump task ended with non-OK status |
+| `WC0018` | Backup | <Severity level="Warning" /> | Recent vzdump task failed (a task ending with `WARNINGS` counts as completed) |
 | `WC0019` | Backup | <Severity level="Warning" /> | Two or more enabled backup jobs run on the same storage at the same schedule (I/O contention) |
 
 ## Quorum, HA and replication
@@ -42,7 +42,7 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 | `CC0004` | Access | <Severity level="Critical" /> | root@pam has no two-factor authentication configured |
 | `WC0007` | Access | <Severity level="Warning" /> | User with Administrator role has no two-factor authentication |
 | `WC0005` | Access | <Severity level="Warning" /> | User has Administrator role at root path `/` — prefer scoped permissions |
-| `WC0006` | Access | <Severity level="Warning" /> | Disabled user still has valid API tokens that should be revoked |
+| `WC0006` | Access | <Severity level="Warning" /> | Disabled user still has API tokens that should be revoked |
 | `IC0005` | Access | <Severity level="Info" /> | Local user has no expiration date configured |
 | `IC0006` | Access | <Severity level="Info" /> | API token of an enabled local (pam/pve) user has no expiration date |
 | `IC0007` | Access | <Severity level="Info" /> | Enabled user has no email — will not receive notifications |

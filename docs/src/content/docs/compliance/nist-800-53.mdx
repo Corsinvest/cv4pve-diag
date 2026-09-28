@@ -24,17 +24,17 @@ Subset of NIST 800-53 rev.5 controls verifiable on a Proxmox VE cluster. Familie
 | AU-6 | Audit record review | (declared) |
 | AU-12 | Audit record generation | Cluster log, task history, firewall audit logging, metric server |
 | CM-2 | Baseline configuration | Patch consistency across nodes, version/kernel mismatch |
-| CM-6 | Configuration settings | Container privileged, raw lxc config, hardening |
+| CM-6 | Configuration settings | (declared) |
 | CM-7 | Least functionality | (declared) |
 | CP-9 | System backup | All backup checks, backup storage availability, disk cache integrity |
 | CP-10 | System recovery and reconstitution | HA, replication, single-node, HA guest checks |
-| IA-2 | Identification and authentication | TFA (root@pam, admins, group, realm); account identity |
+| IA-2 | Identification and authentication | TFA (root@pam, admins, group, realm) |
 | IA-5 | Authenticator management | (declared — overlaps with certificate / token checks) |
 | SC-7 | Boundary protection | Cluster/node firewall, guest firewall |
 | SC-8 | Transmission confidentiality and integrity | Certificates (expired / expiring), TLS |
-| SC-13 | Cryptographic protection | (declared — overlaps with SC-8) |
+| SC-13 | Cryptographic protection | Certificates |
 | SI-2 | Flaw remediation | Patch, PVE EOL, CVE, important updates, outdated machine type |
-| SI-4 | System monitoring | Metric server (IC0018/IC0019) |
-| SI-5 | Security alerts and advisories | (declared) |
+| SI-4 | System monitoring | Cluster log, task history, firewall audit logging, services, NTP, user notifications, metric server |
+| SI-5 | Security alerts and advisories | CVE |
 
 How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

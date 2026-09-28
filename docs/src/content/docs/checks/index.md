@@ -33,7 +33,7 @@ Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters fo
 |---|---|---|
 | **`C`** | Critical | The condition blocks normal operation or risks data loss (e.g. quorum lost, disk failing, certificate expired). |
 | **`W`** | Warning  | The condition is incorrect or risky but the cluster is still functioning (e.g. firewall off, no backup retention, NIC down). |
-| **`I`** | Info     | The condition is suboptimal, informative, or a best-practice violation (e.g. no metric server, pool without ACL, snapshot count). |
+| **`I`** | Info     | The condition is suboptimal, informative, or a best-practice violation (e.g. no metric server, pool without ACL, disk not on VirtIO). |
 
 **Second letter — Area:**
 
@@ -64,7 +64,7 @@ Exceptions to the scheme:
 
 - **`CU0001`** — `U` is not an area: it is emitted by the engine when a cluster resource cannot be classified (see [Meta codes](#meta-codes)).
 - **`WG0042`** — reported on any object, not only guests, whenever an API call fails (see [Meta codes](#meta-codes)).
-- **`WN0044`**/**`CN0044`** (ZFS pool usage) are reported on the storage.
+- **`WN0044`**/**`CN0044`** (ZFS pool usage) are reported with Context `Storage`, but their Id is the node with the pool name, e.g. `nodes/pve1 (rpool)`: an ignore rule must match that Id.
 - **`WC0020`** is reported as Info or Warning depending on which privilege is missing.
 
 ---
@@ -98,7 +98,7 @@ These codes are not regular checks — they are emitted by the engine itself whe
 | Code   | SubContext | Gravity | Description                                                                                                  |
 | ------ | ---------- | ------- | ------------------------------------------------------------------------------------------------------------ |
 | CU0001 | Status / ApiError | Critical | A cluster resource has an unknown type, or `/cluster/resources` could not be read at all — in that case nothing else can be analysed. |
-| WG0042 | ApiError   | Warning | A Proxmox VE API call failed during analysis (network error, permission denied, endpoint unavailable, …). The affected check was skipped; the underlying call/endpoint is reported in the description. |
+| WG0042 | ApiError   | Warning | A Proxmox VE API call failed during analysis (network error, permission denied, timeout, …); an endpoint that does not exist on the installed Proxmox VE version (HTTP 501) is skipped silently. The affected check was skipped; the underlying call/endpoint is reported in the description. |
 
 ---
 

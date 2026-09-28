@@ -42,8 +42,8 @@ hold only what you change:
 ```
 
 Fields are listed below as `Group.Field`. Thresholds are pairs `{ "Warning": …, "Critical": … }`: the check
-warns above `Warning` and becomes critical above `Critical` (for the health score, *below*); `0` / `0`
-turns the check off.
+warns when the value reaches `Warning` and becomes critical when it reaches `Critical` (for the health
+score, when it falls *below* them). A level set to `0` is off; `0` / `0` turns the check off.
 
 ## General
 
@@ -67,7 +67,7 @@ Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on
 
 | Field | Default | What it does | Check |
 |---|---|---|---|
-| `Snapshot.Enabled` | `true` | Reads the snapshots of every guest (one API call per VM/CT). `false` skips the checks below. | — |
+| `Snapshot.Enabled` | `true` | Reads the snapshots of every guest (one API call per VM/CT). `false` skips all snapshot checks. | `WG0021`, `WG0022`, `WG0023`, `WG0024`, `WG0035` |
 | `Snapshot.MaxAgeDays` | `30` | Warns about snapshots older than N days. `0` turns it off. | `WG0023` |
 | `Snapshot.MaxCount` | `10` | Warns when a guest has more than N snapshots. `0` turns it off. | `WG0024` |
 
@@ -92,7 +92,7 @@ Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on
 | `Node.Rrd.Pressure.MemoryFull` | `5` / `15` | PSI memory full (PVE 9.0+). | `WN0033`/`CN0033` |
 | `Node.Rrd.TimeFrame` | `Day` | RRD window for the averages: `Hour`, `Day`, `Week`, `Month`, `Year`. | — |
 | `Node.Rrd.Consolidation` | `Average` | `Average` smooths peaks, `Maximum` catches them. | — |
-| `Node.MaxVCpuRatio` | `4.0` | vCPUs of the guests divided by physical CPUs, above which the node is overcommitted. | `WG0036` |
+| `Node.MaxVCpuRatio` | `4.0` | vCPUs of the VMs on the node (running or stopped, templates and containers excluded) divided by its physical CPUs, above which the node is overcommitted. | `WG0036` |
 | `Node.ConsolidationCpuThreshold` | `10.0` | Current node CPU %… | `IN0003` |
 | `Node.ConsolidationMemThreshold` | `20.0` | …and current node RAM % both below these: the node could be consolidated. | `IN0003` |
 | `Node.Smart.Enabled` | `false` | Per-attribute S.M.A.R.T. checks — reallocated, pending, uncorrectable sectors, CRC errors, temperature. One extra API call per disk. | `WN0020`–`WN0022`, `CN0008`, `CN0009`, `WN0019`/`CN0019` |
