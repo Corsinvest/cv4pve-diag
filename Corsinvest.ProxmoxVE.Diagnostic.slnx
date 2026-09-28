@@ -15,11 +15,11 @@
   </Folder>
   <Folder Name="/docs/">
     <File Path="docs/src/content/docs/checks/index.md" />
-    <File Path="docs/src/content/docs/checks/cluster.md" />
-    <File Path="docs/src/content/docs/checks/node.md" />
-    <File Path="docs/src/content/docs/checks/storage.md" />
-    <File Path="docs/src/content/docs/checks/vm.md" />
-    <File Path="docs/src/content/docs/checks/container.md" />
+    <File Path="docs/src/content/docs/checks/cluster.mdx" />
+    <File Path="docs/src/content/docs/checks/node.mdx" />
+    <File Path="docs/src/content/docs/checks/storage.mdx" />
+    <File Path="docs/src/content/docs/checks/vm.mdx" />
+    <File Path="docs/src/content/docs/checks/container.mdx" />
     <File Path="docs/src/content/docs/compliance/index.mdx" />
     <File Path="docs/src/content/docs/ignored-issues.md" />
     <File Path="docs/src/content/docs/settings.md" />
