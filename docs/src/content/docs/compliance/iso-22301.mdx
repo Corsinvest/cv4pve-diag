@@ -1,0 +1,26 @@
+---
+title: "ISO 22301"
+description: "ISO 22301:2019 — Business continuity management systems — the controls cv4pve-diag gives evidence for."
+---
+
+**ISO 22301:2019 — Business continuity management systems.** Run with `--compliance=Iso22301` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: 8.3.4, 8.3.5, 8.4.5, 8.5, 9.1
+
+Official text: [ISO 22301:2019](https://www.iso.org/standard/75106.html).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Only the clauses a cluster configuration can give evidence for. Clause numbers and titles come from the published table of contents; the requirement text is not public. The standard is under revision (ISO/CD 22301).
+
+| Clause | Title | Where it appears |
+|---|---|---|
+| 8.3.4 | Resource requirements | Storage usage, thin provisioning |
+| 8.3.5 | Implementation of solutions | Backup jobs and coverage, HA, replication, quorum, single-node |
+| 8.4.5 | Recovery | (declared) |
+| 8.5 | Exercise programme | (declared — restore and failover tests are not visible from the API) |
+| 9.1 | Monitoring, measurement, analysis and evaluation | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

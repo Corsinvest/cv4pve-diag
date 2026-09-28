@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@astrojs/starlight": "^0.42.4",
-    "@corsinvest/cv4pve-docs-theme": "github:Corsinvest/cv4pve-docs-theme#semver:^1.0.0",
+    "@corsinvest/cv4pve-docs-theme": "github:Corsinvest/cv4pve-docs-theme#semver:^2.0.0",
     "astro": "^7.3.5"
   }
 }

@@ -1,0 +1,36 @@
+---
+title: "ACN NIS2 (Italy)"
+description: "ACN — NIS2 basic security measures (Italy) — the controls cv4pve-diag gives evidence for."
+---
+
+**ACN — NIS2 basic security measures (Italy).** Run with `--compliance=Acn` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: ID.AM-02, ID.RA-08, ID.IM-04, PR.AA-01/03/05, PR.DS-02/11, PR.PS-01/02/04, PR.IR-01, DE.CM-01
+
+Official text: [ACN — NIS](https://www.acn.gov.it/portale/nis).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+The measures Italian NIS2 entities must apply under D.Lgs. 138/2024 art. 24, set by **Determinazione ACN n. 379907 of 19 December 2025** (in force from 15 January 2026, replacing n. 164179/2025). Allegato 1 applies to *soggetti importanti*, Allegato 2 to *soggetti essenziali*; Allegato 2 contains every requirement of Allegato 1 plus further ones. Identifiers are the Framework Nazionale / NIST CSF 2.0 subcategory codes the annexes use; each measure has numbered requirements (*punti*), which the report does not split.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| ID.AM-02 | Inventory of software, services and systems | (declared) |
+| ID.RA-08 | Vulnerability disclosures received, analysed and remediated | CVE checks |
+| ID.IM-04 | Business continuity and disaster recovery plans (backups, redundancy) | HA, replication, quorum, single-node, storage availability |
+| PR.AA-01 | Identity and credential management | Account lifecycle, user and API token expiration |
+| PR.AA-03 | Authentication, multi-factor for relevant systems | TFA (root@pam, admins, group, realm) |
+| PR.AA-05 | Least privilege and separate privileged accounts | ACL, container privileged, root@pam token privsep |
+| PR.DS-02 | Protection of data in transit (encryption) | Certificates (expired / expiring), TLS |
+| PR.DS-11 | Backups created, protected, maintained and tested | All backup checks, backup storage availability, disk cache integrity |
+| PR.PS-01 | Secure configuration baselines (essential entities only) | Container isolation, patch consistency across nodes |
+| PR.PS-02 | Supported software and timely security updates | Patch, PVE and OS end of life, CVE, important updates, outdated machine type |
+| PR.PS-04 | Logs generated and kept for continuous monitoring | Cluster log, task history, firewall audit logging |
+| PR.IR-01 | Networks protected from unauthorised access (firewalls) | Cluster/node firewall, guest firewall, duplicate MAC |
+| DE.CM-01 | Networks and services monitored | Metric server, services, NTP |
+
+The measures have no requirement for time synchronisation, capacity management or a log retention period, so those findings carry no ACN control.
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

@@ -1,0 +1,35 @@
+---
+title: "NIS2 Implementing Regulation"
+description: "NIS2 Implementing Regulation (EU) 2024/2690 — the controls cv4pve-diag gives evidence for."
+---
+
+**NIS2 Implementing Regulation (EU) 2024/2690.** Run with `--compliance=Nis2Ir` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: 3.2, 4.1, 4.2, 6.3, 6.6, 6.7, 6.8, 6.10, 9, 11.2, 11.3, 11.5, 11.7, 12.4
+
+Official text: [Implementing Regulation (EU) 2024/2690](https://eur-lex.europa.eu/eli/reg_impl/2024/2690/oj).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+The technical and methodological requirements of the NIS2 risk-management measures (Directive (EU) 2022/2555, Art. 21(5)) for DNS service providers, TLD name registries, cloud computing, data centre and content delivery network providers, managed and managed security service providers, online marketplaces, search engines, social networks and trust service providers. For these entities it details what Art. 21 asks in general terms. Identifiers are the points of the Annex that carry a title; numbering and titles as in ENISA's technical implementation guidance (June 2025).
+
+| Point | Title | Where it appears |
+|---|---|---|
+| 3.2 | Monitoring and logging | Cluster log, task history, firewall audit logging, metric server, node time sync (3.2.6) |
+| 4.1 | Business continuity and disaster recovery plan | (declared) |
+| 4.2 | Backup and redundancy management | All backup checks, HA, replication, quorum, single-node |
+| 6.3 | Configuration management | Container isolation, patch consistency across nodes |
+| 6.6 | Security patch management | Patch, PVE and OS end of life, important updates, outdated machine type |
+| 6.7 | Network security | Cluster/node firewall, guest firewall |
+| 6.8 | Network segmentation | Guest firewall, duplicate MAC |
+| 6.10 | Vulnerability handling and disclosure | CVE checks |
+| 9 | Cryptography | Certificates, TLS |
+| 11.2 | Management of access rights | ACL, pools, container isolation |
+| 11.3 | Privileged accounts and system administration accounts | Privileged ACL, root@pam token privsep |
+| 11.5 | Identification | Account lifecycle, user and API token expiration |
+| 11.7 | Multi-factor authentication | TFA |
+| 12.4 | Asset inventory | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

@@ -1,0 +1,28 @@
+---
+title: "CIS Controls"
+description: "CIS Controls v8 — the controls cv4pve-diag gives evidence for."
+---
+
+**CIS Controls v8.** Run with `--compliance=Cis` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: CIS 3, 4, 5, 6, 7, 8, 10, 11, 12, 13
+
+Official text: [CIS Controls v8](https://www.cisecurity.org/controls/v8).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| CIS 3 | Data Protection | Certificates, disk cache integrity |
+| CIS 4 | Secure Configuration of Enterprise Assets | Container isolation |
+| CIS 5 | Account Management | Account lifecycle, user notifications |
+| CIS 6 | Access Control Management | TFA, ACL, container privileged |
+| CIS 7 | Continuous Vulnerability Management | Patch, CVE |
+| CIS 8 | Audit Log Management | Cluster log, task failures, NTP, firewall audit logging |
+| CIS 11 | Data Recovery | Backup, HA, replication, single-node |
+| CIS 12 | Network Infrastructure Management | Firewall, duplicate MAC |
+| CIS 13 | Network Monitoring and Defense | Firewall |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

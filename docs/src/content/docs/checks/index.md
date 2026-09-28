@@ -21,7 +21,7 @@ cv4pve-diag runs 170+ checks, grouped by the kind of object they look at. Each a
 
 > Checks tagged with compliance controls (ISO 27001 / NIS2 / DORA / PCI DSS, …) attach the mapping to the finding. See [Compliance Mapping](/cv4pve-diag/compliance/).
 
-> With `IncludeOkResult: true` in [Settings](/cv4pve-diag/settings/#including-ok-results), every check also emits an Ok result when it passes — useful for full audit reports.
+> With `IncludeOkResult: true` in [Settings](/cv4pve-diag/settings/#general), every check also emits an Ok result when it passes — useful for full audit reports.
 
 ### Code nomenclature
 

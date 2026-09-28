@@ -25,13 +25,29 @@ cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=UUID' execute
 
 ## Run
 
+cv4pve-diag has three commands:
+
+| Command | What it does |
+|---|---|
+| `execute` | Analyses the cluster and prints the report. `--fast` and `--full` choose the [profile](/cv4pve-diag/settings/#profiles). |
+| `create-settings` | Writes `settings.json` with the default thresholds (or those of `--fast` / `--full`), to edit and pass with `--settings-file` — see [Settings](/cv4pve-diag/settings/). |
+| `create-ignored-issues` | Writes `ignored-issues.json` with an example rule, to edit and pass with `--ignored-issues-file` — see [Ignore rules](/cv4pve-diag/ignored-issues/). |
+
+The two `create-` commands need no connection to the cluster.
+
 ```bash
 cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute           # standard profile
 cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute --fast    # quick scan of a large cluster
 cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute --full    # everything, for audits
+
+# Your own thresholds and accepted findings
+cv4pve-diag create-settings                 # then edit settings.json
+cv4pve-diag create-ignored-issues           # then edit ignored-issues.json
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' \
+  --settings-file=settings.json --ignored-issues-file=ignored-issues.json execute
 ```
 
-`--fast` and `--full` go **after** `execute`. What they change, and every threshold, is in [Settings](../settings/). Findings you have reviewed and accepted can be hidden with [ignore rules](../ignored-issues/).
+`--fast` and `--full` go **after** the command. A settings file always wins over them.
 
 ## Output
 
@@ -69,7 +85,7 @@ Each JSON entry has the fields `Id`, `Code`, `Description`, `Context`, `SubConte
 | **Description** | What is wrong, with the values found. |
 | **Context** | Kind of object: `Cluster`, `Node`, `Storage`, `Qemu` (VM), `Lxc` (container). |
 | **SubContext** | Area of the check: Backup, HA, Firewall, Usage, … |
-| **Gravity** | `Critical` — fix now, it risks data or availability. `Warning` — wrong or risky, not yet failing. `Info` — best-practice advice. `Ok` — the check passed (only with [`IncludeOkResult`](../settings/#including-ok-results)). |
+| **Gravity** | `Critical` — fix now, it risks data or availability. `Warning` — wrong or risky, not yet failing. `Info` — best-practice advice. `Ok` — the check passed (only with [`IncludeOkResult`](../settings/#general)). |
 
 Two more columns appear only when asked for:
 

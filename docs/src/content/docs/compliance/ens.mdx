@@ -1,0 +1,39 @@
+---
+title: "ENS (Spain)"
+description: "ENS — Esquema Nacional de Seguridad (Spanish Public Administration baseline, Real Decreto 311/2022) — the controls cv4pve-diag gives evidence for."
+---
+
+**ENS — Esquema Nacional de Seguridad (Spanish Public Administration baseline, Real Decreto 311/2022).** Run with `--compliance=Ens` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: op.acc.1/2/6, op.exp.1/2/3/4/5/8/9, op.cont.2/3/4, op.pl.4, op.mon.3, mp.com.1/2, mp.info.6
+
+Official text: [Real Decreto 311/2022](https://www.boe.es/eli/es/rd/2022/05/03/311).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of ENS Annex II measures verifiable on a Proxmox VE cluster. Identifiers and titles follow Annex II of RD 311/2022: `op.*` operational framework, `mp.*` protection measures.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| op.acc.1 | Identification | Account lifecycle, user expiration, API token expiration |
+| op.acc.2 | Access requirements | ACL, container privileged, root@pam token privsep |
+| op.acc.6 | Authentication mechanism (organisation users) | TFA (root@pam, admins, group, realm) |
+| op.exp.1 | Inventory of assets | (declared) |
+| op.exp.2 | Security configuration | Container privileged, raw lxc config, hardening |
+| op.exp.3 | Security configuration management | Patch consistency across nodes, version/kernel mismatch |
+| op.exp.4 | Maintenance and security updates | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| op.exp.5 | Change management | (declared) |
+| op.exp.8 | Activity logging | Cluster log, task history, firewall audit logging, metric server |
+| op.exp.9 | Incident management logging | (declared) |
+| op.cont.2 | Continuity plan | HA, replication, single-node, HA guest checks |
+| op.cont.3 | Periodic tests | (declared) |
+| op.cont.4 | Alternative means | HA, replication, quorum, redundant network and storage |
+| op.pl.4 | Capacity sizing and management | Storage usage, thin provisioning |
+| op.mon.3 | Surveillance | Metric server, task failures, services, storage availability |
+| mp.com.1 | Secure perimeter | Cluster/node firewall, guest firewall, malware-defence baseline |
+| mp.com.2 | Protection of confidentiality | Certificates (expired / expiring), TLS |
+| mp.info.6 | Backup copies | All backup checks, backup storage availability, disk cache integrity |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

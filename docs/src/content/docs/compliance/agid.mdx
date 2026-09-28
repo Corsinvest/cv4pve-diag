@@ -1,0 +1,32 @@
+---
+title: "AgID (Italy)"
+description: "AgID — Misure minime ICT per le PA (Italian Public Administration baseline) — the controls cv4pve-diag gives evidence for."
+---
+
+**AgID — Misure minime ICT per le PA (Italian Public Administration baseline).** Run with `--compliance=AgId` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1
+
+Official text: [Misure minime di sicurezza ICT](https://www.agid.gov.it/it/sicurezza/misure-minime-sicurezza-ict).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation cluster.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| ABSC 2.3 | Authorised software list and EOL tracking | OS not maintained, PVE EOL, CVE |
+| ABSC 3.1 | Use secure standard configurations | Container privileged, raw lxc config |
+| ABSC 3.2 | Keep configurations aligned and up to date | Patch, version/kernel/package mismatch |
+| ABSC 4.1 / 4.4 | Vulnerability scanning and remediation | CVE, important updates |
+| ABSC 5.1 | Limit administrative privileges | ACL, container privileged, root@pam token privsep |
+| ABSC 5.2 | Track administrator actions | Cluster log, task history, firewall audit logging |
+| ABSC 5.7 | MFA for administrators | TFA (root@pam, admin, group, realm) |
+| ABSC 5.10 | Limit local authentication and credential lifetime | Local user expiration, API token expiration |
+| ABSC 8.1 | Defences against malware (network baseline) | Firewall, patch |
+| ABSC 10.1 / 10.3 / 10.4 | Backup execution, integrity, and protection | All backup checks, backup storage availability |
+| ABSC 13.1 | Encrypt sensitive data in transit and at rest | Certificates |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

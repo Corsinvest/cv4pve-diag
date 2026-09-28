@@ -3,22 +3,18 @@ title: Permissions
 description: The Proxmox VE user, API token and privileges cv4pve-diag needs — and why PVEAuditor alone cannot see backups.
 ---
 
-import ApiTokenSetup from '@corsinvest/cv4pve-docs-theme/components/ApiTokenSetup.astro';
-
 cv4pve-diag reads the cluster through the API, so what it can check is exactly what its account is
 allowed to see. Use a dedicated user with an API token rather than `root@pam`.
 
-## Create the user and the token
+## User and token
 
-<ApiTokenSetup
-  tool="cv4pve-diag"
-  user="diag@pve"
-  role="CV4PVEDiag"
-  tokenId="audit"
-  privileges={['VM.Audit','Datastore.Audit','Sys.Audit','Pool.Audit','Datastore.AllocateSpace','VM.Backup','Sys.Modify']}
-/>
+Create a [user](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_users) or an [API token](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens) and [assign it](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_permission_management) the privileges below, on `/`.
 
-A token that sees an empty cluster makes cv4pve-diag report `WC0020` for every privilege.
+:::caution[Tokens with privilege separation]
+A token with privilege separation (the default in the web UI) does **not** inherit the user's
+permissions: grant the role to the token too, or cv4pve-diag sees an empty cluster and reports
+`WC0020` for every privilege.
+:::
 
 ## Privileges
 

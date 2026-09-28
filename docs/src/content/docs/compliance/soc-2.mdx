@@ -1,0 +1,36 @@
+---
+title: "SOC 2"
+description: "SOC 2 — AICPA Trust Services Criteria (2017 + 2022 revision) — the controls cv4pve-diag gives evidence for."
+---
+
+**SOC 2 — AICPA Trust Services Criteria (2017 + 2022 revision).** Run with `--compliance=Soc2` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: CC6.1/2/3/6/7/8, CC7.1/2/3, CC8.1, A1.1/2/3, C1.1/2
+
+Official text: [SOC 2](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of TSC criteria verifiable on a Proxmox VE cluster. Categories: CC = Common Criteria, A = Availability, C = Confidentiality.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| CC6.1 | Logical access security | TFA (root@pam, admins, group, realm) |
+| CC6.2 | Authentication and authorization | Account lifecycle, user expiration, API token expiration |
+| CC6.3 | Access request authorization | ACL, container privileged, root@pam token privsep |
+| CC6.6 | Boundary protection | Cluster/node firewall, guest firewall, malware-defence baseline |
+| CC6.7 | Information transmission controls | Certificates (expired / expiring), TLS |
+| CC6.8 | Malicious software prevention | (declared — overlaps with patch/firewall checks) |
+| CC7.1 | Vulnerability and configuration monitoring | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| CC7.2 | System monitoring | Cluster log, task history, firewall audit logging, metric server (IC0018/IC0019) |
+| CC7.3 | Security event evaluation | (declared) |
+| CC8.1 | Change management | Patch consistency across nodes, version/kernel mismatch, container raw config |
+| A1.1 | Capacity planning | HA, single-node, container isolation |
+| A1.2 | Backup and recovery infrastructure | HA, replication, single-node, all backup checks |
+| A1.3 | Recovery plan testing | (declared) |
+| C1.1 | Confidential information management | (declared — overlaps with backup/PII checks) |
+| C1.2 | Confidential information disposal | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

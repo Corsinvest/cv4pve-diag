@@ -1,9 +1,8 @@
 ---
-import { Badge } from '@astrojs/starlight/components';
+import TerminalTable from '@corsinvest/cv4pve-docs-theme/components/TerminalTable.astro';
 
 /*
- * An excerpt of a real report, to explain it on the docs pages: a plain table styled by Starlight,
- * with Starlight badges for the gravity. The command that produces it is a code block in the page.
+ * An excerpt of a real report, to explain it on the docs pages, shown with the theme's TerminalTable.
  *
  * Rows come from a real run (the README example). Columns are the real ones, but reordered to read
  * left to right as "how bad → which control → which check → where → what": the actual text output
@@ -73,9 +72,6 @@ const allRows: {
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
 ];
 
-/** Starlight badge variant for each gravity. */
-const VARIANT = { Critical: 'danger', Warning: 'caution', Info: 'note', Ok: 'success' } as const;
-
 const SAMPLE = ['CC0004', 'CG0002', 'WN0013', 'WS0001', 'WS0002', 'WG0037', 'IC0002', 'IN0001', 'WC0001', 'WC0003', 'WG0017'];
 
 // The compliance view filters the same rows the plain view shows, as the real --compliance does.
@@ -84,52 +80,21 @@ const shown = (short ? allRows.filter((r) => SAMPLE.includes(r.code)) : allRows)
   .filter((r) => withOk || !r.ok);
 const rows = standard ? shown.filter((r) => r.controls?.[standard]) : shown;
 
+const command = `cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…'${standard ? ` --compliance=${standard}` : ''} execute${ok ? ' --full' : ''}`;
+const columns = [
+  { label: 'Gravity', style: 'badge' as const },
+  ...(standard ? [{ label: 'ControlId', style: 'accent' as const }] : []),
+  { label: 'Code', style: 'code' as const },
+  { label: 'Id', style: 'muted' as const },
+  { label: 'Description', style: 'wrap' as const },
+  { label: 'Context' },
+  { label: 'SubContext' },
+];
+const cells = rows.map((r) => [r.gravity, ...(standard ? [r.controls?.[standard] ?? ''] : []), r.code, r.id, r.text, r.context, r.sub]);
+const footNote = withOk && note
+  ? 'One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding in the same row. <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.'
+  : undefined;
+
 ---
 
-<table class="report">
-  <thead>
-    <tr>
-      <th>Gravity</th>
-      {standard && <th>ControlId</th>}
-      <th>Code</th><th>Id</th><th>Description</th><th>Context</th><th>SubContext</th>
-    </tr>
-  </thead>
-  <tbody>
-    {
-      rows.map((r) => (
-        <tr>
-          <td><Badge text={r.gravity} variant={VARIANT[r.gravity as keyof typeof VARIANT]} /></td>
-          {standard && <td><strong>{r.controls?.[standard]}</strong></td>}
-          <td><code>{r.code}</code></td>
-          <td><code>{r.id}</code></td>
-          <td class="desc">{r.text}</td>
-          <td>{r.context}</td>
-          <td>{r.sub}</td>
-        </tr>
-      ))
-    }
-  </tbody>
-</table>
-{
-  withOk && note && (
-    <p>
-      One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding
-      in the same row. <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.
-    </p>
-  )
-}
-
-<style>
-  /* One line per cell, as in the tool output; only the description wraps. The table scrolls
-     sideways on narrow screens (Starlight makes content tables scrollable). */
-  .report {
-    white-space: nowrap;
-  }
-  .report td {
-    vertical-align: middle;
-  }
-  .report .desc {
-    white-space: normal;
-    min-width: 18rem;
-  }
-</style>
+<TerminalTable command={command} columns={columns} rows={cells} note={footNote} />

@@ -1,46 +1,28 @@
 ---
-title: Settings Reference
-description: Every field of the cv4pve-diag settings file, its default and what it changes.
+title: Settings
+description: Every field of the cv4pve-diag settings file — default, effect and the checks it drives.
 ---
 
-`cv4pve-diag` runs with a default settings profile that produces a useful baseline on most clusters. For more control you can pass a JSON settings file via `--settings-file=/path/settings.json`.
-
-This document describes every field, its default, and what changes when you tune it.
-
----
-
-## Including Ok results
-
-The `IncludeOkResult` top-level flag controls whether passing checks also produce a result entry:
-
-- `false` (default) — only failures are reported.
-- `true` — checks also report an `Ok` result (`Gravity = Ok`) when they pass. Useful for audit reports where you need to prove that controls were verified, not just violated. A few checks never report Ok: the S.M.A.R.T. attribute checks, LVM-thin metadata, `WC0020`, and any threshold check disabled with `0/0`.
-
-See [Compliance Mapping](../compliance/) for the catalog of compliance mappings attached to each check.
-
----
+cv4pve-diag works with sensible defaults. To change thresholds, turn optional checks on or off, or tune
+performance, pass a JSON settings file with `--settings-file`.
 
 ## Profiles
 
-Three built-in profiles cover the common cases. Use them on `execute` — they go **after** the command — or as the starting point of a settings file:
+Three built-in profiles cover the common cases. Use them on `execute` — they go **after** the command —
+or as the starting point of a settings file:
 
 | Profile | Option | What it does | For |
 |---|---|---|---|
 | **Fast** | `--fast` | Skips backup content, snapshots and LVM-thin metadata | Quick scan of large clusters |
-| **Standard** | *(default)* | The defaults described below | Daily checks |
+| **Standard** | *(default)* | The defaults below | Daily checks |
 | **Full** | `--full` | Also S.M.A.R.T. details, ZFS pool details, NVD CVE lookup (needs internet access) and Ok results | Audits, full verification |
-
-```bash
-cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid execute --full
-```
 
 A `--settings-file` always wins over `--fast` / `--full`.
 
----
+## Settings file
 
-## Generate a template
-
-`create-settings` writes `settings.json` in the current folder, with the defaults or with a profile:
+`create-settings` writes `settings.json` in the current folder, with the defaults or with a profile, and
+prints the accepted values of `TimeFrame` and `Consolidation`:
 
 ```bash
 cv4pve-diag create-settings          # Standard
@@ -48,188 +30,113 @@ cv4pve-diag create-settings --fast   # Fast
 cv4pve-diag create-settings --full   # Full
 ```
 
----
-
-## File format
-
-Plain JSON. Unknown fields are ignored. Omitted fields fall back to defaults — you only need to include what you want to override.
+The file is plain JSON. Unknown fields are ignored and omitted fields keep their default, so a file can
+hold only what you change:
 
 ```json
 {
-  "MaxParallelRequests": 5,
-  "ApiTimeout": 0,
-  "IncludeOkResult": false,
-  "Backup": { "Enabled": true, "MaxAgeDays": 60, "RecentDays": 7 },
-  "Snapshot": { "Enabled": true, "MaxCount": 10, "MaxAgeDays": 30 },
-  "Cve": { "NvdEnabled": false, "MinCvssScore": 7.0 }
+  "Backup": { "RecentDays": 1 },
+  "Snapshot": { "MaxAgeDays": 14 },
+  "Cve": { "NvdEnabled": true }
 }
 ```
 
----
+Fields are listed below as `Group.Field`. Thresholds are pairs `{ "Warning": …, "Critical": … }`: the check
+warns above `Warning` and becomes critical above `Critical` (for the health score, *below*); `0` / `0`
+turns the check off.
 
-## Full settings.json with all defaults
+## General
 
-```jsonc
-{
-  "Storage": {
-    "Rrd": { ... },               // written by create-settings but not used: storage checks read the current usage
-    "Threshold": {                // used by WS0001 (storage usage), WN0029 (node root filesystem),
-                                  // WN0030 (node swap) and WN0044 (ZFS pool usage)
-      "Warning": 70,              // usage % above which the check warns
-      "Critical": 85,             // usage % above which it becomes critical
-    },
-  },
-  "Node": {
-    "Smart": {
-      "Enabled": false,                                     // per-attribute SMART checks (temperature, reallocated, pending, CRC, …):
-                                                            // one extra API call per disk per node, off by default
-      "Temperature": { "Warning": 55, "Critical": 65 },     // disk temperature °C (WN0019 / CN0007); set Warning to 0 to skip
-      "SsdWearout":  { "Warning": 70, "Critical": 85 },     // SSD life consumed % (WN0018) — runs even when Enabled is false
-    },
-    "NodeStorage": {
-      "ZfsDetail": false,         // per-pool vdev state and I/O error checks (CN0012, WN0024, WN0025); 1 API call per pool
-      "LvmThinMetadata": true,    // LVM-thin metadata usage check (WN0026 / CN0013); 1 API call per node
-    },
-    "MaxVCpuRatio": 4.0,                  // vCPU overcommit ratio (sum vCPU / physical CPU) above which WG0036 fires
-    "ConsolidationCpuThreshold": 10.0,    // IN0003 fires when current node CPU % is below this
-    "ConsolidationMemThreshold": 20.0,    // ... AND current node RAM % is below this
-    "IoWait": { "Warning": 10, "Critical": 25 }, // average CPU iowait % over the RRD time frame (WN0028)
-    "Rrd": {                                                  // node-specific PSI defaults — tighter than VM/CT (PVE 9.0+ only)
-      "TimeFrame": "Day",
-      "Consolidation": "Average",
-      "Pressure": {
-        "Cpu":        { "Warning": 40, "Critical": 70 },      // PSI CPU some — % time at least one task stalled (WN0031)
-        "IoFull":     { "Warning": 10, "Critical": 30 },      // PSI I/O full (WN0032)
-        "MemoryFull": { "Warning": 5,  "Critical": 15 },      // PSI memory full (WN0033)
-      },
-    },
-    "Cpu":         { "Warning": 70, "Critical": 85 },         // node CPU % over RRD window (WN0027)
-    "Memory":      { "Warning": 70, "Critical": 85 },         // node memory % (WN0038)
-    "Network":     { "Warning": 0,  "Critical": 0  },         // network throughput in bytes/sec, in (WN0039) and out (WN0040); 0 disables
-    "HealthScore": { "Warning": 70, "Critical": 50 },         // composite score (CPU 40% + RAM 40% + disk 20%); lower = worse (WG0032)
-  },
-  "Qemu": {                                                   // VM thresholds — same structure as Node, different defaults
-    "Rrd": {
-      "TimeFrame": "Day",
-      "Consolidation": "Average",
-      "Pressure": {
-        "Cpu":        { "Warning": 50, "Critical": 80 },      // PSI CPU some on the VM (WG0029)
-        "IoFull":     { "Warning": 20, "Critical": 50 },      // PSI I/O full on the VM (WG0030)
-        "MemoryFull": { "Warning": 10, "Critical": 30 },      // PSI memory full on the VM (WG0031)
-      },
-    },
-    "Cpu":         { "Warning": 70, "Critical": 85 },         // VM CPU % over RRD window (WG0025)
-    "Memory":      { "Warning": 70, "Critical": 85 },         // VM memory % (WG0026)
-    "Network":     { "Warning": 0,  "Critical": 0  },         // VM network bytes/sec, in (WG0027) and out (WG0028); 0 disables
-    "HealthScore": { "Warning": 60, "Critical": 40 },         // VM composite score (CPU 50% + RAM 50%) (WG0032)
-  },
-  "Lxc": {                                                    // container thresholds — same structure and defaults as Qemu
-    "Rrd": {
-      "TimeFrame": "Day",
-      "Consolidation": "Average",
-      "Pressure": {
-        "Cpu":        { "Warning": 50, "Critical": 80 },
-        "IoFull":     { "Warning": 20, "Critical": 50 },
-        "MemoryFull": { "Warning": 10, "Critical": 30 },
-      },
-    },
-    "Cpu":         { "Warning": 70, "Critical": 85 },
-    "Memory":      { "Warning": 70, "Critical": 85 },
-    "Network":     { "Warning": 0,  "Critical": 0  },
-    "HealthScore": { "Warning": 60, "Critical": 40 },
-  },
-  "Snapshot": {
-    "Enabled": true,                  // master switch; false skips the snapshot fetch (one API call per VM/CT)
-    "MaxCount": 10,                   // warn (WG0023) when a guest has more than N snapshots; 0 disables
-    "MaxAgeDays": 30,                 // warn (WG0024) when a snapshot is older than N days; 0 disables
-  },
-  "Backup": {
-    "Enabled": true,                  // master switch; false skips the per-storage backup content fetch (no WG0019/WG0020/WS0003)
-    "MaxAgeDays": 60,                 // warn (WG0019) when backup files are older than N days; 0 disables
-    "RecentDays": 7,                  // warn (WG0020) when no backup exists within N days for a guest (RPO violation); 0 disables
-  },
-  "MaxParallelRequests": 5,           // max parallel API requests; set to 1 for sequential mode (slower, easier to debug)
-  "ApiTimeout": 0,                    // per-request HTTP timeout in seconds; 0 uses the SDK default (~100s)
-  "IncludeOkResult": false,           // when true every check also emits an Ok result on success — useful for full audit-style reports (see compliance.md)
-  "Cve": {
-    "NvdEnabled": false,              // check for CVEs specific to Proxmox VE (NVD API 2.0); requires internet access from the host running cv4pve-diag
-    "MinCvssScore": 7.0,              // ignore CVEs below this CVSS score; 0 reports everything (very noisy). CN0015 ≥ 9.0, WN0042 below 9.0
-  },
-}
-```
+| Field | Default | What it does |
+|---|---|---|
+| `MaxParallelRequests` | `5` | API requests run in parallel. Higher is faster but loads Proxmox VE and uses more memory — 5 to 15 is a reasonable range; `1` runs sequentially. |
+| `ApiTimeout` | `0` | Per-request timeout in seconds; `0` keeps the default of about 100 s. Raise it on slow or high-latency clusters. |
+| `IncludeOkResult` | `false` | Also report passing checks, with gravity `Ok` — for audit reports that must show what was verified. A few checks never report Ok: the S.M.A.R.T. attribute checks, LVM-thin metadata, `WC0020`, and any threshold set to `0/0`. |
 
-### Allowed values
+## Backup
 
-- `TimeFrame`: `Hour`, `Day`, `Week`, `Month`, `Year` — the RRD window the averages are computed on.
-- `Consolidation`: `Average` (smooths peaks) or `Maximum` (catches peaks).
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Backup.Enabled` | `true` | Reads the backup files on every storage. `false` skips that read and the checks below. | — |
+| `Backup.MaxAgeDays` | `60` | Warns about backup files older than N days (protected backups excluded). `0` turns it off. | `WG0019` |
+| `Backup.RecentDays` | `7` | Warns when a guest has no backup in the last N days. `0` turns it off. | `WG0020` |
 
-`create-settings` prints both lists. LVM-thin metadata limits (`WN0026` at 90%, `CN0013` at 95%) are fixed and cannot be changed.
+Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on.
 
-### Health Score Formula
+## Snapshot
+
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Snapshot.Enabled` | `true` | Reads the snapshots of every guest (one API call per VM/CT). `false` skips the checks below. | — |
+| `Snapshot.MaxAgeDays` | `30` | Warns about snapshots older than N days. `0` turns it off. | `WG0023` |
+| `Snapshot.MaxCount` | `10` | Warns when a guest has more than N snapshots. `0` turns it off. | `WG0024` |
+
+## Storage
+
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Storage.Threshold` | `70` / `85` | Usage % of storages, of the node root filesystem, of node swap and of ZFS pools. | `WS0001`, `WN0029`, `WN0030`, `WN0044` |
+| `Storage.Rrd` | — | Written by `create-settings` but not used: storage checks read the current usage. | — |
+
+## Node
+
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Node.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WN0027` |
+| `Node.Memory` | `70` / `85` | Memory usage %. | `WN0038` |
+| `Node.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WN0039`, `WN0040` |
+| `Node.IoWait` | `10` / `25` | Average CPU I/O wait % — a sign of a storage bottleneck. | `WN0028` |
+| `Node.HealthScore` | `70` / `50` | Composite score, see [health score](#health-score). Lower is worse. | `WG0032` |
+| `Node.Rrd.Pressure.Cpu` | `40` / `70` | PSI CPU: % of time at least one task was stalled (PVE 9.0+). | `WN0031` |
+| `Node.Rrd.Pressure.IoFull` | `10` / `30` | PSI I/O full (PVE 9.0+). | `WN0032` |
+| `Node.Rrd.Pressure.MemoryFull` | `5` / `15` | PSI memory full (PVE 9.0+). | `WN0033` |
+| `Node.Rrd.TimeFrame` | `Day` | RRD window for the averages: `Hour`, `Day`, `Week`, `Month`, `Year`. | — |
+| `Node.Rrd.Consolidation` | `Average` | `Average` smooths peaks, `Maximum` catches them. | — |
+| `Node.MaxVCpuRatio` | `4.0` | vCPUs of the guests divided by physical CPUs, above which the node is overcommitted. | `WG0036` |
+| `Node.ConsolidationCpuThreshold` | `10.0` | Current node CPU %… | `IN0003` |
+| `Node.ConsolidationMemThreshold` | `20.0` | …and current node RAM % both below these: the node could be consolidated. | `IN0003` |
+| `Node.Smart.Enabled` | `false` | Per-attribute S.M.A.R.T. checks — reallocated, pending, uncorrectable sectors, CRC errors, temperature. One extra API call per disk. | `WN0020`–`WN0022`, `CN0008`, `CN0009`, `WN0019`/`CN0007` |
+| `Node.Smart.Temperature` | `55` / `65` | Disk temperature °C; `Warning` `0` skips it. | `WN0019` / `CN0007` |
+| `Node.Smart.SsdWearout` | `70` / `85` | SSD life consumed %. Runs even when `Smart.Enabled` is off. | `WN0018` |
+| `Node.NodeStorage.ZfsDetail` | `false` | Per-pool vdev state and I/O errors. One API call per pool. | `CN0012`, `WN0024`, `WN0025` |
+| `Node.NodeStorage.LvmThinMetadata` | `true` | LVM-thin metadata usage, fixed limits 90% / 95%. One API call per node. | `WN0026` / `CN0013` |
+
+## VM and container
+
+`Qemu` (VMs) and `Lxc` (containers) have the same fields, with the same defaults.
+
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Qemu.Cpu`, `Lxc.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WG0025` |
+| `Qemu.Memory`, `Lxc.Memory` | `70` / `85` | Memory usage %. | `WG0026` |
+| `Qemu.Network`, `Lxc.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WG0027`, `WG0028` |
+| `Qemu.HealthScore`, `Lxc.HealthScore` | `60` / `40` | Composite score, see [health score](#health-score). Lower is worse. | `WG0032` |
+| `….Rrd.Pressure.Cpu` | `50` / `80` | PSI CPU inside the guest (PVE 9.0+). | `WG0029` |
+| `….Rrd.Pressure.IoFull` | `20` / `50` | PSI I/O full (PVE 9.0+). | `WG0030` |
+| `….Rrd.Pressure.MemoryFull` | `10` / `30` | PSI memory full (PVE 9.0+). | `WG0031` |
+| `….Rrd.TimeFrame`, `….Rrd.Consolidation` | `Day`, `Average` | As for nodes. | — |
+
+## CVE
+
+| Field | Default | What it does | Check |
+|---|---|---|---|
+| `Cve.NvdEnabled` | `false` | Looks up the CVEs that affect the installed `pve-manager` version in the NVD (National Vulnerability Database). Needs internet access; no API key. | `CN0015`, `WN0042` |
+| `Cve.MinCvssScore` | `7.0` | Ignores CVEs below this CVSS score; `0` reports everything (very noisy). Score ≥ 9.0 is Critical (`CN0015`), anything lower Warning (`WN0042`). | — |
+
+The lookup covers Proxmox VE itself (`cpe:2.3:a:proxmox:virtual_environment`). For the Debian packages of
+the nodes run [`debsecan`](https://manpages.debian.org/bookworm/debsecan/debsecan.1.en.html) on each node:
+the Proxmox VE API does not expose the full list of installed packages.
+
+## Health score
 
 ```
 Node  score = 100 - (cpu% × 0.4 + ram% × 0.4 + disk% × 0.2)
 VM/CT score = 100 - (cpu% × 0.5 + ram% × 0.5)
 ```
 
-Set `Warning` and `Critical` to `0` to disable health score checks entirely.
+PSI checks are skipped on Proxmox VE before 9.0, where those values are always zero.
 
-> **PSI Pressure** (PVE 9.0+): Linux Pressure Stall Information metrics. Checks are automatically skipped on older PVE versions where the values are always zero.
-
----
-
-## Performance Tuning
-
-By default the diagnostic runs up to **5 parallel API requests** (`MaxParallelRequests = 5`). This works well for most clusters, but you can tune it to match your environment.
-
-### Speed up the diagnostic
-
-Increase `MaxParallelRequests` to fetch more data at the same time:
-
-```jsonc
-"MaxParallelRequests": 10
-```
-
-> **Don't go too high.** Each parallel request is a real HTTP call to Proxmox. Too many at once can slow down the API, increase memory usage on both sides, and make the diagnostic less stable. Values between 5 and 15 are a reasonable range.
-
-### Handle slow or high-latency clusters
-
-Parallelism means more simultaneous requests — if your cluster is slow or the network has high latency, some calls may time out. Increase `ApiTimeout` to give them more time:
-
-```jsonc
-"ApiTimeout": 300   // seconds (0 = 100s default)
-```
-
-### Summary
-
-| Setting | Effect | Default |
-|---------|--------|---------|
-| `MaxParallelRequests` ↑ | Faster, but more load on Proxmox and higher memory usage | 5 |
-| `ApiTimeout` ↑ | Avoids timeouts on slow/high-latency clusters | 100s |
-
----
-
-## CVE Scanning
-
-cv4pve-diag can optionally check your cluster for Proxmox VE specific CVEs via the NVD (National Vulnerability Database) API. **Disabled by default**, requires internet access at runtime, no API key needed.
-
-```jsonc
-"Cve": {
-  "NvdEnabled": true,
-  "MinCvssScore": 7.0   // ignore CVEs below this score
-}
-```
-
-- CVSS score ≥ 9.0 → **Critical** (`CN0015`)
-- any lower score, down to `MinCvssScore` → **Warning** (`WN0042`)
-
-Only CVEs that apply to your installed `pve-manager` version are reported (matched against the NVD version range).
-
-> **Scope.** This check covers Proxmox VE itself (`cpe:2.3:a:proxmox:virtual_environment`). For a Debian-wide system package audit run [`debsecan`](https://manpages.debian.org/bookworm/debsecan/debsecan.1.en.html) directly on each node — PVE's REST API does not expose the full installed package set, so it is not something diag can do remotely.
-
----
-
-## Recommended overrides by scenario
+## Recommended overrides
 
 **Production cluster, conservative**
 
@@ -259,7 +166,7 @@ Only CVEs that apply to your installed `pve-manager` version are reported (match
 }
 ```
 
-**Slow / metered API connection**
+**Slow or high-latency connection**
 
 ```json
 {
