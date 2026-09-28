@@ -2,7 +2,7 @@
 
 ---
 
-## [Unreleased]
+## [2.7.0] — 2026-09-28
 
 ### Critical codes for threshold checks
 
@@ -27,6 +27,11 @@ Changed codes:
 - The critical codes that already existed take the number of their warning code: disk temperature `CN0007` → `CN0019` (`WN0019`), LVM-thin metadata `CN0013` → `CN0026` (`WN0026`), CVE `CN0015` → `CN0042` (`WN0042`).
 
 Retired codes, not reused: `WS0001`, `CN0007`, `CN0013`, `CN0015`.
+
+### Documentation
+
+- New documentation site: 📖 **[Documentation](https://corsinvest.github.io/cv4pve-diag/)**.
+- New product icon.
 
 ---
 
