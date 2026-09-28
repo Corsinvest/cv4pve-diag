@@ -41,7 +41,7 @@ For this reason `cv4pve-diag` reports the related findings on single-node setups
 | `IC0002` | Only when the node is part of a corosync cluster (a one-node cluster): no HA resources configured |
 | `IC0003` | Only when the node is part of a corosync cluster: no replication jobs configured |
 | `IG0015` | Only when some HA resources exist: a running guest is not managed by HA |
-| `WG0043` | Only when an HA guest has disks on local storage and no enabled replication job |
+| `CG0005` | Only when an HA guest has disks on non-shared storage and no enabled replication job |
 
 A standalone host that was never joined to a cluster (`pvecm` not configured) gets `IC0017` only: the HA and replication checks need a cluster configuration to read.
 
@@ -49,7 +49,7 @@ This is **intentional**: on a production single-node deployment those findings A
 
 If you run `cv4pve-diag` on a lab or dev single-node setup and the noise bothers you, the right tool is the **ignore rules**: add the codes you do not want to see in `ignored-issues.json` and the next runs will hide them (or keep them, marked as ignored, with `--ignored-issues-show`). See [ignore rules](../ignored-issues/).
 
-> **Cross-node checks** (`CN0001`, `CN0002`, `WN0005`–`WN0009`, `WN0015`, `WN0045`, `WN0047`, `WC0011`, `WC0012`, `WS0005`, `CC0002`) are different: they compare each node against its peers. On a single-node setup there is nothing to compare to, so these checks are skipped entirely (no KO and no OK emitted) — they would have no compliance value.
+> **Cross-node checks** (`CN0002`, `WN0005`–`WN0009`, `WN0015`, `WN0045`, `WN0047`, `WC0011`, `WC0012`, `CC0002`) are different: they compare each node against its peers. On a single-node setup there is nothing to compare to, so these checks are skipped entirely (no KO and no OK emitted) — they would have no compliance value.
 
 ---
 

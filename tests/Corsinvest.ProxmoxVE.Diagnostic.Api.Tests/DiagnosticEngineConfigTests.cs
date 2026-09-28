@@ -73,8 +73,13 @@ public class DiagnosticEngineConfigTests
 
     [Fact]
     public void Same_package_with_different_version_is_reported()
-        => Assert.Equal(["pve-manager 8.4.21 vs 8.4.20"],
-                        DiagnosticEngine.PackageVersionDifferences([Pkg("pve-manager", "8.4.21")], [Pkg("pve-manager", "8.4.20")]));
+        => Assert.Equal(["qemu-server 8.3.14 vs 8.3.13"],
+                        DiagnosticEngine.PackageVersionDifferences([Pkg("qemu-server", "8.3.14")], [Pkg("qemu-server", "8.3.13")]));
+
+    // The Proxmox VE version is reported once for the cluster by WC0011, not per node by CN0002.
+    [Fact]
+    public void Pve_manager_is_not_a_package_difference()
+        => Assert.Empty(DiagnosticEngine.PackageVersionDifferences([Pkg("pve-manager", "8.4.21")], [Pkg("pve-manager", "8.4.20")]));
 
     // ----- WN0005: /etc/hosts -----
     [Fact]
