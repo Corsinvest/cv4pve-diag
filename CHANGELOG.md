@@ -2,6 +2,34 @@
 
 ---
 
+## [Unreleased]
+
+### Critical codes for threshold checks
+
+The first letter of a code is now always the severity of the finding. Checks with a warning and a critical threshold used to report both levels with their `W` code; the critical level now has its own `C` code, with the same number as the `W` code (`WN0027` → `CN0027`). **Breaking:** ignore rules on the `W` codes no longer hide the critical findings — add the `C` code to them.
+
+| Check | Warning | Critical |
+|---|---|---|
+| VM/CT CPU, memory, network in, network out | `WG0025`–`WG0028` | `CG0025`–`CG0028` |
+| VM/CT PSI CPU, I/O, memory | `WG0029`–`WG0031` | `CG0029`–`CG0031` |
+| VM/CT health score | `WG0032` | `CG0032` |
+| Node CPU, memory, network in, network out | `WN0027`, `WN0038`–`WN0040` | `CN0027`, `CN0038`–`CN0040` |
+| Node I/O wait, root filesystem, swap | `WN0028`–`WN0030` | `CN0028`–`CN0030` |
+| Node PSI CPU, I/O, memory | `WN0031`–`WN0033` | `CN0031`–`CN0033` |
+| SSD wearout, ZFS pool usage | `WN0018`, `WN0044` | `CN0018`, `CN0044` |
+| Node health score | `WN0048` (was `WG0032`) | `CN0048` |
+| Storage usage | `WS0009` (was `WS0001`) | `CS0009` |
+
+Changed codes:
+
+- The node health score gets node codes: it reported `WG0032`, a guest code.
+- Storage usage moves from `WS0001` to `WS0009`, because `CS0001` already means "storage not accessible".
+- The critical codes that already existed take the number of their warning code: disk temperature `CN0007` → `CN0019` (`WN0019`), LVM-thin metadata `CN0013` → `CN0026` (`WN0026`), CVE `CN0015` → `CN0042` (`WN0042`).
+
+Retired codes, not reused: `WS0001`, `CN0007`, `CN0013`, `CN0015`.
+
+---
+
 ## [2.6.0] — 2026-09-24
 
 ### Profiles

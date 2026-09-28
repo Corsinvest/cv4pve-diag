@@ -11,7 +11,7 @@ using Range = Corsinvest.ProxmoxVE.Diagnostic.Api.DiagnosticEngine.CveVersionRan
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Tests;
 
 /// <summary>
-/// NVD version ranges behind CN0015 / WN0042. The old matching took the first range only,
+/// NVD version ranges behind CN0042 / WN0042. The old matching took the first range only,
 /// ignored its start and treated versionEndExcluding (the fixed version) as vulnerable.
 /// </summary>
 public class DiagnosticEngineCveTests

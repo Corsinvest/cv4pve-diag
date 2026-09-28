@@ -18,7 +18,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | `IN0001` | Update | <Severity level="Info" /> | Packages available for update |
 | `WN0012` | Update | <Severity level="Warning" /> | Security/important packages available for update |
 | `WN0013` | Reboot | <Severity level="Warning" /> | A newer kernel is installed than the one running — reboot needed |
-| `WN0042/CN0015` | CVE | <Severity level="Warning/Critical" /> | A known CVE affects the installed Proxmox VE version |
+| `WN0042`/`CN0042` | CVE | <Severity level="Warning/Critical" /> | A known CVE affects the installed Proxmox VE version |
 
 ## Consistency across nodes
 
@@ -59,19 +59,19 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
 | `WN0016` | S.M.A.R.T. | <Severity level="Warning" /> | Disk reports a SMART health problem |
-| `WN0019/CN0007` | S.M.A.R.T. | <Severity level="Warning/Critical" /> | Disk temperature exceeds configured threshold |
+| `WN0019`/`CN0019` | S.M.A.R.T. | <Severity level="Warning/Critical" /> | Disk temperature exceeds configured threshold |
 | `WN0020` | S.M.A.R.T. | <Severity level="Warning" /> | Disk has reallocated sectors — disk may be failing |
 | `CN0008` | S.M.A.R.T. | <Severity level="Critical" /> | Disk has pending sectors — imminent data loss risk |
 | `CN0009` | S.M.A.R.T. | <Severity level="Critical" /> | Disk has offline uncorrectable sectors |
 | `WN0021` | S.M.A.R.T. | <Severity level="Warning" /> | Disk has UDMA CRC errors — check cable/controller |
 | `WN0022` | S.M.A.R.T. | <Severity level="Warning" /> | Disk has reported uncorrectable errors |
 | `WN0017` | SSD Wearout | <Severity level="Warning" /> | SSD does not expose wear data |
-| `WN0018` | SSD Wearout | <Severity level="Warning/Critical" /> | SSD wearout consumed above threshold |
+| `WN0018`/`CN0018` | SSD Wearout | <Severity level="Warning/Critical" /> | SSD wearout consumed above threshold |
 | `CN0010` | Zfs | <Severity level="Critical" /> | ZFS pool is not in ONLINE state |
 | `CN0012` | Zfs | <Severity level="Critical" /> | ZFS pool vdev is in a degraded or faulted state |
 | `WN0025` | Zfs | <Severity level="Warning" /> | ZFS pool vdev has accumulated read/write/checksum errors |
 | `WN0024` | Zfs | <Severity level="Warning" /> | ZFS pool reports errors |
-| `WN0026/CN0013` | LvmThin | <Severity level="Warning/Critical" /> | LVM-thin metadata usage is high — full metadata causes data corruption |
+| `WN0026`/`CN0026` | LvmThin | <Severity level="Warning/Critical" /> | LVM-thin metadata usage is high — full metadata causes data corruption |
 
 ## Replication and tasks
 
@@ -86,15 +86,15 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 |---|---|---|---|
 | `IN0003` | Consolidation | <Severity level="Info" /> | Node CPU and RAM utilization both below threshold — consider consolidating VMs |
 | `WN0036` | Memory | <Severity level="Warning" /> | Sum of RAM allocated to VMs and containers exceeds physical node RAM |
-| `WN0027` | Usage | <Severity level="Warning/Critical" /> | CPU usage above configured threshold |
-| `WN0038` | Usage | <Severity level="Warning/Critical" /> | Memory usage above configured threshold |
-| `WN0039/WN0040` | Usage | <Severity level="Warning/Critical" /> | Network throughput above configured threshold |
-| `WN0028` | Usage | <Severity level="Warning/Critical" /> | CPU IOWait above configured threshold — indicates storage bottleneck |
-| `WN0029` | Usage | <Severity level="Warning/Critical" /> | Node root filesystem usage above configured threshold |
-| `WN0030` | Usage | <Severity level="Warning/Critical" /> | Node SWAP usage above configured threshold — indicates RAM pressure |
-| `WN0031` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI CPU pressure above threshold (PVE 9.0+) |
-| `WN0032` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI I/O full pressure above threshold (PVE 9.0+) |
-| `WN0033` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI memory full pressure above threshold (PVE 9.0+) |
-| `WG0032` | HealthScore | <Severity level="Warning/Critical" /> | Composite health score below threshold |
+| `WN0027`/`CN0027` | Usage | <Severity level="Warning/Critical" /> | CPU usage above configured threshold |
+| `WN0038`/`CN0038` | Usage | <Severity level="Warning/Critical" /> | Memory usage above configured threshold |
+| `WN0039`/`CN0039`, `WN0040`/`CN0040` | Usage | <Severity level="Warning/Critical" /> | Network throughput above configured threshold |
+| `WN0028`/`CN0028` | Usage | <Severity level="Warning/Critical" /> | CPU IOWait above configured threshold — indicates storage bottleneck |
+| `WN0029`/`CN0029` | Usage | <Severity level="Warning/Critical" /> | Node root filesystem usage above configured threshold |
+| `WN0030`/`CN0030` | Usage | <Severity level="Warning/Critical" /> | Node SWAP usage above configured threshold — indicates RAM pressure |
+| `WN0031`/`CN0031` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI CPU pressure above threshold (PVE 9.0+) |
+| `WN0032`/`CN0032` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI I/O full pressure above threshold (PVE 9.0+) |
+| `WN0033`/`CN0033` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI memory full pressure above threshold (PVE 9.0+) |
+| `WN0048`/`CN0048` | HealthScore | <Severity level="Warning/Critical" /> | Composite health score below threshold |
 
 Any of these can be hidden with an [ignore rule](/cv4pve-diag/ignored-issues/) on its code.
