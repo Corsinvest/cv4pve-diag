@@ -243,7 +243,6 @@ public partial class DiagnosticEngine
                 compliance: []);
             #endregion
 
-
             #region Cdrom
             // A mounted ISO left in the drive is harmless but wastes storage and may confuse OS reinstalls.
             // Cloud-init drives are excluded (Kind == CloudInit) — they always look like a cdrom but are

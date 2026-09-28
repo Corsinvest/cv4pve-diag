@@ -34,7 +34,6 @@ var optOutputFile = app.AddOption<string>("--output-file", "Output file name");
 var optCompliance = app.AddOption<ComplianceStandard?>("--compliance",
     "Add the Compliance column to the output, showing mappings for the selected standard only (Iso27001, Nis2, Dora, PciDss, …). Omit the flag to hide the column.");
 
-
 static Settings Profile(bool fast, bool full)
     => fast && full
         ? throw new ArgumentException("--fast and --full cannot be used together")

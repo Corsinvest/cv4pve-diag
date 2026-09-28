@@ -28,7 +28,7 @@ public partial class DiagnosticEngine
 
         // Unreadable corosync config: more than one node in /cluster/resources still means a cluster.
         var hasCluster = clusterConfigNodes?.Any()
-                         ?? _resources.Count(a => a.ResourceType == ClusterResourceType.Node) > 1;
+                         ?? (_resources.Count(a => a.ResourceType == ClusterResourceType.Node) > 1);
 
         _clusterBackupsKnown = clusterBackupTask.Result != null;
         _clusterBackups = clusterBackupTask.Result ?? [];
@@ -1386,7 +1386,7 @@ public partial class DiagnosticEngine
     internal static List<(string Node, int Votes)> NodesBreakingQuorum(IReadOnlyList<(string Node, int Votes)> votes)
     {
         var total = votes.Sum(a => a.Votes);
-        var quorum = total / 2 + 1;
+        var quorum = (total / 2) + 1;
         return [.. votes.Where(a => total - a.Votes < quorum).OrderBy(a => a.Node)];
     }
 
