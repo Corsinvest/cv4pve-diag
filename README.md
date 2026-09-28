@@ -117,7 +117,7 @@ The API token needs the privileges listed in [Permissions](https://corsinvest.gi
 
 ## Related tools
 
-Use `cv4pve-diag` to know *what is wrong*, [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) to know *what you have*. The whole suite: [corsinvest.it/cv4pve](https://www.corsinvest.it/en/cv4pve/).
+Use `cv4pve-diag` to know *what is wrong*, [cv4pve-report](https://corsinvest.github.io/cv4pve-report/) to know *what you have*. The whole suite: [corsinvest.it/cv4pve](https://www.corsinvest.it/en/cv4pve/).
 
 ---
 
