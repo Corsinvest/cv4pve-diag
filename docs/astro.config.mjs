@@ -19,6 +19,8 @@ export default defineConfig({
           icon: { light: '/icon.svg', dark: '/icon-dark.svg' },
           // Banner on the home page: the same engine runs inside cv4pve-admin.
           admin: { module: 'diagnostics' },
+          // Visits, without cookies.
+          matomo: { url: 'https://matomo.corsinvest.it/', siteId: 6 },
           // Install-and-run panel in the home hero.
           install: {
             targets: ['linux', 'macos', 'windows'],
