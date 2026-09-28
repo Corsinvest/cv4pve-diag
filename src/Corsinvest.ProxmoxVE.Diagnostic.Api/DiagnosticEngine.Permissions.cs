@@ -157,7 +157,7 @@ public partial class DiagnosticEngine
                       + "Proxmox omits these from its response without reporting an error, so the analysis cannot see what is missing. "
                       + (item.DisablesBackupChecks ? "The backup checks (WG0019, WG0020, WS0003) are skipped. " : "")
                       + (item.DisablesOrphanChecks ? "The orphaned image and backup checks (WS0002, WS0003) are skipped. " : "")
-                      + "See the permissions section in the README.",
+                      + "See https://corsinvest.github.io/cv4pve-diag/permissions/",
                 Context = DiagnosticResultContext.Cluster,
                 SubContext = "Permissions",
                 Gravity = item.DisablesBackupChecks
