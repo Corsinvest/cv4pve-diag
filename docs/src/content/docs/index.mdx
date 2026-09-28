@@ -57,6 +57,26 @@ restore, a failover or an audit.
 cv4pve-diag reads the whole cluster and lists those problems in one report, each with a stable code,
 a severity and the resource it concerns, so you can fix them before they matter.
 
+## Where it fits
+
+The cv4pve suite follows the Unix philosophy: each tool does one thing and does it well. cv4pve-diag
+finds what is wrong. Its companion [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) is the
+RVTools for Proxmox VE: it exports everything the cluster contains, to read, share and keep. Two
+questions, two tools, used together.
+
+| | **cv4pve-diag** | [cv4pve-report](https://github.com/Corsinvest/cv4pve-report) |
+|---|---|---|
+| **Question** | What is wrong? | What do I have? |
+| **Purpose** | Diagnostics and health checks | Inventory and reporting |
+| **Result** | A list of problems, each with a code, a severity and the resource it concerns | The full inventory: nodes, VMs, containers, storage, network, users… |
+| **Formats** | Text, HTML, JSON, Markdown, Excel | Excel, static HTML site, multi-file JSON, plus an SVG network diagram |
+| **Compliance** | Findings tagged with the controls of 18 standards | — |
+| **Access** | Proxmox VE API only, from outside the nodes | Proxmox VE API only, from outside the nodes |
+
+Want both on a schedule, from a web interface? [cv4pve-admin](https://github.com/Corsinvest/cv4pve-admin)
+runs them as its [Diagnostics](https://corsinvest.github.io/cv4pve-admin/modules/diagnostics/) and
+[System Report](https://corsinvest.github.io/cv4pve-admin/modules/system-report/) modules.
+
 ## Outside the nodes, API only
 
 cv4pve-diag runs outside the cluster — on your workstation, a management VM or a scheduled job — and
