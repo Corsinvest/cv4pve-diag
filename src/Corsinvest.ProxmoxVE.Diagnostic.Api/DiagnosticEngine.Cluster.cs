@@ -1080,9 +1080,14 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2Ir.C_11_5,
         ];
 
-        // ACL Administrator role assigned at root path '/' — too permissive, prefer scoped permissions
+        // ACL Administrator role assigned at root path '/' — too permissive, prefer scoped permissions.
+        // Disabled users are left to WC0014, which asks to revoke the entry.
+        var disabledUserIds = accessUsers.Where(u => !u.Enable)
+                                         .Select(u => u.Id)
+                                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
         CreateResultPerItem(
-            items: acls.Where(a => a.Roleid == "Administrator" && a.Path == "/" && a.Type == "user").ToList(),
+            items: acls.Where(a => a.Roleid == "Administrator" && a.Path == "/" && a.Type == "user"
+                                   && !disabledUserIds.Contains(a.UsersGroupid)).ToList(),
             isItemOk: _ => false,
             itemId: _ => "access/acl",
             itemDescriptionKo: a => $"User '{a.UsersGroupid}' has Administrator role at root path '/' — prefer pool/node-scoped permissions",
@@ -1247,7 +1252,8 @@ public partial class DiagnosticEngine
             compliance: accountLifecycleControls);
 
         // Groups holding Administrator role on '/': any enabled member without TFA is a security risk.
-        // WC0007 covers users with direct ACL; this covers users that get admin transitively via group.
+        // WC0007 covers users with direct ACL; this covers users that get admin only via a group.
+        // root@pam is left to CC0004.
         var privilegedGroupIds = acls.Where(a => a.Path == "/" && a.Type == "group" && a.Roleid == "Administrator")
                                      .Select(a => a.UsersGroupid)
                                      .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -1258,6 +1264,7 @@ public partial class DiagnosticEngine
             {
                 var u = accessUsers.FirstOrDefault(x => string.Equals(x.Id, member, StringComparison.OrdinalIgnoreCase));
                 if (u != null && !u.Enable) { continue; }
+                if (adminUserIds.Contains(member) || member == "root@pam") { continue; }
                 transitiveAdmins.Add((member, g.Id));
             }
         }
@@ -1276,9 +1283,6 @@ public partial class DiagnosticEngine
             compliance: tfaControls);
 
         // Disabled user that still has Administrator ACL on '/': leftover privilege from before deactivation.
-        var disabledUserIds = accessUsers.Where(u => !u.Enable)
-                                         .Select(u => u.Id)
-                                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
         CreateResultPerItem(
             items: acls.Where(a => a.Path == "/" && a.Type == "user" && a.Roleid == "Administrator"
                                     && disabledUserIds.Contains(a.UsersGroupid)).ToList(),

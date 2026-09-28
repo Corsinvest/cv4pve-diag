@@ -210,17 +210,17 @@ public partial class DiagnosticEngine
                         compliance: []);
                 }
 
-                // IDE and SATA disks are emulated and slow whatever the controller; SCSI disks are
-                // only as fast as the controller they ride on. Other entries (efidisk, tpmstate) are
-                // not data disks and are left out.
+                // IDE and SATA disks are emulated and slow whatever the controller. SCSI disks are
+                // only as fast as the controller they ride on: that is IG0001, so they are left out
+                // here, as are entries that are not data disks (efidisk, tpmstate).
                 CreateResultPerItem(
-                    items: config.Disks.Where(a => IsDiskBus(a.Id)).ToList(),
-                    isItemOk: a => a.Id.StartsWith(VirtioPrefix)
-                                   || (a.Id.StartsWith("scsi", StringComparison.OrdinalIgnoreCase) && scsiHwIsVirtIO),
+                    items: config.Disks.Where(a => IsDiskBus(a.Id)
+                                                   && !a.Id.StartsWith("scsi", StringComparison.OrdinalIgnoreCase)).ToList(),
+                    isItemOk: a => a.Id.StartsWith(VirtioPrefix),
                     itemId: _ => id,
                     itemDescriptionKo: a => $"For more performance switch '{a.Id}' hdd to VirtIO",
                     aggregatedIdOk: id,
-                    aggregatedDescriptionOk: _ => "All disks use the VirtIO bus",
+                    aggregatedDescriptionOk: _ => "No disk on the IDE or SATA bus",
                     errorCode: "IG0002",
                     subContext: "VirtIO",
                     context: DiagnosticResultContext.Qemu,
@@ -272,7 +272,8 @@ public partial class DiagnosticEngine
                 // CPU features to the guest but prevents live migration between nodes with different
                 // CPU models. Only relevant in a multi-node cluster.
                 var isHostCpu = IsHostCpuType(cpuType);
-                if (hasCluster)
+                var isHaVm = haVmIds.Contains(item.VmId);
+                if (hasCluster && !isHaVm)
                 {
                     CreateResult(
                         isOk: !isHostCpu,
@@ -284,22 +285,23 @@ public partial class DiagnosticEngine
                         descriptionKo: $"CPU type '{cpuType}' prevents live migration to nodes with a different CPU model",
                         descriptionOk: $"CPU type '{cpuType}' allows live migration",
                         compliance: []);
+                }
 
-                    // CPU type 'host' + HA enabled: HA requires live migration between nodes,
-                    // which is impossible when the CPU type is 'host' (node-specific CPU features).
-                    if (haVmIds.Contains(item.VmId))
-                    {
-                        CreateResult(
-                            isOk: !isHostCpu,
-                            id: id,
-                            errorCode: "CG0004",
-                            subContext: "CPU",
-                            context: DiagnosticResultContext.Qemu,
-                            gravityKo: DiagnosticResultGravity.Critical,
-                            descriptionKo: $"CPU type '{cpuType}' is incompatible with HA — HA requires live migration which needs a portable CPU type",
-                            descriptionOk: $"CPU type '{cpuType}' is compatible with HA live migration",
-                            compliance: []);
-                    }
+                // CPU type 'host' + HA enabled: HA requires live migration between nodes, which is
+                // impossible when the CPU type is 'host' (node-specific CPU features). Reported
+                // instead of WG0006, not with it.
+                if (hasCluster && isHaVm)
+                {
+                    CreateResult(
+                        isOk: !isHostCpu,
+                        id: id,
+                        errorCode: "CG0004",
+                        subContext: "CPU",
+                        context: DiagnosticResultContext.Qemu,
+                        gravityKo: DiagnosticResultGravity.Critical,
+                        descriptionKo: $"CPU type '{cpuType}' is incompatible with HA — HA requires live migration which needs a portable CPU type",
+                        descriptionOk: $"CPU type '{cpuType}' is compatible with HA live migration",
+                        compliance: []);
                 }
 
                 // "kvm64" is a very old baseline lacking AVX, SSE4 and other modern extensions.
@@ -438,21 +440,6 @@ public partial class DiagnosticEngine
                     aggregatedIdOk: id,
                     aggregatedDescriptionOk: _ => "No disk uses cache=unsafe",
                     errorCode: "WG0008",
-                    subContext: "Hardware",
-                    context: DiagnosticResultContext.Qemu,
-                    gravityKo: DiagnosticResultGravity.Warning,
-                    compliance: dataIntegrityControls);
-
-                // cache=writeback improves performance but data in the host page cache is not yet on disk.
-                // If backup is also disabled for that disk, a crash can cause data loss with no recovery option.
-                CreateResultPerItem(
-                    items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Cache)).ToList(),
-                    isItemOk: d => !(d.Cache == DiskCacheWriteback && !d.Backup),
-                    itemId: _ => id,
-                    itemDescriptionKo: d => $"Disk '{d.Id}' has cache=writeback but backup is disabled",
-                    aggregatedIdOk: id,
-                    aggregatedDescriptionOk: _ => "No disk combines cache=writeback with backup disabled",
-                    errorCode: "WG0009",
                     subContext: "Hardware",
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Warning,

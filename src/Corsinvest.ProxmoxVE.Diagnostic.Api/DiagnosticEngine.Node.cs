@@ -208,10 +208,12 @@ public partial class DiagnosticEngine
         ];
         if (hasCluster && nodeCompareData.Count > 1)
         {
-            var pveVersions = nodeCompareData.Values
-                                             .Select(a => a.Version.Version)
-                                             .Where(a => !string.IsNullOrWhiteSpace(a))
-                                             .Distinct()
+            // One finding for the cluster, with the nodes on each version: a rolling upgrade is
+            // supported, so a mismatch is a Warning, and the list shows which nodes are behind.
+            var pveVersions = nodeCompareData.Where(a => !string.IsNullOrWhiteSpace(a.Value.Version.Version))
+                                             .GroupBy(a => a.Value.Version.Version)
+                                             .OrderBy(g => g.Key)
+                                             .Select(g => $"{g.Key}: {string.Join(", ", g.Select(a => a.Key).Order())}")
                                              .ToList();
             CreateResult(
                 isOk: pveVersions.Count <= 1,
@@ -220,8 +222,8 @@ public partial class DiagnosticEngine
                 subContext: "Version",
                 context: DiagnosticResultContext.Cluster,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: $"Nodes run different Proxmox VE versions: {string.Join(", ", pveVersions)}",
-                descriptionOk: $"All nodes run the same Proxmox VE version ({string.Join(", ", pveVersions)})",
+                descriptionKo: $"Nodes run different Proxmox VE versions: {string.Join("; ", pveVersions)}",
+                descriptionOk: $"All nodes run the same Proxmox VE version ({string.Join("; ", pveVersions)})",
                 compliance: patchConsistencyControls);
 
             var kernels = nodeCompareData.Values
@@ -388,17 +390,6 @@ public partial class DiagnosticEngine
                                             .ToList();
             if (otherNodesData.Count > 0)
             {
-                CreateResult(
-                    isOk: otherNodesData.All(od => version.IsEqual(od.Version)),
-                    id: id,
-                    errorCode: "CN0001",
-                    subContext: "Version",
-                    context: DiagnosticResultContext.Node,
-                    gravityKo: DiagnosticResultGravity.Critical,
-                    descriptionKo: "Nodes version not equal",
-                    descriptionOk: "Node version matches the rest of the cluster",
-                    compliance: patchConsistencyControls);
-
                 CreateResult(
                     isOk: otherNodesData.All(od => HostsEntries(hosts).SetEquals(HostsEntries(od.Hosts))),
                     id: id,
@@ -1328,8 +1319,13 @@ public partial class DiagnosticEngine
     {
         foreach (var child in children ?? [])
         {
-            // vdev not ONLINE = faulted, removed, unavail, degraded
-            if (!string.IsNullOrWhiteSpace(child.State))
+            // A leaf device may come without a children list.
+            var grandChildren = child.Children ?? [];
+
+            // Device not ONLINE = faulted, removed, unavail, degraded. Only leaf devices (the disks) are
+            // reported: a mirror or raidz group is DEGRADED because of one of its disks, and the pool
+            // itself is CN0010, so reporting the groups too repeats the same fault.
+            if (!string.IsNullOrWhiteSpace(child.State) && !grandChildren.Any())
             {
                 CreateResult(
                     // Hot spares are AVAIL (idle) or INUSE (standing in for a failed disk): both expected.
@@ -1357,7 +1353,7 @@ public partial class DiagnosticEngine
                 compliance: _storageIntegrityControls);
 
             // Recurse into nested vdevs (mirrors, raidz groups)
-            CheckZfsChildren(id, poolName, child.Children);
+            CheckZfsChildren(id, poolName, grandChildren);
         }
     }
 
@@ -1616,14 +1612,17 @@ public partial class DiagnosticEngine
     /// <summary>
     /// Packages installed on both nodes with a different version, as "package X vs Y". Kernel image
     /// packages are left out: each kernel version is its own package, and old kernels kept on one
-    /// node only are normal (the running and newest kernel are checked by WN0013).
+    /// node only are normal (the running and newest kernel are checked by WN0013). pve-manager is
+    /// left out too: its version is the Proxmox VE version, reported once for the cluster by WC0011.
     /// </summary>
     internal static List<string> PackageVersionDifferences(IEnumerable<NodeAptVersion> mine, IEnumerable<NodeAptVersion> other)
     {
         var otherByPackage = other.Where(a => !string.IsNullOrWhiteSpace(a.Package))
                                   .GroupBy(a => a.Package)
                                   .ToDictionary(g => g.Key, g => g.First().Version);
-        return [.. mine.Where(a => !string.IsNullOrWhiteSpace(a.Package) && !_kernelImagePackage.IsMatch(a.Package))
+        return [.. mine.Where(a => !string.IsNullOrWhiteSpace(a.Package)
+                                   && a.Package != "pve-manager"
+                                   && !_kernelImagePackage.IsMatch(a.Package))
                        .Where(a => otherByPackage.TryGetValue(a.Package, out var v) && v != a.Version)
                        .Select(a => $"{a.Package} {a.Version} vs {otherByPackage[a.Package]}")
                        .Distinct()
