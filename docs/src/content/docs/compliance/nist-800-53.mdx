@@ -1,0 +1,40 @@
+---
+title: "NIST SP 800-53"
+description: "NIST SP 800-53 rev.5 — Moderate baseline subset — the controls cv4pve-diag gives evidence for."
+---
+
+**NIST SP 800-53 rev.5 — Moderate baseline subset.** Run with `--compliance=Nist80053` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: AC-2/3/6, AU-2/6/12, CM-2/6/7, CP-9/10, IA-2/5, SC-7/8/13, SI-2/4/5
+
+Official text: [NIST SP 800-53 Rev. 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of NIST 800-53 rev.5 controls verifiable on a Proxmox VE cluster. Families used: AC (Access Control), AU (Audit), CM (Configuration Management), CP (Contingency Planning), IA (Identification and Authentication), SC (System and Communications Protection), SI (System and Information Integrity).
+
+| Control | Title | Where it appears |
+|---|---|---|
+| AC-2 | Account management | Account lifecycle, user expiration, API token expiration |
+| AC-3 | Access enforcement | (declared) |
+| AC-6 | Least privilege | ACL, container privileged, root@pam token privsep |
+| AU-2 | Event logging | (declared) |
+| AU-6 | Audit record review | (declared) |
+| AU-12 | Audit record generation | Cluster log, task history, firewall audit logging, metric server |
+| CM-2 | Baseline configuration | Patch consistency across nodes, version/kernel mismatch |
+| CM-6 | Configuration settings | Container privileged, raw lxc config, hardening |
+| CM-7 | Least functionality | (declared) |
+| CP-9 | System backup | All backup checks, backup storage availability, disk cache integrity |
+| CP-10 | System recovery and reconstitution | HA, replication, single-node, HA guest checks |
+| IA-2 | Identification and authentication | TFA (root@pam, admins, group, realm); account identity |
+| IA-5 | Authenticator management | (declared — overlaps with certificate / token checks) |
+| SC-7 | Boundary protection | Cluster/node firewall, guest firewall |
+| SC-8 | Transmission confidentiality and integrity | Certificates (expired / expiring), TLS |
+| SC-13 | Cryptographic protection | (declared — overlaps with SC-8) |
+| SI-2 | Flaw remediation | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| SI-4 | System monitoring | Metric server (IC0018/IC0019) |
+| SI-5 | Security alerts and advisories | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

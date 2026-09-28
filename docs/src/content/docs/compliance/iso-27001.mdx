@@ -1,0 +1,37 @@
+---
+title: "ISO/IEC 27001"
+description: "ISO/IEC 27001:2022 — the controls cv4pve-diag gives evidence for."
+---
+
+import ReportPreview from '../../../components/ReportPreview.astro';
+
+**ISO/IEC 27001:2022.** Run with `--compliance=Iso27001` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: Access, backup, crypto, logging, monitoring, vulnerability, network security
+
+Official text: [ISO/IEC 27001:2022](https://www.iso.org/standard/27001).
+
+<ReportPreview standard="Iso27001" ok />
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| A.5.15 | Access control | Privileged ACL, container isolation, asset/pool management |
+| A.5.16 | Identity management | User lifecycle, notification email |
+| A.5.17 | Authentication information | TFA on admin / root / external realms |
+| A.5.18 | Access rights | Lifecycle (expiration, disabled users, groups, roles) |
+| A.5.30 | ICT readiness for business continuity | HA, replication, single-node cluster, NIC bond, storage availability |
+| A.8.2 | Privileged access rights | Admin ACL on root, privileged containers, token privilege separation |
+| A.8.5 | Secure authentication | TFA |
+| A.8.8 | Management of technical vulnerabilities | Patch level, OS EOL, kernel/version mismatch, CPU security flags, CVE |
+| A.8.13 | Information backup | Backup config, retention, schedule, recent backups, disk inclusion, storage |
+| A.8.15 | Logging | Cluster log errors, firewall rule logging, task failure rate, NTP, metric server |
+| A.8.16 | Monitoring activities | Task history, services, NTP, storage availability, metric server, user notification |
+| A.8.20 | Networks security | Cluster firewall, node firewall, policy, 0.0.0.0/0 rules, duplicate MAC |
+| A.8.22 | Segregation of networks | VM/CT firewall, duplicate MAC |
+| A.8.24 | Use of cryptography | Certificates (expired, expiring, self-signed) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

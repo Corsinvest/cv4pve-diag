@@ -1,0 +1,28 @@
+---
+title: "ISO/IEC 27018"
+description: "ISO/IEC 27018:2019 — PII in public clouds — the controls cv4pve-diag gives evidence for."
+---
+
+**ISO/IEC 27018:2019 — PII in public clouds.** Run with `--compliance=Iso27018` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: A.9.4.2, A.10.1.1, A.12.1.4, A.12.3.1, A.12.4.1, A.13.2.1, A.16.1.2
+
+Official text: [ISO/IEC 27018:2019](https://www.iso.org/standard/76559.html). A 2025 edition has since been published; this mapping follows the 2019 one.
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of ISO 27018 controls applicable at the infrastructure layer. Many ISO 27018 controls are contractual / organisational (consent, transparency, return of PII) and are out of scope for an infrastructure-level diagnostic tool.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| A.9.4.2 | Secure log-on for PII access | TFA (root@pam, admins, group, realm) |
+| A.10.1.1 | Cryptography for PII in transit | Certificates (expired / expiring), TLS |
+| A.12.1.4 | Separation of environments handling PII | (declared) |
+| A.12.3.1 | Backup of PII | All backup checks |
+| A.12.4.1 | Event logging for PII processing | Cluster log, task history, firewall audit logging, metric server |
+| A.13.2.1 | Secure transfer of PII | (declared — overlaps with A.10.1.1) |
+| A.16.1.2 | Reporting of PII-related events | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

@@ -1,0 +1,26 @@
+---
+title: "PCI DSS"
+description: "PCI DSS v4.0 — the controls cv4pve-diag gives evidence for."
+---
+
+**PCI DSS v4.0.** Run with `--compliance=PciDss` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: 1.2, 4.2, 6.3, 7.2, 8.2, 8.4.2, 10.2
+
+Official text: [PCI SSC document library](https://www.pcisecuritystandards.org/document_library/).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+| Control | Title | Where it appears |
+|---|---|---|
+| 1.2 | Network security controls configuration | Firewall enable / policy / rules |
+| 4.2 | Strong cryptography over open, public networks | Certificates |
+| 6.3 | Security vulnerabilities are identified and addressed | Patch, CVE, CPU security flags |
+| 7.2 | Access definition and assignment | Container privileged access |
+| 8.2 | User identification and account lifecycle | Lifecycle, tokens |
+| 8.4.2 | MFA for all access into the cardholder data environment | TFA |
+| 10.2 | Audit logs for anomaly detection | Cluster log, NTP, firewall logging |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

@@ -37,7 +37,7 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Start here',
-          items: ['getting-started', 'permissions'],
+          items: ['getting-started', 'permissions', 'troubleshooting'],
         },
         {
           label: 'Checks',
@@ -51,8 +51,33 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Compliance',
+          collapsed: true,
+          items: [
+            { label: 'Overview', slug: 'compliance' },
+            'compliance/nis2',
+            'compliance/nis2-ir',
+            'compliance/acn',
+            'compliance/dora',
+            'compliance/iso-27001',
+            'compliance/iso-27017',
+            'compliance/iso-27018',
+            'compliance/iso-22301',
+            'compliance/pci-dss',
+            'compliance/gdpr',
+            'compliance/agid',
+            'compliance/ens',
+            'compliance/bsi-grundschutz',
+            'compliance/c5',
+            'compliance/soc-2',
+            'compliance/nist-800-53',
+            'compliance/nist-csf',
+            'compliance/cis',
+          ],
+        },
+        {
           label: 'Reference',
-          items: ['settings', 'ignored-issues', 'compliance'],
+          items: ['settings', 'ignored-issues'],
         },
       ],
     }),

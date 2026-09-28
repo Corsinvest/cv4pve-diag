@@ -1,0 +1,37 @@
+---
+title: "NIST CSF"
+description: "NIST CSF 2.0 — the controls cv4pve-diag gives evidence for."
+---
+
+**NIST CSF 2.0.** Run with `--compliance=NistCsf` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: ID.AM/RA, PR.AA/DS/IR/PS, DE.CM, RC.RP — relevant subcategories
+
+Official text: [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subcategories chosen for relevance to virtualisation cluster diagnostics.
+
+| Subcategory | Title | Where it appears |
+|---|---|---|
+| ID.AM-02 | Software/services/systems inventory is maintained | Empty pools (asset/inventory cleanliness) |
+| ID.RA-01 | Asset vulnerabilities are identified and recorded | Patch, CVE |
+| PR.AA-01 | Identities and credentials are managed | TFA, account lifecycle |
+| PR.AA-03 | Users, services and hardware are authenticated | TFA |
+| PR.AA-05 | Access permissions and entitlements are managed | ACL, container privileged |
+| PR.DS-01 | Data-at-rest is protected | Disk cache integrity |
+| PR.DS-02 | Data-in-transit is protected | Certificates |
+| PR.DS-11 | Backups are conducted, protected and tested | Backup |
+| PR.IR-01 | Networks protected from unauthorized access | Firewall, duplicate MAC |
+| PR.IR-04 | Adequate resource capacity is maintained | HA, replication, single-node, storage availability |
+| PR.PS-02 | Software is maintained commensurate with risk | Patch, CVE |
+| DE.CM-01 | Networks and services are monitored | Cluster log, task failures, NTP, services |
+| DE.CM-03 | Personnel activity is monitored | Cluster log, task failures, user notification |
+| RC.RP-01 | Recovery procedures are in place and exercised | Backup, HA, replication, single-node |
+
+---
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

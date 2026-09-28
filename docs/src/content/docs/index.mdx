@@ -14,38 +14,32 @@ hero:
       variant: minimal
 ---
 
-import { CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import FeatureGrid from '@corsinvest/cv4pve-docs-theme/components/FeatureGrid.astro';
 import ReportPreview from '../../components/ReportPreview.astro';
 import CtaBand from '@corsinvest/cv4pve-docs-theme/components/CtaBand.astro';
 import proxmoxLogo from '../../assets/proxmox-logo.svg';
 
+export const features = [
+  { title: "Cluster-wide in one run", text: "Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks — cluster, nodes, storages, VMs and containers together.", href: 'checks/' },
+  { title: "Audit evidence, not just alerts", text: "100+ findings carry the controls they relate to. Filter with --compliance and the report gets a ControlId column ready for your auditor.", href: 'compliance/' },
+  { title: "Honest about what it cannot see", text: "Proxmox VE silently filters what a token may not read. cv4pve-diag checks the privileges first and states in the report what the analysis does not cover.", href: 'permissions/' },
+  { title: "Tuned to your cluster", text: "Thresholds for CPU, memory, PSI pressure, SMART and health score, fast / standard / full profiles, parallel API requests for large clusters.", href: 'settings/' },
+  { title: "Silence what you accepted", text: "Ignore rules by code, resource, context or severity keep the report focused on what is new — and can still be shown for review.", href: 'ignored-issues/' },
+  { title: "Every format you need", text: "Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation — from one self-contained binary.", href: 'getting-started/' },
+];
+
 <Tabs>
   <TabItem label="Report">
-
-```bash
-cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…' execute --full
-```
 
 <ReportPreview short ok />
 
   </TabItem>
   <TabItem label="With compliance">
 
-```bash
-cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…' --compliance=Nis2 execute --full
-```
-
 <ReportPreview standard="Nis2" short ok note={false} />
 
-```bash
-cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…' --compliance=Iso27001 execute --full
-```
-
 <ReportPreview standard="Iso27001" short ok note={false} />
-
-```bash
-cv4pve-diag --host=pve01 --api-token='diag@pve!audit=…' --compliance=Dora execute --full
-```
 
 <ReportPreview standard="Dora" short ok />
 
@@ -84,39 +78,7 @@ ENS · BSI C5 · BSI IT-Grundschutz · ISO 22301 · SOC 2 · NIST 800-53 · ISO 
 
 ## What it does for you
 
-<CardGrid>
-  <LinkCard
-    title="Cluster-wide in one run"
-    description="Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks — cluster, nodes, storages, VMs and containers together."
-    href="/cv4pve-diag/checks/"
-  />
-  <LinkCard
-    title="Audit evidence, not just alerts"
-    description="100+ findings carry the controls they relate to. Filter with --compliance and the report gets a ControlId column ready for your auditor."
-    href="/cv4pve-diag/compliance/"
-  />
-  <LinkCard
-    title="Honest about what it cannot see"
-    description="Proxmox VE silently filters what a token may not read. cv4pve-diag checks the privileges first and states in the report what the analysis does not cover."
-    href="/cv4pve-diag/permissions/"
-  />
-  <LinkCard
-    title="Tuned to your cluster"
-    description="Thresholds for CPU, memory, PSI pressure, SMART and health score, fast / standard / full profiles, parallel API requests for large clusters."
-    href="/cv4pve-diag/settings/"
-  />
-  <LinkCard
-    title="Silence what you accepted"
-    description="Ignore rules by code, resource, context or severity keep the report focused on what is new — and can still be shown for review."
-    href="/cv4pve-diag/ignored-issues/"
-  />
-  <LinkCard
-    title="Every format you need"
-    description="Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation — from one self-contained binary."
-    href="/cv4pve-diag/getting-started/"
-  />
-</CardGrid>
-
+<FeatureGrid items={features} />
 
 Part of the [cv4pve suite](https://www.corsinvest.it/en/cv4pve/): open source tools for Proxmox VE by Corsinvest, public since 2016.
 

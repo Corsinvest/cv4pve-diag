@@ -1,0 +1,29 @@
+---
+title: "NIS2"
+description: "NIS2 — Art. 21 — the controls cv4pve-diag gives evidence for."
+---
+
+import ReportPreview from '../../../components/ReportPreview.astro';
+
+**NIS2 — Art. 21.** Run with `--compliance=Nis2` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: Art. 21(c/e/f/h/i/j)
+
+Official text: [Directive (EU) 2022/2555](https://eur-lex.europa.eu/eli/dir/2022/2555/oj).
+
+<ReportPreview standard="Nis2" ok />
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+| Article | Title | Where it appears |
+|---|---|---|
+| Art. 21(c) | Backup management and disaster recovery | Backup, HA, replication, single-node, storage capacity |
+| Art. 21(e) | Vulnerability handling and disclosure | Patch, CVE, firewall, OS EOL, CPU security flags |
+| Art. 21(f) | Effectiveness assessment (logging / monitoring) | Cluster log, task failures, NTP, services, metric server |
+| Art. 21(h) | Cryptography and encryption | Certificates |
+| Art. 21(i) | Access control policies and asset management | ACL, container isolation, pools, account lifecycle, tokens |
+| Art. 21(j) | Multi-factor authentication | TFA (all variants) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).

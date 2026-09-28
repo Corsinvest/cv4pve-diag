@@ -1,0 +1,36 @@
+---
+title: "BSI C5"
+description: "C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020) — the controls cv4pve-diag gives evidence for."
+---
+
+**C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).** Run with `--compliance=C5` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+
+Controls covered: IDM-01/02/03/06/09, CRY-01/02, COS-01, OPS-06/10/13/18/23, BCM-03/04
+
+Official text: [C5 criteria catalogue](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html).
+
+## Controls
+
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+
+Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE cluster. Identifiers and titles as in the English edition (CRY and COS are KRY and KOS in the German one).
+
+| Control | Title | Where it appears |
+|---|---|---|
+| IDM-01 | Policy for user accounts and access rights | (declared) |
+| IDM-02 | Granting and change of user accounts and access rights | (declared) |
+| IDM-03 | Locking and withdrawal of user accounts | (declared) |
+| IDM-06 | Privileged access rights | ACL, container privileged, root@pam token privsep |
+| IDM-09 | Authentication mechanisms | TFA (root@pam, admins, group, realm) |
+| CRY-01 | Policy for the use of encryption procedures and key management | (declared) |
+| CRY-02 | Encryption of data for transmission (transport encryption) | Certificates (expired / expiring), TLS |
+| COS-01 | Technical safeguards | Cluster/node firewall, guest firewall, malware-defence baseline, duplicate MAC |
+| OPS-06 | Data Backup and Recovery – Concept | All backup checks, backup storage availability, disk cache integrity |
+| OPS-10 | Logging and Monitoring – Concept | Metric server (IC0018/IC0019) |
+| OPS-13 | Logging and Monitoring – Identification of Events | Cluster log, task history, firewall audit logging, services |
+| OPS-18 | Managing Vulnerabilities, Malfunctions and Errors – Concept | Patch, PVE EOL, CVE, important updates, outdated machine type |
+| OPS-23 | Managing Vulnerabilities, Malfunctions and Errors – System Hardening | Container isolation, patch consistency across nodes |
+| BCM-03 | Planning business continuity | HA, replication, single-node, HA guest checks |
+| BCM-04 | Verification, updating and testing of the business continuity | (declared) |
+
+How the mapping works, and its limits: [Compliance overview](/cv4pve-diag/compliance/).
