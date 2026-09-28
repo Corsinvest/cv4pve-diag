@@ -15,7 +15,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | `WN0004` | Subscription | <Severity level="Warning" /> | Node has no active Proxmox VE subscription |
 | `CN0002` | PackageVersions | <Severity level="Critical" /> | A package installed on both nodes has a different version (kernel images and `pve-manager` ignored: the Proxmox VE version is `WC0011`) |
 | `IN0001` | Update | <Severity level="Info" /> | Packages available for update |
-| `WN0012` | Update | <Severity level="Warning" /> | Security/important packages available for update |
+| `WN0012` | Update | <Severity level="Warning" /> | Packages with APT priority `important` available for update |
 | `WN0013` | Reboot | <Severity level="Warning" /> | A newer kernel is installed than the one running — reboot needed |
 | `WN0042`/`CN0042` | CVE | <Severity level="Warning/Critical" /> | A known CVE affects the installed Proxmox VE version |
 
@@ -26,7 +26,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | `WN0005` | Hosts | <Severity level="Warning" /> | `/etc/hosts` entries differ between nodes (comments and spacing ignored) |
 | `WN0006` | DNS | <Severity level="Warning" /> | DNS configuration differs between nodes |
 | `WN0007` | Timezone | <Severity level="Warning" /> | Timezone differs between nodes |
-| `WN0008` | AptRepositories | <Severity level="Warning" /> | APT repository sources differ between nodes |
+| `WN0008` | AptRepositories | <Severity level="Warning" /> | Enabled APT repository URLs differ between nodes (suites and components are not compared) |
 | `WN0014` | NTP | <Severity level="Warning" /> | Node clock differs by more than 60 s from the clock of the machine running cv4pve-diag |
 | `WN0045` | NTP | <Severity level="Warning" /> | Node clock drifts > 5s from another cluster node (corosync / HA / log correlation risk) |
 | `WN0015` | CPUCompatibility | <Severity level="Warning" /> | Nodes have different x86-64 feature levels — live migration may fail |
@@ -40,7 +40,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | `WN0011` | Service | <Severity level="Warning" /> | A required system service is not running |
 | `CN0003` | Certificates | <Severity level="Critical" /> | TLS certificate has expired |
 | `WN0023` | Certificates | <Severity level="Warning" /> | TLS certificate expires within 30 days |
-| `IN0004` | Certificates | <Severity level="Info" /> | Web UI (port 8006) uses the default Proxmox certificate or a self-signed one — no custom `pveproxy-ssl.pem` |
+| `IN0004` | Certificates | <Severity level="Info" /> | Web UI (port 8006) uses the default Proxmox certificate or a self-signed one |
 | `IN0002` | IOMMU | <Severity level="Info" /> | IOMMU disabled — PCI passthrough will not work |
 
 ## Network

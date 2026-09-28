@@ -66,7 +66,7 @@ With `--output-file`, the format follows the file extension unless you pass a fo
 cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' --output-file=report.html execute
 ```
 
-Each JSON entry has the fields `Id`, `Code`, `Description`, `Context`, `SubContext` and `Gravity`. An existing output file is overwritten. Excel without `--output-file` is written to `cv4pve-diagnostic-<timestamp>.xlsx` in the current folder.
+Each JSON entry has the fields `Id`, `Code`, `Description`, `Context`, `SubContext` and `Gravity`, plus `ControlId` with `--compliance` and `IgnoredIssue` with `--ignored-issues-show`. An existing output file is overwritten. Excel without `--output-file` is written to `cv4pve-diagnostic-<timestamp>.xlsx` in the current folder.
 
 ## Reading the report
 
@@ -98,5 +98,5 @@ The **Excel** report puts the same data in one `Summary` sheet, under a header w
 the run duration, the cv4pve-diag version, the analysed nodes and, with `--compliance`, the selected
 standard. Its table has filters on every column, and always includes the `Ignored Issue` column.
 
-Rows are sorted by gravity, then context. On a single Proxmox VE host, `IC0017` (single-node topology) is reported on every run by design — see [Single-node setups](/cv4pve-diag/compliance/#single-node-setups-and-compliance); on a lab host, hide it with an [ignore rule](/cv4pve-diag/ignored-issues/). If the report contains `WC0020`, `WG0042` or `CU0001`, part of the
+Rows are sorted by gravity, then context and subcontext. On a single Proxmox VE host, `IC0017` (single-node topology) is reported on every run by design — see [Single-node setups](/cv4pve-diag/compliance/#single-node-setups-and-compliance); on a lab host, hide it with an [ignore rule](/cv4pve-diag/ignored-issues/). If the report contains `WC0020`, `WG0042` or `CU0001`, part of the
 cluster could not be read — the rest of the report is incomplete for that part. See [Permissions](../permissions/).

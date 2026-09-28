@@ -19,14 +19,14 @@ Subset of C5:2020 criteria that are technically verifiable on a Proxmox VE clust
 |---|---|---|
 | IDM-01 | Policy for user accounts and access rights | (declared) |
 | IDM-02 | Granting and change of user accounts and access rights | (declared) |
-| IDM-03 | Locking and withdrawal of user accounts | (declared) |
+| IDM-03 | Locking and withdrawal of user accounts | Account lifecycle: expiration, unused groups and roles, tokens of disabled users, token comments |
 | IDM-06 | Privileged access rights | ACL, container privileged, root@pam token privsep |
 | IDM-09 | Authentication mechanisms | TFA (root@pam, admins, group, realm) |
 | CRY-01 | Policy for the use of encryption procedures and key management | (declared) |
 | CRY-02 | Encryption of data for transmission (transport encryption) | Certificates (expired / expiring), TLS |
 | COS-01 | Technical safeguards | Cluster/node firewall, guest firewall, malware-defence baseline, duplicate MAC |
 | OPS-06 | Data Backup and Recovery – Concept | All backup checks, backup storage availability, disk cache integrity |
-| OPS-10 | Logging and Monitoring – Concept | Metric server (IC0018/IC0019) |
+| OPS-10 | Logging and Monitoring – Concept | Cluster log, task history, firewall audit logging, services, NTP, user notifications, metric server |
 | OPS-13 | Logging and Monitoring – Identification of Events | Cluster log, task history, firewall audit logging, services |
 | OPS-18 | Managing Vulnerabilities, Malfunctions and Errors – Concept | Patch, PVE EOL, CVE, important updates, outdated machine type |
 | OPS-23 | Managing Vulnerabilities, Malfunctions and Errors – System Hardening | Container isolation, patch consistency across nodes |
