@@ -104,8 +104,9 @@ The API token needs the privileges listed in [Permissions](https://corsinvest.gi
 
 | | |
 |---|---|
-| [Getting started](https://corsinvest.github.io/cv4pve-diag/getting-started/) | Install, connect, run, read the report |
+| [Getting started](https://corsinvest.github.io/cv4pve-diag/getting-started/) | Install, connect, run |
 | [Permissions](https://corsinvest.github.io/cv4pve-diag/permissions/) | Creating the user and API token, required privileges |
+| [Reading the report](https://corsinvest.github.io/cv4pve-diag/reading-the-report/) | Columns, severities, output formats, Excel |
 | [Checks](https://corsinvest.github.io/cv4pve-diag/checks/) | Every check with code, severity and meaning |
 | [Settings](https://corsinvest.github.io/cv4pve-diag/settings/) | Thresholds, profiles, performance, CVE lookup |
 | [Ignore rules](https://corsinvest.github.io/cv4pve-diag/ignored-issues/) | Silence findings you have accepted |

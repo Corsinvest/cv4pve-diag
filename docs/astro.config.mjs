@@ -37,7 +37,7 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Start here',
-          items: ['getting-started', 'permissions', 'troubleshooting'],
+          items: ['getting-started', 'permissions', 'reading-the-report', 'troubleshooting'],
         },
         {
           label: 'Checks',
