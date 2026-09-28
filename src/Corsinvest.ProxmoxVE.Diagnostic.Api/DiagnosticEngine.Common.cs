@@ -673,7 +673,6 @@ public partial class DiagnosticEngine
 
     }
 
-
     private void CheckHealthScore(SettingsThreshold<double> healthScore,
                                   string errorCode,
                                   string criticalErrorCode,
