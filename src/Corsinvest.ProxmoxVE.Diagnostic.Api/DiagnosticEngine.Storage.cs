@@ -19,9 +19,6 @@ public partial class DiagnosticEngine
     private static readonly HashSet<string> _thinProvisioningTypes = new(StringComparer.OrdinalIgnoreCase)
         { "lvmthin", "zfspool", "rbd", "cephfs" };
 
-    private static readonly HashSet<string> _sharedStorageTypes = new(StringComparer.OrdinalIgnoreCase)
-        { "nfs", "cifs", "cephfs", "rbd", "iscsi", "iscsidirect", "glusterfs" };
-
     private static bool IsPbsPluginType(string pluginType)
         => string.Equals(pluginType, StoragePluginPbs, StringComparison.OrdinalIgnoreCase);
 
@@ -43,10 +40,6 @@ public partial class DiagnosticEngine
     private Task<IReadOnlyList<StorageItem>?>? _storageConfigTask;
     private Task<IReadOnlyList<StorageItem>?> GetStorageConfigAsync()
         => _storageConfigTask ??= client.Storage.GetAsync().ToSafeEnumOrNull(_result, "cluster/storage", DiagnosticResultContext.Storage, "storage configuration");
-
-    // Nodes a storage is restricted to by its 'nodes' option; empty = every node.
-    private static string[] StorageNodes(StorageItem? config)
-        => (config?.Nodes ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     // RAM state saved by a snapshot with RAM or by hibernation (vm-100-state-<name>): referenced from
     // the snapshot or pending sections, not from the disks of the current config.
@@ -218,36 +211,41 @@ public partial class DiagnosticEngine
         if (_orphanChecksEnabled)
         {
             // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage.
-            // Every existing guest counts, including those whose config could not be read.
-            // One finding per guest and storage, not per backup file: a retention of 30 would
-            // otherwise give 30 findings for the same deleted guest.
-            var orphanedBackups = _backupContentByStorage
-                .SelectMany(kv => kv.Value
-                                    .Where(b => !_existingGuestIds.Contains(b.VmId))
-                                    .GroupBy(b => b.VmId)
-                                    .Select(g => (StorageKey: kv.Key, VmId: g.Key, Backups: g.ToList())))
-                .ToList();
-            CreateResultPerItem(
-                items: orphanedBackups,
-                isItemOk: _ => false,
-                itemId: ob =>
-                {
-                    // storageKey is either "<storage>" (shared) or "<node>/<storage>" (non-shared)
-                    var parts = ob.StorageKey.Split('/');
-                    var node = parts.Length == 2 ? parts[0] : _storageResources.FirstOrDefault(s => s.Storage == ob.StorageKey)?.Node ?? "";
-                    var storage = parts.Length == 2 ? parts[1] : ob.StorageKey;
-                    return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
-                },
-                itemDescriptionKo: ob => ob.Backups.Count == 1
-                                            ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
-                                            : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
-                aggregatedIdOk: "cluster/storage",
-                aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
-                errorCode: "WS0003",
-                subContext: "Backup",
-                context: DiagnosticResultContext.Storage,
-                gravityKo: DiagnosticResultGravity.Warning,
-                compliance: []);
+            // Skipped with the backup checks (Backup.Enabled off, or backup privileges missing): the
+            // backup files were not read, and an empty list would read as "no orphaned backups".
+            if (_backupChecksEnabled)
+            {
+                // Every existing guest counts, including those whose config could not be read.
+                // One finding per guest and storage, not per backup file: a retention of 30 would
+                // otherwise give 30 findings for the same deleted guest.
+                var orphanedBackups = _backupContentByStorage
+                    .SelectMany(kv => kv.Value
+                                        .Where(b => !_existingGuestIds.Contains(b.VmId))
+                                        .GroupBy(b => b.VmId)
+                                        .Select(g => (StorageKey: kv.Key, VmId: g.Key, Backups: g.ToList())))
+                    .ToList();
+                CreateResultPerItem(
+                    items: orphanedBackups,
+                    isItemOk: _ => false,
+                    itemId: ob =>
+                    {
+                        // storageKey is either "<storage>" (shared) or "<node>/<storage>" (non-shared)
+                        var parts = ob.StorageKey.Split('/');
+                        var node = parts.Length == 2 ? parts[0] : _storageResources.FirstOrDefault(s => s.Storage == ob.StorageKey)?.Node ?? "";
+                        var storage = parts.Length == 2 ? parts[1] : ob.StorageKey;
+                        return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
+                    },
+                    itemDescriptionKo: ob => ob.Backups.Count == 1
+                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
+                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
+                    aggregatedIdOk: "cluster/storage",
+                    aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
+                    errorCode: "WS0003",
+                    subContext: "Backup",
+                    context: DiagnosticResultContext.Storage,
+                    gravityKo: DiagnosticResultGravity.Warning,
+                    compliance: []);
+            }
 
             // Volumes referenced by a guest config — every entry (data disks, CD-ROM, cloud-init,
             // unused) — with the nodes of the guests that reference them.
@@ -387,9 +385,10 @@ public partial class DiagnosticEngine
         #endregion
 
         #region Backup storage not reachable from all nodes
-        // A backup job targets a specific storage. If that storage is not mounted on the node
-        // where a VM resides, the backup will fail for that VM. Disabled jobs never run, and a job
-        // restricted with 'node' runs only there.
+        // A backup job targets a specific storage. If that storage is not enabled on the node where a
+        // VM resides, the backup will fail for that VM. Disabled jobs never run, and a job restricted
+        // with 'node' runs only there. A storage that is enabled on the node but not reachable is
+        // CS0001: it is not reported again here.
         var onlineNodeNames = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
                                         .Select(a => a.Node)
                                         .ToList();
@@ -403,12 +402,11 @@ public partial class DiagnosticEngine
             items: jobNodePairs,
             isItemOk: jn => _resources.Any(r => r.ResourceType == ClusterResourceType.Storage
                                                  && r.Node == jn.Node
-                                                 && r.Storage == jn.Job.Storage
-                                                 && r.IsAvailable),
+                                                 && r.Storage == jn.Job.Storage),
             itemId: jn => $"nodes/{jn.Node}",
-            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not available on node '{jn.Node}' — VMs on this node will not be backed up",
+            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not enabled on node '{jn.Node}' — VMs on this node will not be backed up",
             aggregatedIdOk: "cluster",
-            aggregatedDescriptionOk: _ => "All backup job storages are reachable from every online node",
+            aggregatedDescriptionOk: _ => "All backup job storages are enabled on every online node the job runs on",
             errorCode: "WS0007",
             subContext: "Backup",
             context: DiagnosticResultContext.Storage,
@@ -436,50 +434,6 @@ public partial class DiagnosticEngine
                 ComplianceControls.BsiGrundschutz.CON_3_A5,
                 ComplianceControls.Nis2Ir.C_4_2,
             ]);
-        #endregion
-
-        #region Shared storage used by only one node
-        // Shared storage types (NFS, iSCSI, Ceph, etc.) are meant to be accessible from multiple nodes.
-        // If a shared storage appears on only one node it may indicate a misconfiguration or a mount failure
-        // on the other nodes, defeating the purpose of the shared storage.
-        var totalOnlineNodes = _resources.Count(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
-        if (totalOnlineNodes > 1)
-        {
-            // Use full _resources to count how many nodes mount each storage.
-            // Group by storage name; flag every shared-type group whose mount count is 1 — unless
-            // the storage is restricted to a single node on purpose ('nodes' option).
-            var sharedGroups = _resources.Where(a => a.ResourceType == ClusterResourceType.Storage && a.IsAvailable)
-                                          .GroupBy(a => a.Storage)
-                                          .Where(g => _sharedStorageTypes.Contains(g.First().PluginType ?? "")
-                                                      && StorageNodes(storageConfig?.FirstOrDefault(c => c.Storage == g.Key)).Length != 1)
-                                          .Select(g => g.First())
-                                          .ToList();
-            CreateResultPerItem(
-                items: sharedGroups,
-                isItemOk: a => _resources.Count(r => r.ResourceType == ClusterResourceType.Storage
-                                                      && r.IsAvailable
-                                                      && r.Storage == a.Storage) > 1,
-                itemId: a => a.GetWebUrl(),
-                itemDescriptionKo: a => $"Shared storage '{a.Storage}' (type: {a.PluginType}) is only mounted on node '{a.Node}' — other nodes cannot access it",
-                aggregatedIdOk: "cluster/storage",
-                aggregatedDescriptionOk: _ => "All shared storages are mounted on more than one node",
-                errorCode: "WS0005",
-                subContext: "Shared",
-                context: DiagnosticResultContext.Storage,
-                gravityKo: DiagnosticResultGravity.Warning,
-                compliance:
-                [
-                    ComplianceControls.Iso27001.A_5_30,
-                    ComplianceControls.Dora.Art_11,
-                    ComplianceControls.Ens.OP_CONT_4,
-                    ComplianceControls.Iso27017.CLD_6_3_1,
-                    ComplianceControls.NistCsf.PR_IR_04,
-                    ComplianceControls.Acn.ID_IM_04,
-                    ComplianceControls.Iso22301.C_8_3_5,
-                    ComplianceControls.BsiGrundschutz.SYS_1_5_A20,
-                    ComplianceControls.Nis2Ir.C_4_2,
-                ]);
-        }
         #endregion
     }
 }

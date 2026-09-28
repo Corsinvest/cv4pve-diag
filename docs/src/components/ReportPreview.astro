@@ -51,7 +51,7 @@ const allRows: {
   { id: 'nodes/pve01/storage/pbs01', code: 'WS0009', text: 'Storage usage 80% - 2.58 TB of 3.22 TB', context: 'Storage', sub: 'Usage', gravity: 'Warning',
     controls: { Iso27001: 'A.5.30, A.8.16', Dora: 'Art.11' } },
   { id: 'nodes/pve02/qemu/106', code: 'WG0003', text: 'Qemu Agent not enabled', context: 'Qemu', sub: 'Agent', gravity: 'Warning' },
-  { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
+  { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear — add to cpu flags to mitigate Spectre/Meltdown/MDS", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
     controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
   { id: 'nodes/pve02/qemu/999', code: 'WG0017', text: 'vzdump backup not configured', context: 'Qemu', sub: 'Backup', gravity: 'Warning',
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },

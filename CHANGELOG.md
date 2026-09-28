@@ -4,6 +4,33 @@
 
 ## [2.7.0] — 2026-09-28
 
+### Fixes
+
+- `WN0019`/`CN0019` (disk temperature): with `Critical` set to `0` every disk was reported Critical. A level set to `0` is now off, and `0`/`0` turns the check off, as for the other thresholds.
+- `WC0008` (permissive firewall rule): a rule with an empty source, which in Proxmox VE means any address, was not reported. Now every enabled inbound `ACCEPT` rule of the cluster firewall from any source is reported; the destination is no longer judged, because on an inbound rule an empty destination is the host itself.
+- `WS0003` (orphaned backups): with `Backup.Enabled` off or the backup privileges missing, the backup files are not read, yet an Ok "No orphaned backup files" was reported. The check is now skipped, like the other backup checks.
+- `CG0001` (leftover hibernation state) ran on containers too, which cannot hibernate: it only produced an Ok row labelled "VM State". VMs only now.
+- Excel report: rows are sorted by gravity, context and subcontext, as in the other formats.
+
+### One finding per problem
+
+Several problems were reported twice, under two codes, often with two different severities. Each is now reported once.
+
+| Problem | Before | Now |
+|---|---|---|
+| Nodes on different Proxmox VE versions | `WC0011` Warning for the cluster + `CN0001` Critical on every node + `pve-manager` in `CN0002` | `WC0011` only, with the nodes on each version. `CN0001` is retired |
+| HA guest with disks on local storage and no replication | `CG0005` Critical + `WG0043` Warning | `CG0005` only, and skipped when the replication jobs cannot be read. `WG0043` is retired |
+| Disk with backup disabled and `cache=writeback` | `CG0002` + `WG0009` | `CG0002` only. `WG0009` is retired |
+| Shared storage not reachable on the other nodes | `CS0001` on each node + `WS0005` | `CS0001` only. `WS0005` is retired |
+| Backup job storage not reachable on a node | `CS0001` + `WS0007` | `CS0001`. `WS0007` now reports only a storage not enabled on a node the job runs on |
+| SCSI disk on a non-VirtIO controller | `IG0001` + `IG0002` for each disk | `IG0001`. `IG0002` reports only IDE and SATA disks |
+| CPU type `host`/`max` on an HA VM | `WG0006` + `CG0004` | `CG0004` only |
+| Disabled user with Administrator on `/` | `WC0005` + `WC0014` | `WC0014` only |
+| Admin without TFA, with a direct ACL and via a group | `WC0007` + `WC0013` | `WC0007` only |
+| Faulted disk in a ZFS mirror or raidz | `CN0010` for the pool + `CN0012` for the group and for the disk | `CN0010` for the pool + `CN0012` for the disk only |
+
+Retired codes, not reused: `CN0001`, `WG0009`, `WG0043`, `WS0005`. Ignore rules on them can be removed.
+
 ### Critical codes for threshold checks
 
 The first letter of a code is now always the severity of the finding. Checks with a warning and a critical threshold used to report both levels with their `W` code; the critical level now has its own `C` code, with the same number as the `W` code (`WN0027` → `CN0027`). **Breaking:** ignore rules on the `W` codes no longer hide the critical findings — add the `C` code to them.

@@ -12,11 +12,11 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
 | `WC0001` | Backup | <Severity level="Warning" /> | No automated backup job for any VM/CT |
-| `IC0001` | Backup | <Severity level="Info" /> | Backup job has no compression configured |
+| `IC0001` | Backup | <Severity level="Info" /> | Enabled backup job has no compression configured (jobs to Proxmox Backup Server excluded: it always compresses) |
 | `WC0002` | Backup | <Severity level="Warning" /> | Neither the backup job nor its storage has a retention (prune-backups) — storage will fill up |
 | `WC0017` | Backup | <Severity level="Warning" /> | Enabled backup job has no schedule — will never run |
 | `IC0012` | Backup | <Severity level="Info" /> | Backup job is disabled |
-| `WC0018` | Backup | <Severity level="Warning" /> | Recent vzdump task ended with non-OK status |
+| `WC0018` | Backup | <Severity level="Warning" /> | Recent vzdump task failed (a task ending with `WARNINGS` counts as completed) |
 | `WC0019` | Backup | <Severity level="Warning" /> | Two or more enabled backup jobs run on the same storage at the same schedule (I/O contention) |
 
 ## Quorum, HA and replication
@@ -41,14 +41,14 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 | `IC0020` | Pool | <Severity level="Info" /> | Pool has members but no ACL entry at `/pool/<id>` — not used as privilege boundary |
 | `CC0004` | Access | <Severity level="Critical" /> | root@pam has no two-factor authentication configured |
 | `WC0007` | Access | <Severity level="Warning" /> | User with Administrator role has no two-factor authentication |
-| `WC0005` | Access | <Severity level="Warning" /> | User has Administrator role at root path `/` — prefer scoped permissions |
-| `WC0006` | Access | <Severity level="Warning" /> | Disabled user still has valid API tokens that should be revoked |
+| `WC0005` | Access | <Severity level="Warning" /> | Enabled user has Administrator role at root path `/` — prefer scoped permissions (disabled users: `WC0014`) |
+| `WC0006` | Access | <Severity level="Warning" /> | Disabled user still has API tokens that should be revoked |
 | `IC0005` | Access | <Severity level="Info" /> | Local user has no expiration date configured |
 | `IC0006` | Access | <Severity level="Info" /> | API token of an enabled local (pam/pve) user has no expiration date |
 | `IC0007` | Access | <Severity level="Info" /> | Enabled user has no email — will not receive notifications |
 | `IC0008` | Access | <Severity level="Info" /> | Group has no members |
 | `IC0009` | Access | <Severity level="Info" /> | Custom role is not assigned in any ACL |
-| `WC0013` | Access | <Severity level="Warning" /> | User has Administrator role via a group but no TFA configured |
+| `WC0013` | Access | <Severity level="Warning" /> | User has Administrator role on `/` only via a group, and no TFA (direct Administrator: `WC0007`) |
 | `WC0014` | Access | <Severity level="Warning" /> | Disabled user still has Administrator role on `/` |
 | `IC0010` | Access | <Severity level="Info" /> | Administrator role on `/` with Propagate disabled |
 | `IC0011` | Access | <Severity level="Info" /> | LDAP/AD/OpenID realm does not enforce TFA at realm level |
@@ -63,7 +63,7 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 |---|---|---|---|
 | `WC0003` | Firewall | <Severity level="Warning" /> | Cluster-level firewall is completely disabled |
 | `WC0004` | Firewall | <Severity level="Warning" /> | Inbound policy is ACCEPT — unmatched incoming traffic is let through (outbound is not judged) |
-| `WC0008` | Firewall | <Severity level="Warning" /> | Cluster firewall rule with overly permissive source or destination |
+| `WC0008` | Firewall | <Severity level="Warning" /> | Enabled inbound `ACCEPT` rule of the cluster firewall from any source (empty, `0.0.0.0/0` or `::/0`) |
 | `IC0013` | Firewall | <Severity level="Info" /> | Cluster firewall has enabled rules but none configure logging |
 | `IC0014` | Firewall | <Severity level="Info" /> | Cluster firewall has 10+ disabled rules — stale configuration |
 
@@ -80,7 +80,7 @@ Checks on the cluster as a whole — they run once per analysis, whatever node y
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `WC0011` | Version | <Severity level="Warning" /> | Online nodes run different Proxmox VE versions |
+| `WC0011` | Version | <Severity level="Warning" /> | Online nodes run different Proxmox VE versions — lists the nodes on each version |
 | `WC0012` | Version | <Severity level="Warning" /> | Online nodes run different kernel versions |
 
 Any of these can be hidden with an [ignore rule](/cv4pve-diag/ignored-issues/) on its code.

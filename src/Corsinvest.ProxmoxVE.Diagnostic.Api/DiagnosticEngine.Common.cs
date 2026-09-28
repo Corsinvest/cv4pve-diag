@@ -33,18 +33,22 @@ public partial class DiagnosticEngine
         #region VM State
         // A saved vmstate (hibernate) left in pending means the VM was suspended and never resumed properly.
         // A VM hibernated on purpose keeps its vmstate with lock 'suspended' (reported by WG0015).
-        CreateResultPerItem(
-            items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
-            isItemOk: _ => false,
-            itemId: _ => id,
-            itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
-            aggregatedIdOk: id,
-            aggregatedDescriptionOk: _ => "No leftover vmstate (hibernate) entries",
-            errorCode: "CG0001",
-            subContext: "VM State",
-            context: context,
-            gravityKo: DiagnosticResultGravity.Critical,
-            compliance: []);
+        // Containers cannot hibernate: VMs only.
+        if (context == DiagnosticResultContext.Qemu)
+        {
+            CreateResultPerItem(
+                items: pending.Where(a => a.Key == "vmstate" && config.Lock != "suspended").ToList(),
+                isItemOk: _ => false,
+                itemId: _ => id,
+                itemDescriptionKo: a => $"Found vmstate '{a.Value}'",
+                aggregatedIdOk: id,
+                aggregatedDescriptionOk: _ => "No leftover vmstate (hibernate) entries",
+                errorCode: "CG0001",
+                subContext: "VM State",
+                context: context,
+                gravityKo: DiagnosticResultGravity.Critical,
+                compliance: []);
+        }
         #endregion
 
         #region Pending config changes
@@ -185,8 +189,9 @@ public partial class DiagnosticEngine
         // HA moves the guest to another node: a disk on non-shared storage is not there, unless a
         // replication job keeps a copy on the other nodes (local ZFS with replication is a
         // documented setup). Container bind and device mounts are host paths, not guest disks.
+        // Skipped when the replication jobs could not be read: every local disk would look unreplicated.
         var guestResource = _resources.FirstOrDefault(r => r.ResourceType == ClusterResourceType.Vm && r.VmId == vmId);
-        if (!string.IsNullOrWhiteSpace(guestResource?.HaState))
+        if (!string.IsNullOrWhiteSpace(guestResource?.HaState) && _replicationKnown)
         {
             var replicated = _replicatedVmIds.Contains(vmId);
             CreateResultPerItem(
@@ -338,30 +343,6 @@ public partial class DiagnosticEngine
                     gravityKo: DiagnosticResultGravity.Info,
                     descriptionKo: "Guest is not managed by any HA resource — it will not be restarted automatically on node failure",
                     descriptionOk: "Guest is managed by an HA resource",
-                    compliance: resilienceControls);
-            }
-
-            // If the guest is in HA on non-shared storage, replication is the only way the failover target
-            // has a recent copy. Flag HA guests with no enabled replication job — only when a disk is
-            // on local storage (on Ceph/NFS the target already sees the data, and replication is
-            // ZFS-only anyway) and the replication job list could be read.
-            var sharedStorages = _resources.Where(r => r.ResourceType == ClusterResourceType.Storage && r.Shared)
-                                           .Select(r => r.Storage)
-                                           .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var hasLocalDisk = config.Disks.Any(d => !d.IsUnused
-                                                    && !string.IsNullOrEmpty(d.Storage)
-                                                    && !sharedStorages.Contains(d.Storage));
-            if (_haVmIds.Contains(vmId) && _replicationKnown && hasLocalDisk)
-            {
-                CreateResult(
-                    isOk: _replicatedVmIds.Contains(vmId),
-                    id: id,
-                    errorCode: "WG0043",
-                    subContext: "Replication",
-                    context: context,
-                    gravityKo: DiagnosticResultGravity.Warning,
-                    descriptionKo: "HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data",
-                    descriptionOk: "HA guest is covered by an enabled replication job",
                     compliance: resilienceControls);
             }
         }

@@ -5,7 +5,7 @@ description: "Checks on every QEMU virtual machine: agent, hardware, CPU, disks,
 
 import Severity from '@corsinvest/cv4pve-docs-theme/components/Severity.astro';
 
-Checks run on every QEMU virtual machine. Several codes are shared with containers and mean the same thing there. How to read the codes: [Overview](/cv4pve-diag/checks/).
+Checks run on every QEMU virtual machine. Templates are skipped, except for `WG0014`. Several codes are shared with containers and mean the same thing there. How to read the codes: [Overview](/cv4pve-diag/checks/).
 
 ## State and configuration
 
@@ -32,11 +32,10 @@ Checks run on every QEMU virtual machine. Several codes are shared with containe
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
 | `IG0001` | VirtIO | <Severity level="Info" /> | SCSI controller is not VirtIO — lower performance |
-| `IG0002` | VirtIO | <Severity level="Info" /> | Disk on IDE/SATA, or on SCSI with a non-VirtIO controller |
+| `IG0002` | VirtIO | <Severity level="Info" /> | Disk on the IDE or SATA bus (SCSI disks: see `IG0001`) |
 | `IG0003` | VirtIO | <Severity level="Info" /> | Network interface not using VirtIO driver |
 | `WG0005` | Hardware | <Severity level="Warning" /> | CD-ROM drive has an image mounted |
 | `WG0008` | Hardware | <Severity level="Warning" /> | Disk uses cache=unsafe — data loss risk on host crash |
-| `WG0009` | Hardware | <Severity level="Warning" /> | Disk uses writeback cache but backup is disabled |
 | `IG0007` | Hardware | <Severity level="Info" /> | VM has virtio-rng device — verify this is intentional |
 | `IG0008` | Hardware | <Severity level="Info" /> | VM has serial console configured — verify this is intentional |
 | `IG0012` | Hardware | <Severity level="Info" /> | Machine type not set or without a version (e.g. q35) — may change across PVE upgrades |
@@ -52,11 +51,11 @@ Checks run on every QEMU virtual machine. Several codes are shared with containe
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `WG0006` | CPU | <Severity level="Warning" /> | CPU type 'host' or 'max' prevents live migration |
+| `WG0006` | CPU | <Severity level="Warning" /> | CPU type 'host' or 'max' prevents live migration (cluster only; on an HA VM it is `CG0004`) |
 | `IG0004` | CPU | <Severity level="Info" /> | CPU type is outdated (kvm64, also when no CPU type is set) |
 | `WG0037` | CPU | <Severity level="Warning" /> | Spectre/Meltdown flags missing for the node's CPU vendor (Intel: spec-ctrl, ssbd, pcid, md-clear; AMD: ibpb, virt-ssbd) |
 | `WG0007` | CPU | <Severity level="Warning" /> | CPU hotplug enabled on Windows guest — not supported |
-| `CG0004` | CPU | <Severity level="Critical" /> | CPU type 'host' or 'max' is incompatible with HA — live migration required by HA is impossible |
+| `CG0004` | CPU | <Severity level="Critical" /> | CPU type 'host' or 'max' on a VM managed by HA — live migration required by HA is impossible (cluster only) |
 | `WG0036` | CPU | <Severity level="Warning" /> | Node vCPU overcommit ratio exceeds configured threshold |
 
 ## Backup and snapshots
@@ -79,7 +78,6 @@ Checks run on every QEMU virtual machine. Several codes are shared with containe
 |---|---|---|---|
 | `CG0005` | HA | <Severity level="Critical" /> | Disk on non-shared storage, VM managed by HA and not replicated — migration will fail |
 | `IG0015` | HA | <Severity level="Info" /> | Running VM not managed by HA while other guests are — will not be restarted on node failure |
-| `WG0043` | Replication | <Severity level="Warning" /> | HA VM with disks on local storage has no enabled replication job — failover target will have no recent data |
 
 ## Network and firewall
 
