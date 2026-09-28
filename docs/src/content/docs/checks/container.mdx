@@ -64,12 +64,12 @@ Checks run on every LXC container. Several codes are shared with VMs and mean th
 | `WG0040` | Memory | <Severity level="Warning" /> | Container has no memory limit (Memory=0) — can consume all host RAM |
 | `IG0013` | Memory | <Severity level="Info" /> | Container has swap disabled — OOM killer risk under memory pressure |
 | `CG0003` | Tasks | <Severity level="Critical" /> | Failed tasks found in the last 48 hours |
-| `WG0025` | Usage | <Severity level="Warning/Critical" /> | CPU usage above configured threshold |
-| `WG0026` | Usage | <Severity level="Warning/Critical" /> | Memory usage above configured threshold |
-| `WG0027/WG0028` | Usage | <Severity level="Warning/Critical" /> | Network throughput above configured threshold |
-| `WG0029` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI CPU pressure above threshold (PVE 9.0+) |
-| `WG0030` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI I/O full pressure above threshold (PVE 9.0+) |
-| `WG0031` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI memory full pressure above threshold (PVE 9.0+) |
-| `WG0032` | HealthScore | <Severity level="Warning/Critical" /> | Composite health score below threshold |
+| `WG0025`/`CG0025` | Usage | <Severity level="Warning/Critical" /> | CPU usage above configured threshold |
+| `WG0026`/`CG0026` | Usage | <Severity level="Warning/Critical" /> | Memory usage above configured threshold |
+| `WG0027`/`CG0027`, `WG0028`/`CG0028` | Usage | <Severity level="Warning/Critical" /> | Network throughput above configured threshold |
+| `WG0029`/`CG0029` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI CPU pressure above threshold (PVE 9.0+) |
+| `WG0030`/`CG0030` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI I/O full pressure above threshold (PVE 9.0+) |
+| `WG0031`/`CG0031` | Pressure | <Severity level="Warning/Critical" /> | Linux PSI memory full pressure above threshold (PVE 9.0+) |
+| `WG0032`/`CG0032` | HealthScore | <Severity level="Warning/Critical" /> | Composite health score below threshold |
 
 Any of these can be hidden with an [ignore rule](/cv4pve-diag/ignored-issues/) on its code.

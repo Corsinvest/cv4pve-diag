@@ -75,31 +75,31 @@ Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on
 
 | Field | Default | What it does | Check |
 |---|---|---|---|
-| `Storage.Threshold` | `70` / `85` | Usage % of storages, of the node root filesystem, of node swap and of ZFS pools. | `WS0001`, `WN0029`, `WN0030`, `WN0044` |
+| `Storage.Threshold` | `70` / `85` | Usage % of storages, of the node root filesystem, of node swap and of ZFS pools. | `WS0009`/`CS0009`, `WN0029`/`CN0029`, `WN0030`/`CN0030`, `WN0044`/`CN0044` |
 | `Storage.Rrd` | — | Written by `create-settings` but not used: storage checks read the current usage. | — |
 
 ## Node
 
 | Field | Default | What it does | Check |
 |---|---|---|---|
-| `Node.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WN0027` |
-| `Node.Memory` | `70` / `85` | Memory usage %. | `WN0038` |
-| `Node.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WN0039`, `WN0040` |
-| `Node.IoWait` | `10` / `25` | Average CPU I/O wait % — a sign of a storage bottleneck. | `WN0028` |
-| `Node.HealthScore` | `70` / `50` | Composite score, see [health score](#health-score). Lower is worse. | `WG0032` |
-| `Node.Rrd.Pressure.Cpu` | `40` / `70` | PSI CPU: % of time at least one task was stalled (PVE 9.0+). | `WN0031` |
-| `Node.Rrd.Pressure.IoFull` | `10` / `30` | PSI I/O full (PVE 9.0+). | `WN0032` |
-| `Node.Rrd.Pressure.MemoryFull` | `5` / `15` | PSI memory full (PVE 9.0+). | `WN0033` |
+| `Node.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WN0027`/`CN0027` |
+| `Node.Memory` | `70` / `85` | Memory usage %. | `WN0038`/`CN0038` |
+| `Node.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WN0039`/`CN0039`, `WN0040`/`CN0040` |
+| `Node.IoWait` | `10` / `25` | Average CPU I/O wait % — a sign of a storage bottleneck. | `WN0028`/`CN0028` |
+| `Node.HealthScore` | `70` / `50` | Composite score, see [health score](#health-score). Lower is worse. | `WN0048`/`CN0048` |
+| `Node.Rrd.Pressure.Cpu` | `40` / `70` | PSI CPU: % of time at least one task was stalled (PVE 9.0+). | `WN0031`/`CN0031` |
+| `Node.Rrd.Pressure.IoFull` | `10` / `30` | PSI I/O full (PVE 9.0+). | `WN0032`/`CN0032` |
+| `Node.Rrd.Pressure.MemoryFull` | `5` / `15` | PSI memory full (PVE 9.0+). | `WN0033`/`CN0033` |
 | `Node.Rrd.TimeFrame` | `Day` | RRD window for the averages: `Hour`, `Day`, `Week`, `Month`, `Year`. | — |
 | `Node.Rrd.Consolidation` | `Average` | `Average` smooths peaks, `Maximum` catches them. | — |
 | `Node.MaxVCpuRatio` | `4.0` | vCPUs of the guests divided by physical CPUs, above which the node is overcommitted. | `WG0036` |
 | `Node.ConsolidationCpuThreshold` | `10.0` | Current node CPU %… | `IN0003` |
 | `Node.ConsolidationMemThreshold` | `20.0` | …and current node RAM % both below these: the node could be consolidated. | `IN0003` |
-| `Node.Smart.Enabled` | `false` | Per-attribute S.M.A.R.T. checks — reallocated, pending, uncorrectable sectors, CRC errors, temperature. One extra API call per disk. | `WN0020`–`WN0022`, `CN0008`, `CN0009`, `WN0019`/`CN0007` |
-| `Node.Smart.Temperature` | `55` / `65` | Disk temperature °C; `Warning` `0` skips it. | `WN0019` / `CN0007` |
-| `Node.Smart.SsdWearout` | `70` / `85` | SSD life consumed %. Runs even when `Smart.Enabled` is off. | `WN0018` |
+| `Node.Smart.Enabled` | `false` | Per-attribute S.M.A.R.T. checks — reallocated, pending, uncorrectable sectors, CRC errors, temperature. One extra API call per disk. | `WN0020`–`WN0022`, `CN0008`, `CN0009`, `WN0019`/`CN0019` |
+| `Node.Smart.Temperature` | `55` / `65` | Disk temperature °C; `Warning` `0` skips it. | `WN0019` / `CN0019` |
+| `Node.Smart.SsdWearout` | `70` / `85` | SSD life consumed %. Runs even when `Smart.Enabled` is off. | `WN0018`/`CN0018` |
 | `Node.NodeStorage.ZfsDetail` | `false` | Per-pool vdev state and I/O errors. One API call per pool. | `CN0012`, `WN0024`, `WN0025` |
-| `Node.NodeStorage.LvmThinMetadata` | `true` | LVM-thin metadata usage, fixed limits 90% / 95%. One API call per node. | `WN0026` / `CN0013` |
+| `Node.NodeStorage.LvmThinMetadata` | `true` | LVM-thin metadata usage, fixed limits 90% / 95%. One API call per node. | `WN0026` / `CN0026` |
 
 ## VM and container
 
@@ -107,21 +107,21 @@ Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on
 
 | Field | Default | What it does | Check |
 |---|---|---|---|
-| `Qemu.Cpu`, `Lxc.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WG0025` |
-| `Qemu.Memory`, `Lxc.Memory` | `70` / `85` | Memory usage %. | `WG0026` |
-| `Qemu.Network`, `Lxc.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WG0027`, `WG0028` |
-| `Qemu.HealthScore`, `Lxc.HealthScore` | `60` / `40` | Composite score, see [health score](#health-score). Lower is worse. | `WG0032` |
-| `….Rrd.Pressure.Cpu` | `50` / `80` | PSI CPU inside the guest (PVE 9.0+). | `WG0029` |
-| `….Rrd.Pressure.IoFull` | `20` / `50` | PSI I/O full (PVE 9.0+). | `WG0030` |
-| `….Rrd.Pressure.MemoryFull` | `10` / `30` | PSI memory full (PVE 9.0+). | `WG0031` |
+| `Qemu.Cpu`, `Lxc.Cpu` | `70` / `85` | CPU usage % over the RRD window. | `WG0025`/`CG0025` |
+| `Qemu.Memory`, `Lxc.Memory` | `70` / `85` | Memory usage %. | `WG0026`/`CG0026` |
+| `Qemu.Network`, `Lxc.Network` | `0` / `0` (off) | Network throughput in bytes/s, in and out. | `WG0027`/`CG0027`, `WG0028`/`CG0028` |
+| `Qemu.HealthScore`, `Lxc.HealthScore` | `60` / `40` | Composite score, see [health score](#health-score). Lower is worse. | `WG0032`/`CG0032` |
+| `….Rrd.Pressure.Cpu` | `50` / `80` | PSI CPU inside the guest (PVE 9.0+). | `WG0029`/`CG0029` |
+| `….Rrd.Pressure.IoFull` | `20` / `50` | PSI I/O full (PVE 9.0+). | `WG0030`/`CG0030` |
+| `….Rrd.Pressure.MemoryFull` | `10` / `30` | PSI memory full (PVE 9.0+). | `WG0031`/`CG0031` |
 | `….Rrd.TimeFrame`, `….Rrd.Consolidation` | `Day`, `Average` | As for nodes. | — |
 
 ## CVE
 
 | Field | Default | What it does | Check |
 |---|---|---|---|
-| `Cve.NvdEnabled` | `false` | Looks up the CVEs that affect the installed `pve-manager` version in the NVD (National Vulnerability Database). Needs internet access; no API key. | `CN0015`, `WN0042` |
-| `Cve.MinCvssScore` | `7.0` | Ignores CVEs below this CVSS score; `0` reports everything (very noisy). Score ≥ 9.0 is Critical (`CN0015`), anything lower Warning (`WN0042`). | — |
+| `Cve.NvdEnabled` | `false` | Looks up the CVEs that affect the installed `pve-manager` version in the NVD (National Vulnerability Database). Needs internet access; no API key. | `CN0042`, `WN0042` |
+| `Cve.MinCvssScore` | `7.0` | Ignores CVEs below this CVSS score; `0` reports everything (very noisy). Score ≥ 9.0 is Critical (`CN0042`), anything lower Warning (`WN0042`). | — |
 
 The lookup covers Proxmox VE itself (`cpe:2.3:a:proxmox:virtual_environment`). For the Debian packages of
 the nodes run [`debsecan`](https://manpages.debian.org/bookworm/debsecan/debsecan.1.en.html) on each node:

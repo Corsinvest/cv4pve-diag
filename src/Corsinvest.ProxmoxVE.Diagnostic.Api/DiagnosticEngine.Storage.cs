@@ -140,7 +140,8 @@ public partial class DiagnosticEngine
         // Storage usage above configured Warning/Critical thresholds
         CheckThreshold(
             threshold: settings.Storage.Threshold,
-            errorCode: "WS0001",
+            errorCode: "WS0009",
+            criticalErrorCode: "CS0009",
             context: DiagnosticResultContext.Storage,
             subContext: "Usage",
             data: _storageResources.Where(a => a.IsAvailable)

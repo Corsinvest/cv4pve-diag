@@ -572,10 +572,10 @@ public partial class DiagnosticEngine
                            context,
                            id,
                            rrdList.Select(a => new ThresholdRddData(a, a, a)),
-                           cpuErrorCode: "WG0025",
-                           memoryErrorCode: "WG0026",
-                           netInErrorCode: "WG0027",
-                           netOutErrorCode: "WG0028");
+                           cpuErrorCode: ("WG0025", "CG0025"),
+                           memoryErrorCode: ("WG0026", "CG0026"),
+                           netInErrorCode: ("WG0027", "CG0027"),
+                           netOutErrorCode: ("WG0028", "CG0028"));
 
         // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
         // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
@@ -584,6 +584,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,
                            "WG0029",
+                           "CG0029",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
@@ -598,6 +599,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(thresholdHost.Rrd.Pressure.IoFull,
                            "WG0030",
+                           "CG0030",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
@@ -612,6 +614,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(thresholdHost.Rrd.Pressure.MemoryFull,
                            "WG0031",
+                           "CG0031",
                            context,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
@@ -627,20 +630,21 @@ public partial class DiagnosticEngine
         var ramPct = rrdList.Any(a => Convert.ToDouble(a.MemorySize) > 0)
                         ? rrdList.Where(a => Convert.ToDouble(a.MemorySize) > 0).Average(a => Convert.ToDouble(a.MemoryUsage) / Convert.ToDouble(a.MemorySize) * 100.0)
                         : 0.0;
-        CheckHealthScore(thresholdHost.HealthScore, context, id, (cpuPct * 0.5) + (ramPct * 0.5));
+        CheckHealthScore(thresholdHost.HealthScore, "WG0032", "CG0032", context, id, (cpuPct * 0.5) + (ramPct * 0.5));
     }
 
     private void CheckThresholdHost(SettingsThresholdHost thresholdHost,
                                     DiagnosticResultContext context,
                                     string id,
                                     IEnumerable<ThresholdRddData> rrdData,
-                                    string cpuErrorCode,
-                                    string memoryErrorCode,
-                                    string netInErrorCode,
-                                    string netOutErrorCode)
+                                    (string Warning, string Critical) cpuErrorCode,
+                                    (string Warning, string Critical) memoryErrorCode,
+                                    (string Warning, string Critical) netInErrorCode,
+                                    (string Warning, string Critical) netOutErrorCode)
     {
         CheckThreshold(thresholdHost.Cpu,
-                       cpuErrorCode,
+                       cpuErrorCode.Warning,
+                       cpuErrorCode.Critical,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.Cpu.CpuUsagePercentage) * 100,
@@ -651,7 +655,8 @@ public partial class DiagnosticEngine
                        false);
 
         CheckThreshold(thresholdHost.Memory,
-                       memoryErrorCode,
+                       memoryErrorCode.Warning,
+                       memoryErrorCode.Critical,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => Convert.ToDouble(a.Memory.MemoryUsage)),
@@ -662,7 +667,8 @@ public partial class DiagnosticEngine
                        true);
 
         CheckThreshold(thresholdHost.Network,
-                       netInErrorCode,
+                       netInErrorCode.Warning,
+                       netInErrorCode.Critical,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.NetIO.NetIn),
@@ -673,7 +679,8 @@ public partial class DiagnosticEngine
                        false);
 
         CheckThreshold(thresholdHost.Network,
-                       netOutErrorCode,
+                       netOutErrorCode.Warning,
+                       netOutErrorCode.Critical,
                        context,
                        "Usage",
                        [new ThresholdDataPoint(rrdData.Average(a => a.NetIO.NetOut),
@@ -687,6 +694,8 @@ public partial class DiagnosticEngine
 
 
     private void CheckHealthScore(SettingsThreshold<double> healthScore,
+                                  string errorCode,
+                                  string criticalErrorCode,
                                   DiagnosticResultContext context,
                                   string id,
                                   double weightedLoad)
@@ -704,7 +713,7 @@ public partial class DiagnosticEngine
         CreateResult(
             isOk: isOk,
             id: id,
-            errorCode: "WG0032",
+            errorCode: isCritical ? criticalErrorCode : errorCode,
             subContext: "HealthScore",
             context: context,
             gravityKo: isCritical
@@ -719,14 +728,16 @@ public partial class DiagnosticEngine
 
     /// <summary>
     /// Checks each datapoint against Warning/Critical thresholds and routes through <see cref="CreateResult"/>.
-    /// One call per datapoint: Critical when pct ≥ Critical, Warning when pct ≥ Warning (but below Critical),
-    /// Ok otherwise (emitted only if <c>settings.IncludeOkResult</c> is true).
+    /// One call per datapoint: Critical when pct ≥ Critical (reported as <paramref name="criticalErrorCode"/>),
+    /// Warning when pct ≥ Warning but below Critical (as <paramref name="errorCode"/>), Ok otherwise (as
+    /// <paramref name="errorCode"/>, emitted only if <c>settings.IncludeOkResult</c> is true).
     /// isValue=true  → Usage is an absolute value (e.g. percentage already computed).
     /// isValue=false → Usage/Size are raw bytes; percentage is computed internally.
     /// formatByte=true → appends human-readable byte sizes to the description.
     /// </summary>
     private void CheckThreshold(SettingsThreshold<double> threshold,
                                 string errorCode,
+                                string criticalErrorCode,
                                 DiagnosticResultContext context,
                                 string subContext,
                                 IEnumerable<ThresholdDataPoint> data,
@@ -757,7 +768,7 @@ public partial class DiagnosticEngine
             CreateResult(
                 isOk: isOk,
                 id: a.Id,
-                errorCode: errorCode,
+                errorCode: isCritical ? criticalErrorCode : errorCode,
                 subContext: subContext,
                 context: context,
                 gravityKo: isCritical ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,

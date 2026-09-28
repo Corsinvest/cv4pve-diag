@@ -1180,15 +1180,16 @@ public partial class DiagnosticEngine
                            DiagnosticResultContext.Node,
                            id,
                            rrdList.Select(a => new ThresholdRddData(a, a, a)),
-                           cpuErrorCode: "WN0027",
-                           memoryErrorCode: "WN0038",
-                           netInErrorCode: "WN0039",
-                           netOutErrorCode: "WN0040");
+                           cpuErrorCode: ("WN0027", "CN0027"),
+                           memoryErrorCode: ("WN0038", "CN0038"),
+                           netInErrorCode: ("WN0039", "CN0039"),
+                           netOutErrorCode: ("WN0040", "CN0040"));
 
         // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck.
         // Own thresholds: the CPU ones (70/85%) are far above any real iowait problem.
         CheckThreshold(settings.Node.IoWait,
                        "WN0028",
+                       "CN0028",
                        DiagnosticResultContext.Node,
                        "Usage",
                        [new ThresholdDataPoint(rrdList.Average(a => a.IoWait) * 100,
@@ -1201,6 +1202,7 @@ public partial class DiagnosticEngine
         // Root filesystem usage on the node OS disk
         CheckThreshold(settings.Storage.Threshold,
                        "WN0029",
+                       "CN0029",
                        DiagnosticResultContext.Node,
                        "Usage",
                        [new ThresholdDataPoint(rrdList.Average(a => a.RootUsage),
@@ -1216,6 +1218,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(settings.Storage.Threshold,
                            "WN0030",
+                           "CN0030",
                            DiagnosticResultContext.Node,
                            "Usage",
                            [new ThresholdDataPoint(rrdList.Average(a => a.SwapUsage),
@@ -1233,6 +1236,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(settings.Node.Rrd.Pressure.Cpu,
                            "WN0031",
+                           "CN0031",
                            DiagnosticResultContext.Node,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureCpuSome),
@@ -1247,6 +1251,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(settings.Node.Rrd.Pressure.IoFull,
                            "WN0032",
+                           "CN0032",
                            DiagnosticResultContext.Node,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureIoFull),
@@ -1261,6 +1266,7 @@ public partial class DiagnosticEngine
         {
             CheckThreshold(settings.Node.Rrd.Pressure.MemoryFull,
                            "WN0033",
+                           "CN0033",
                            DiagnosticResultContext.Node,
                            "Pressure",
                            [new ThresholdDataPoint(rrdList.Average(a => a.PressureMemoryFull),
@@ -1284,6 +1290,8 @@ public partial class DiagnosticEngine
 
         var nodeWeightedLoad = (nodeCpuPct * 0.4) + (nodeRamPct * 0.4) + (nodeDiskPct * 0.2);
         CheckHealthScore(settings.Node.HealthScore,
+                         "WN0048",
+                         "CN0048",
                          DiagnosticResultContext.Node,
                          id,
                          nodeWeightedLoad);
@@ -1394,6 +1402,7 @@ public partial class DiagnosticEngine
         // SSD wearout percentage above threshold (100 - wearout = wear consumed)
         CheckThreshold(settings.Node.Smart.SsdWearout,
                        "WN0018",
+                       "CN0018",
                        DiagnosticResultContext.Node,
                        "SSD Wearout",
                        disksAll.Where(a => a.IsSsd && a.Wearout != "N/A")
@@ -1432,7 +1441,7 @@ public partial class DiagnosticEngine
                                     CreateResult(
                                         isOk: false,
                                         id: id,
-                                        errorCode: tempGravity == DiagnosticResultGravity.Critical ? "CN0007" : "WN0019",
+                                        errorCode: tempGravity == DiagnosticResultGravity.Critical ? "CN0019" : "WN0019",
                                         subContext: "S.M.A.R.T.",
                                         context: DiagnosticResultContext.Node,
                                         gravityKo: tempGravity,
@@ -1537,6 +1546,7 @@ public partial class DiagnosticEngine
         // ZFS pool usage above storage threshold
         CheckThreshold(settings.Storage.Threshold,
                        "WN0044",
+                       "CN0044",
                        DiagnosticResultContext.Storage,
                        "Zfs",
                        zfsList.Select(a => new ThresholdDataPoint(Convert.ToDouble(a.Alloc),
@@ -1590,7 +1600,7 @@ public partial class DiagnosticEngine
                     CreateResult(
                         isOk: false,
                         id: id,
-                        errorCode: metaPct >= 95 ? "CN0013" : "WN0026",
+                        errorCode: metaPct >= 95 ? "CN0026" : "WN0026",
                         subContext: "LvmThin",
                         context: DiagnosticResultContext.Node,
                         gravityKo: metaPct >= 95 ? DiagnosticResultGravity.Critical : DiagnosticResultGravity.Warning,

@@ -44,11 +44,11 @@ const allRows: {
     controls: { Nis2: 'Art.21(i)', Iso27001: 'A.5.15, A.8.2' } },
   { id: 'nodes/pve02/qemu/203', code: 'CG0002', text: "Disk 'scsi0' disabled for backup", context: 'Qemu', sub: 'Backup', gravity: 'Critical',
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
-  { id: 'nodes/pve01/qemu/1104', code: 'WG0026', text: 'Memory (rrd Day Average) usage 93.3% - 10.02 GB of 10.74 GB', context: 'Qemu', sub: 'Usage', gravity: 'Critical' },
+  { id: 'nodes/pve01/qemu/1104', code: 'CG0026', text: 'Memory (rrd Day Average) usage 93.3% - 10.02 GB of 10.74 GB', context: 'Qemu', sub: 'Usage', gravity: 'Critical' },
   { id: 'nodes/pve01', code: 'WN0013', text: "Node requires reboot: running kernel '6.8.12-20-pve' but newer kernel '6.8.12-43-pve' is installed", context: 'Node', sub: 'Reboot', gravity: 'Warning',
     controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
   { id: 'nodes/pve01/storage/datapool', code: 'WS0002', text: 'Image Orphaned 51.54 GB file vm-106-disk-1', context: 'Storage', sub: 'Image', gravity: 'Warning' },
-  { id: 'nodes/pve01/storage/pbs01', code: 'WS0001', text: 'Storage usage 80% - 2.58 TB of 3.22 TB', context: 'Storage', sub: 'Usage', gravity: 'Warning',
+  { id: 'nodes/pve01/storage/pbs01', code: 'WS0009', text: 'Storage usage 80% - 2.58 TB of 3.22 TB', context: 'Storage', sub: 'Usage', gravity: 'Warning',
     controls: { Iso27001: 'A.5.30, A.8.16', Dora: 'Art.11' } },
   { id: 'nodes/pve02/qemu/106', code: 'WG0003', text: 'Qemu Agent not enabled', context: 'Qemu', sub: 'Agent', gravity: 'Warning' },
   { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
@@ -72,7 +72,7 @@ const allRows: {
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
 ];
 
-const SAMPLE = ['CC0004', 'CG0002', 'WN0013', 'WS0001', 'WS0002', 'WG0037', 'IC0002', 'IN0001', 'WC0001', 'WC0003', 'WG0017'];
+const SAMPLE = ['CC0004', 'CG0002', 'WN0013', 'WS0009', 'WS0002', 'WG0037', 'IC0002', 'IN0001', 'WC0001', 'WC0003', 'WG0017'];
 
 // The compliance view filters the same rows the plain view shows, as the real --compliance does.
 const withOk = ok;

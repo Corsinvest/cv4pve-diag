@@ -53,18 +53,18 @@ Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters fo
 | `CC0001` | Critical | Cluster | First Critical-Cluster check (quorum lost). |
 | `CN0010` | Critical | Node | Tenth Critical-Node check (ZFS pool not ONLINE). |
 | `WG0017` | Warning  | Guest   | 17th Warning-Guest check (no vzdump backup configured). |
-| `WS0001` | Warning  | Storage | First Warning-Storage check (storage usage above threshold). |
+| `WS0002` | Warning  | Storage | Second Warning-Storage check (orphaned disk image). |
 | `IC0017` | Info     | Cluster | 17th Info-Cluster check (single-node topology). |
 | `IG0016` | Info     | Guest   | 16th Info-Guest check (machine type outdated). |
 | `WN0045` | Warning  | Node    | 45th Warning-Node check (cross-node clock drift). |
 
-The first letter is the severity a check reports **by default**. Threshold checks (CPU, memory, PSI, storage usage, health score, SSD wearout, ZFS usage) keep their `W` code and escalate to **Critical** when the critical threshold is crossed; a few others use a separate `C` code for the critical case (`WN0019/CN0007`, `WN0026/CN0013`, `WN0042/CN0015`).
+The first letter is always the severity of the finding. Checks with a warning and a critical threshold — CPU, memory, PSI, storage usage, health score, SSD wearout and others — have two codes with the same number: a `W` code above the warning threshold and a `C` code above the critical one, e.g. `WG0025`/`CG0025` for VM CPU usage. The tables list them together.
 
 Exceptions to the scheme:
 
 - **`CU0001`** — `U` is not an area: it is emitted by the engine when a cluster resource cannot be classified (see [Meta codes](#meta-codes)).
 - **`WG0042`** — reported on any object, not only guests, whenever an API call fails (see [Meta codes](#meta-codes)).
-- **`WG0032`** (health score) is also used for nodes, **`WN0044`** (ZFS pool usage) is reported on the storage.
+- **`WN0044`**/**`CN0044`** (ZFS pool usage) are reported on the storage.
 - **`WC0020`** is reported as Info or Warning depending on which privilege is missing.
 
 ---

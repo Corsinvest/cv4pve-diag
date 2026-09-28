@@ -19,9 +19,9 @@ Checks on every storage, on each node that can use it. How to read the codes: [O
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `WS0001` | Usage | <Severity level="Warning/Critical" /> | Storage usage above configured threshold |
+| `WS0009`/`CS0009` | Usage | <Severity level="Warning/Critical" /> | Storage usage above configured threshold |
 | `WS0004` | ThinOvercommit | <Severity level="Warning" /> | Allocated disk space exceeds physical capacity on a node (thin provisioning) |
-| `WN0044` | Zfs | <Severity level="Warning/Critical" /> | ZFS pool disk usage above configured threshold |
+| `WN0044`/`CN0044` | Zfs | <Severity level="Warning/Critical" /> | ZFS pool disk usage above configured threshold |
 
 ## Backups and orphaned data
 

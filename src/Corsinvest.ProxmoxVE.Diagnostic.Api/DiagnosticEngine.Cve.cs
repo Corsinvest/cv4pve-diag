@@ -241,7 +241,7 @@ public partial class DiagnosticEngine
             })
             .ToList();
 
-        // Critical CVEs → CN0015
+        // Critical CVEs → CN0042
         CreateResultPerItem(
             items: applicable.Where(a => a.Gravity == DiagnosticResultGravity.Critical).ToList(),
             isItemOk: _ => false,
@@ -249,7 +249,7 @@ public partial class DiagnosticEngine
             itemDescriptionKo: a => $"Proxmox CVE {a.Cve.Id} (CVSS: {a.Cve.CvssScore:F1}, {a.Cve.Severity}): {a.Cve.Description}",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "No critical (CVSS ≥ 9.0) Proxmox VE CVE applies to the installed version",
-            errorCode: "CN0015",
+            errorCode: "CN0042",
             subContext: "CVE",
             context: DiagnosticResultContext.Node,
             gravityKo: DiagnosticResultGravity.Critical,
