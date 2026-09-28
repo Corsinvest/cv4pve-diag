@@ -217,6 +217,11 @@ internal class OutputEngine
                                    string fileName,
                                    ComplianceStandard? compliance)
     {
+        // Same order as the text formats: gravity, then context and subcontext.
+        data = [.. data.OrderByDescending(a => a.Gravity)
+                       .ThenBy(a => a.Context)
+                       .ThenBy(a => a.SubContext)];
+
         using var workbook = new XLWorkbook();
 
         var ws = workbook.Worksheets.Add("Summary");

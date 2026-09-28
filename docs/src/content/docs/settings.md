@@ -96,7 +96,7 @@ Orphaned backup files (`WS0003`) are also found only when `Backup.Enabled` is on
 | `Node.ConsolidationCpuThreshold` | `10.0` | Current node CPU %… | `IN0003` |
 | `Node.ConsolidationMemThreshold` | `20.0` | …and current node RAM % both below these: the node could be consolidated. | `IN0003` |
 | `Node.Smart.Enabled` | `false` | Per-attribute S.M.A.R.T. checks — reallocated, pending, uncorrectable sectors, CRC errors, temperature. One extra API call per disk. | `WN0020`–`WN0022`, `CN0008`, `CN0009`, `WN0019`/`CN0019` |
-| `Node.Smart.Temperature` | `55` / `65` | Disk temperature °C; `Warning` `0` skips it. | `WN0019` / `CN0019` |
+| `Node.Smart.Temperature` | `55` / `65` | Disk temperature °C. | `WN0019`/`CN0019` |
 | `Node.Smart.SsdWearout` | `70` / `85` | SSD life consumed %. Runs even when `Smart.Enabled` is off. | `WN0018`/`CN0018` |
 | `Node.NodeStorage.ZfsDetail` | `false` | Per-pool vdev state and I/O errors. One API call per pool. | `CN0012`, `WN0024`, `WN0025` |
 | `Node.NodeStorage.LvmThinMetadata` | `true` | LVM-thin metadata usage, fixed limits 90% / 95%. One API call per node. | `WN0026` / `CN0026` |

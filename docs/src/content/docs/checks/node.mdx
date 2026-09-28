@@ -13,8 +13,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 |---|---|---|---|
 | `WN0003` | EOL | <Severity level="Warning" /> | Installed PVE version has reached end of life |
 | `WN0004` | Subscription | <Severity level="Warning" /> | Node has no active Proxmox VE subscription |
-| `CN0001` | Version | <Severity level="Critical" /> | Nodes in cluster have different PVE versions |
-| `CN0002` | PackageVersions | <Severity level="Critical" /> | A package installed on both nodes has a different version (old kernels ignored) |
+| `CN0002` | PackageVersions | <Severity level="Critical" /> | A package installed on both nodes has a different version (kernel images and `pve-manager` ignored: the Proxmox VE version is `WC0011`) |
 | `IN0001` | Update | <Severity level="Info" /> | Packages available for update |
 | `WN0012` | Update | <Severity level="Warning" /> | Packages with APT priority `important` available for update |
 | `WN0013` | Reboot | <Severity level="Warning" /> | A newer kernel is installed than the one running — reboot needed |
@@ -68,7 +67,7 @@ Checks run on every node of the cluster. Cross-node checks compare each node wit
 | `WN0017` | SSD Wearout | <Severity level="Warning" /> | SSD does not expose wear data |
 | `WN0018`/`CN0018` | SSD Wearout | <Severity level="Warning/Critical" /> | SSD wearout consumed above threshold |
 | `CN0010` | Zfs | <Severity level="Critical" /> | ZFS pool is not in ONLINE state |
-| `CN0012` | Zfs | <Severity level="Critical" /> | ZFS pool vdev is in a degraded or faulted state |
+| `CN0012` | Zfs | <Severity level="Critical" /> | A disk of a ZFS pool is degraded, faulted, removed or unavailable (hot spares excluded) |
 | `WN0025` | Zfs | <Severity level="Warning" /> | ZFS pool vdev has accumulated read/write/checksum errors |
 | `WN0024` | Zfs | <Severity level="Warning" /> | ZFS pool reports errors |
 | `WN0026`/`CN0026` | LvmThin | <Severity level="Warning/Critical" /> | LVM-thin metadata usage is high — full metadata causes data corruption |

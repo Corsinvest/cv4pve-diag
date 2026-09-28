@@ -13,7 +13,6 @@ Checks on every storage, on each node that can use it. How to read the codes: [O
 |---|---|---|---|
 | `CS0001` | Status | <Severity level="Critical" /> | Storage is not accessible on a node (shared storages are checked on every node) |
 | `WS0008` | Status | <Severity level="Warning" /> | Storage is disabled but an enabled backup job or a guest still uses it |
-| `WS0005` | Shared | <Severity level="Warning" /> | Shared storage only mounted on one node (not when restricted to one node by 'nodes') |
 
 ## Capacity
 
@@ -29,7 +28,7 @@ Checks on every storage, on each node that can use it. How to read the codes: [O
 |---|---|---|---|
 | `WS0003` | Backup | <Severity level="Warning" /> | Backup files whose VMID no longer exists (one finding per VMID and storage) |
 | `WS0006` | Backup | <Severity level="Warning" /> | No storage has 'backup' content type — backups cannot be stored |
-| `WS0007` | Backup | <Severity level="Warning" /> | Enabled backup job storage not available on a node it runs on — VMs there not backed up |
+| `WS0007` | Backup | <Severity level="Warning" /> | Enabled backup job storage not enabled on a node it runs on — VMs there not backed up (a storage enabled but not reachable is `CS0001`) |
 | `WS0002` | Image | <Severity level="Warning" /> | Disk image or container volume not attached to any VM/CT on that node |
 
 Any of these can be hidden with an [ignore rule](/cv4pve-diag/ignored-issues/) on its code.
