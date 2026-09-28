@@ -57,7 +57,7 @@ Retired codes, not reused: `CN0001`, `WG0009`, `WG0043`, `WS0005`. Ignore rules 
 
 ### Documentation
 
-- New documentation site: 📖 **[Documentation](https://corsinvest.github.io/cv4pve-diag/)**.
+- New documentation site: **[Documentation](https://corsinvest.github.io/cv4pve-diag/)**.
 - New product icon.
 
 ---
