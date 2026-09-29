@@ -93,7 +93,7 @@ wget https://github.com/Corsinvest/cv4pve-diag/releases/latest/download/cv4pve-d
 unzip cv4pve-diag-linux-x64.zip && chmod +x cv4pve-diag
 
 # Run against any node of the cluster, with an API token
-./cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=UUID' --output-file=report.html execute
+./cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=<uuid>' --output-file=report.html execute
 ```
 
 The API token needs the privileges listed in [Permissions](https://corsinvest.github.io/cv4pve-diag/permissions/) — note that `PVEAuditor` alone cannot see backups.

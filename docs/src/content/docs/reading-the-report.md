@@ -50,7 +50,7 @@ With `--output-file`, the format follows the file extension unless you pass a fo
 | anything else | Text |
 
 ```bash
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' --output-file=report.html execute
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' --output-file=report.html execute
 ```
 
 Each JSON entry has the fields `Id`, `Code`, `Description`, `Context`, `SubContext` and `Gravity`, plus `ControlId` with `--compliance` and `IgnoredIssue` with `--ignored-issues-show`. An existing output file is overwritten. Excel without `--output-file` is written to `cv4pve-diagnostic-<timestamp>.xlsx` in the current folder.

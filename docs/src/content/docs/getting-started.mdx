@@ -4,7 +4,6 @@ description: Install cv4pve-diag, connect it to a Proxmox VE cluster, run it and
 ---
 
 import CliInstall from '@corsinvest/cv4pve-docs-theme/components/CliInstall.astro';
-import CliConnection from '@corsinvest/cv4pve-docs-theme/components/CliConnection.astro';
 
 cv4pve-diag runs **outside the cluster** — on your workstation, a management VM or a scheduled job —
 and talks only to the Proxmox VE REST API on port 8006. Nothing is installed on the nodes.
@@ -13,15 +12,17 @@ and talks only to the Proxmox VE REST API on port 8006. Nothing is installed on 
 
 <CliInstall repo="cv4pve-diag" />
 
-## Connect to the cluster
+## First run
 
-Create a dedicated user and API token first — see [Permissions](../permissions/). Then:
+Create a dedicated user and API token first — see [Permissions](/cv4pve-diag/permissions/). Then point
+the tool at any node:
 
 ```bash
-cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=UUID' execute
+cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=<uuid>' execute
 ```
 
-<CliConnection user="diag@pve" />
+Several nodes, username and password, certificates and response files for scheduled runs: see
+[Connection](/cv4pve-diag/connection/).
 
 ## Run
 
@@ -36,14 +37,14 @@ cv4pve-diag has three commands:
 The two `create-` commands need no connection to the cluster.
 
 ```bash
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute           # standard profile
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute --fast    # quick scan of a large cluster
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' execute --full    # everything, for audits
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute           # standard profile
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute --fast    # quick scan of a large cluster
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute --full    # everything, for audits
 
 # Your own thresholds and accepted findings
 cv4pve-diag create-settings                 # then edit settings.json
 cv4pve-diag create-ignored-issues           # then edit ignored-issues.json
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=UUID' \
+cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' \
   --settings-file=settings.json --ignored-issues-file=ignored-issues.json execute
 ```
 
