@@ -1,0 +1,33 @@
+---
+title: Connection
+description: How cv4pve-diag connects to a Proxmox VE cluster, and how to keep the options in a response file for scheduled runs.
+---
+
+import CliConnection from '@corsinvest/cv4pve-docs-theme/components/CliConnection.astro';
+import CliResponseFiles from '@corsinvest/cv4pve-docs-theme/components/CliResponseFiles.astro';
+
+cv4pve-diag talks to the Proxmox VE REST API of any node of the cluster. Create the user and API token
+first — see [Permissions](/cv4pve-diag/permissions/).
+
+## Options
+
+<CliConnection user="diag@pve" />
+
+## Response files
+
+A health check run by cron or Task Scheduler repeats the same connection every time: keep it in a file.
+
+<CliResponseFiles
+  tool="cv4pve-diag"
+  user="diag@pve"
+  token="audit"
+  extra={[
+    '# Your own thresholds and accepted findings, see Settings and Ignore rules',
+    '# --settings-file=/etc/cv4pve/diag-settings.json',
+    '# --ignored-issues-file=/etc/cv4pve/ignored-issues.json',
+  ]}
+  run="execute"
+/>
+
+`--settings-file` and `--ignored-issues-file` go before `execute`, so they can live in the same file as
+the connection.
