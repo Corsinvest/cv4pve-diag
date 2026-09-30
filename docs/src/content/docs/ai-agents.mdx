@@ -1,0 +1,40 @@
+---
+title: AI assistants
+description: Let an AI assistant such as Claude Code or Codex run cv4pve-diag and explain the problems of a Proxmox VE cluster — the cv4pve-diag skill, a read-only token and sandbox settings.
+---
+
+import AiSandbox from '@corsinvest/cv4pve-docs-theme/components/AiSandbox.astro';
+import AiSkill from '@corsinvest/cv4pve-docs-theme/components/AiSkill.astro';
+
+An AI assistant that can run shell commands can use cv4pve-diag to check a Proxmox VE cluster and explain
+what it finds: it runs the analysis with JSON output, reads the code, severity and resource of each finding,
+and looks up the code in the [Checks](/cv4pve-diag/checks/) pages to tell you what is wrong, why it matters
+and how to fix it.
+
+## The cv4pve-diag skill
+
+<AiSkill tool="cv4pve-diag">
+
+- connect only with the options file, passed with `@`, and never print it;
+- run `execute` with `--output Json` and the standard profile, `--full` only when you ask;
+- read the findings, not the exit code, which is 0 even with Critical findings;
+- look for `WC0020` and `WG0042` before calling an area clean;
+- explain a code from its Checks page, and leave the fix and any ignore rule to you.
+
+</AiSkill>
+
+## Give it a token of its own
+
+cv4pve-diag only reads: it sends no request that changes the cluster. The token is still what decides how
+far the assistant can go, because the assistant can read the token from the options file and call the
+Proxmox VE API with it directly, without cv4pve-diag. Give it a token that can only read: `PVEAuditor` on
+`/` — see [Permissions](/cv4pve-diag/permissions/#privileges). `VM.Backup`, `Datastore.AllocateSpace` and
+`Sys.Modify` also allow changes: without them the backup checks are skipped, with `WC0020`, and the update
+checks fail with `WG0042` — the report says so instead of showing false results.
+
+Put the connection in an [options file](/cv4pve-diag/connection/#options-in-a-file) and tell the assistant
+its path: the token does not need to appear in the conversation or in the commands the assistant writes.
+
+## Sandboxes
+
+<AiSandbox tool="cv4pve-diag" />
