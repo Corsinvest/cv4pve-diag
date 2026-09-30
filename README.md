@@ -111,6 +111,7 @@ The API token needs the privileges listed in [Permissions](https://corsinvest.gi
 | [Settings](https://corsinvest.github.io/cv4pve-diag/settings/) | Thresholds, profiles, performance, CVE lookup |
 | [Ignore rules](https://corsinvest.github.io/cv4pve-diag/ignored-issues/) | Silence findings you have accepted |
 | [Compliance](https://corsinvest.github.io/cv4pve-diag/compliance/) | Framework mapping and auditor reports |
+| [AI assistants](https://corsinvest.github.io/cv4pve-diag/ai-agents/) | Claude Code, Codex, the `cv4pve-diag` skill |
 | [Troubleshooting](https://corsinvest.github.io/cv4pve-diag/troubleshooting/) | See what the tool is doing when something goes wrong |
 
 ---
