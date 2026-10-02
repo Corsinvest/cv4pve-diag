@@ -1,6 +1,6 @@
 ---
-title: Diagnostic checks
-description: How cv4pve-diag checks are coded and organised, and where to find each of them.
+title: "Proxmox VE health checks: codes, severities and areas"
+description: How to read the code of a cv4pve-diag check (severity, area, number), which checks depend on privileges, and where to find each one.
 ---
 
 cv4pve-diag runs 170+ checks, grouped by the kind of object they look at. Each area has its own page:
@@ -15,19 +15,19 @@ cv4pve-diag runs 170+ checks, grouped by the kind of object they look at. Each a
 
 ## Reading the tables
 
-- **Code** — short alphanumeric identifier, structured as `<Severity><Area><NNNN>` (see [Code nomenclature](#code-nomenclature) below). Use this code with [ignore rules](/cv4pve-diag/ignored-issues/) to suppress specific findings.
-- **SubContext** — the area of the check, the same value as the SubContext column of the report.
-- **Gravity** — the severity emitted when the check fails. Some threshold checks (CPU, memory, PSI, disk usage, …) can emit either Warning or Critical depending on the value.
+- **Code**: short alphanumeric identifier, structured as `<Severity><Area><NNNN>` (see [Code nomenclature](#code-nomenclature) below). Use this code with [ignore rules](/cv4pve-diag/ignored-issues/) to suppress specific findings.
+- **SubContext**: the area of the check, the same value as the SubContext column of the report.
+- **Gravity**: the severity emitted when the check fails. Some threshold checks (CPU, memory, PSI, disk usage, …) can emit either Warning or Critical depending on the value.
 
 > Checks tagged with compliance controls (ISO 27001 / NIS2 / DORA / PCI DSS, …) attach the mapping to the finding. See [Compliance Mapping](/cv4pve-diag/compliance/).
 
-> With `IncludeOkResult: true` in [Settings](/cv4pve-diag/settings/#general), every check also emits an Ok result when it passes — useful for full audit reports.
+> With `IncludeOkResult: true` in [Settings](/cv4pve-diag/settings/#general), every check also emits an Ok result when it passes, useful for full audit reports.
 
 ### Code nomenclature
 
-Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters followed by a four-digit sequence number.
+Every check has a code shaped as **`<Severity><Area><NNNN>`**: two letters followed by a four-digit sequence number.
 
-**First letter — Severity:**
+**First letter (Severity):**
 
 | Letter | Meaning  | When it's used |
 |---|---|---|
@@ -35,7 +35,7 @@ Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters fo
 | **`W`** | Warning  | The condition is incorrect or risky but the cluster is still functioning (e.g. firewall off, no backup retention, NIC down). |
 | **`I`** | Info     | The condition is suboptimal, informative, or a best-practice violation (e.g. no metric server, pool without ACL, disk not on VirtIO). |
 
-**Second letter — Area:**
+**Second letter (Area):**
 
 | Letter | Meaning  | Scope |
 |---|---|---|
@@ -44,7 +44,7 @@ Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters fo
 | **`S`** | Storage  | Per-storage: reachability, usage threshold, orphans, thin overcommit. |
 | **`G`** | Guest    | Per-VM/CT: agent, config hygiene, hardware, snapshots, backup coverage, OS support. |
 
-**Sequence number** — Four digits assigned in the order a check was introduced inside its `<Severity><Area>` family. Numbers are stable: once a code is published it never changes meaning, even if the check itself is removed (codes are not reused).
+**Sequence number**: four digits assigned in the order a check was introduced inside its `<Severity><Area>` family. Numbers are stable: once a code is published it never changes meaning, even if the check itself is removed (codes are not reused).
 
 **Examples:**
 
@@ -58,12 +58,12 @@ Every check has a code shaped as **`<Severity><Area><NNNN>`** — two letters fo
 | `IG0016` | Info     | Guest   | 16th Info-Guest check (machine type outdated). |
 | `WN0045` | Warning  | Node    | 45th Warning-Node check (cross-node clock drift). |
 
-The first letter is always the severity of the finding. Checks with a warning and a critical threshold — CPU, memory, PSI, storage usage, health score, SSD wearout and others — have two codes with the same number: a `W` code above the warning threshold and a `C` code above the critical one, e.g. `WG0025`/`CG0025` for VM CPU usage. The tables list them together.
+The first letter is always the severity of the finding. Checks with a warning and a critical threshold (CPU, memory, PSI, storage usage, health score, SSD wearout and others) have two codes with the same number: a `W` code above the warning threshold and a `C` code above the critical one, e.g. `WG0025`/`CG0025` for VM CPU usage. The tables list them together.
 
 Exceptions to the scheme:
 
-- **`CU0001`** — `U` is not an area: it is emitted by the engine when a cluster resource cannot be classified (see [Meta codes](#meta-codes)).
-- **`WG0042`** — reported on any object, not only guests, whenever an API call fails (see [Meta codes](#meta-codes)).
+- **`CU0001`**: `U` is not an area: it is emitted by the engine when a cluster resource cannot be classified (see [Meta codes](#meta-codes)).
+- **`WG0042`**: reported on any object, not only guests, whenever an API call fails (see [Meta codes](#meta-codes)).
 - **`WN0044`**/**`CN0044`** (ZFS pool usage) are reported with Context `Storage`, but their Id is the node with the pool name, e.g. `nodes/pve1 (rpool)`: an ignore rule must match that Id.
 - **`WC0020`** is reported as Info or Warning depending on which privilege is missing.
 
@@ -74,7 +74,7 @@ Exceptions to the scheme:
 :::note
 **Backup checks and privileges.** `WG0019`, `WG0020` and `WS0003` read the backup files listed by
 each storage. Proxmox requires both `Datastore.AllocateSpace` (on the storage) and `VM.Backup` (on
-the guest) to include a backup volume in that listing — `Datastore.Audit` alone is enough to call
+the guest) to include a backup volume in that listing: `Datastore.Audit` alone is enough to call
 the endpoint but not to see the volumes, and PVE filters them out silently rather than returning
 an error. The `PVEAuditor` role does not grant either privilege.
 
@@ -93,11 +93,11 @@ finding states what the analysis covers rather than reporting a fault. See [Perm
 
 ## Meta codes
 
-These codes are not regular checks — they are emitted by the engine itself when something goes wrong outside the diagnostic logic.
+These codes are not regular checks: they are emitted by the engine itself when something goes wrong outside the diagnostic logic.
 
 | Code   | SubContext | Gravity | Description                                                                                                  |
 | ------ | ---------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| CU0001 | Status / ApiError | Critical | A cluster resource has an unknown type, or `/cluster/resources` could not be read at all — in that case nothing else can be analysed. |
+| CU0001 | Status / ApiError | Critical | A cluster resource has an unknown type, or `/cluster/resources` could not be read at all: in that case nothing else can be analysed. |
 | WG0042 | ApiError   | Warning | A Proxmox VE API call failed during analysis (network error, permission denied, timeout, …); an endpoint that does not exist on the installed Proxmox VE version (HTTP 501) is skipped silently. The affected check was skipped; the underlying call/endpoint is reported in the description. |
 
 ---

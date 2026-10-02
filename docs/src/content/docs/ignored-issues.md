@@ -1,6 +1,8 @@
 ---
-title: Ignore Rules
-description: Suppress accepted findings with ignore rules.
+title: Ignore accepted findings in cv4pve-diag
+description: Suppress the findings you have reviewed and accepted with ignore rules, so the cv4pve-diag report shows only what is new or needs action.
+sidebar:
+  label: Ignore Rules
 ---
 
 `cv4pve-diag` lets you suppress diagnostic findings you have already reviewed and accepted, so the report focuses on what is actually new or actionable.
@@ -14,7 +16,7 @@ The matched issues disappear from the report. With `--ignored-issues-show` they 
 ## How to use it
 
 ```bash
-# Generate a template (writes ignored-issues.json with one example rule — edit it before use).
+# Generate a template (writes ignored-issues.json with one example rule: edit it before use).
 # No connection is needed; it also prints the accepted Context and Gravity values.
 cv4pve-diag create-ignored-issues
 
@@ -33,7 +35,7 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 
 A JSON array of rule objects. A finding is suppressed when **every** field declared on a rule matches the finding (logical AND within the rule). Multiple rules are evaluated independently (logical OR across rules).
 
-All string fields support **regex** patterns, **case-sensitive** — use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
+All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
 
 The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`): `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read.
 
@@ -71,9 +73,9 @@ In the example above:
 | `Context`     | The finding context type                    | `"Qemu"` / `"Node"` / …  |
 | `Gravity`     | The severity                                | `"Info"` / `"Warning"` / `"Critical"` / `"Ok"` |
 
-All fields are optional — only specified fields are matched. The generated template also contains `"Compliance": []` and `"IsIgnoredIssue": false`: they are ignored when matching and can be deleted. Its example `Id` is not anchored, so `nodes/pve01/qemu/100` would also match VM 1000 — anchor it (`^…$`) before use. An empty object `{}` matches every finding and is almost never what you want.
+All fields are optional: only specified fields are matched. The generated template also contains `"Compliance": []` and `"IsIgnoredIssue": false`: they are ignored when matching and can be deleted. Its example `Id` is not anchored, so `nodes/pve01/qemu/100` would also match VM 1000: anchor it (`^…$`) before use. An empty object `{}` matches every finding and is almost never what you want.
 
-> **`Node` and `Info` mean "any".** `Context: "Node"` and `Gravity: "Info"` are the default values, so a rule setting them does not filter on them: `{ "Gravity": "Info" }` matches every finding. Filter on `ErrorCode` instead (codes starting with `I` are Info, the second letter `N` is Node — see [Diagnostic Checks](../checks/#code-nomenclature)).
+> **`Node` and `Info` mean "any".** `Context: "Node"` and `Gravity: "Info"` are the default values, so a rule setting them does not filter on them: `{ "Gravity": "Info" }` matches every finding. Filter on `ErrorCode` instead (codes starting with `I` are Info, the second letter `N` is Node: see [Diagnostic Checks](../checks/#code-nomenclature)).
 
 ---
 
@@ -82,4 +84,4 @@ All fields are optional — only specified fields are matched. The generated tem
 - **Be as specific as you can.** A rule that only sets `ErrorCode` hides the check everywhere; pair it with `Id` (regex) to scope to a node, pool or guest.
 - **Use `--ignored-issues-show`** during the first runs to verify the rule does what you expect before letting it silently hide findings.
 - **Keep the file under version control** alongside your runbook. Each rule should be paired with a comment in the surrounding documentation that explains *why* the finding was accepted.
-- **Avoid `Description` regexes** when an equivalent `ErrorCode` rule exists — descriptions can change between releases, codes do not.
+- **Avoid `Description` regexes** when an equivalent `ErrorCode` rule exists: descriptions can change between releases, codes do not.

@@ -1,6 +1,8 @@
 ---
-title: VM (QEMU) checks
+title: Proxmox VE VM (QEMU) health checks
 description: "Checks on every QEMU virtual machine: agent, hardware, CPU, disks, backup, snapshots, HA, firewall, usage."
+sidebar:
+  label: VM (QEMU) checks
 ---
 
 import Severity from '@corsinvest/cv4pve-docs-theme/components/Severity.astro';
@@ -11,7 +13,7 @@ Checks run on every QEMU virtual machine. Templates are skipped, except for `WG0
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `CG0001` | VM State | <Severity level="Critical" /> | Hibernated VM state left in pending — VM was suspended and never resumed (not when hibernated on purpose) |
+| `CG0001` | VM State | <Severity level="Critical" /> | Hibernated VM state left in pending: VM was suspended and never resumed (not when hibernated on purpose) |
 | `IG0010` | Status | <Severity level="Info" /> | Config changes pending reboot to take effect |
 | `WG0015` | Status | <Severity level="Warning" /> | VM is locked and cannot be managed |
 | `WG0001` | OS | <Severity level="Warning" /> | VM OS type is not configured (or left as Other) |
@@ -25,24 +27,24 @@ Checks run on every QEMU virtual machine. Templates are skipped, except for `WG0
 |---|---|---|---|
 | `WG0003` | Agent | <Severity level="Warning" /> | Guest agent not configured |
 | `WG0004` | Agent | <Severity level="Warning" /> | Agent enabled but not responding inside guest |
-| `WG0014` | Agent | <Severity level="Warning" /> | Template has QEMU agent enabled — unused on templates |
+| `WG0014` | Agent | <Severity level="Warning" /> | Template has QEMU agent enabled: unused on templates |
 
 ## Hardware and drivers
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `IG0001` | VirtIO | <Severity level="Info" /> | SCSI controller is not VirtIO — lower performance |
+| `IG0001` | VirtIO | <Severity level="Info" /> | SCSI controller is not VirtIO: lower performance |
 | `IG0002` | VirtIO | <Severity level="Info" /> | Disk on the IDE or SATA bus (SCSI disks: see `IG0001`) |
 | `IG0003` | VirtIO | <Severity level="Info" /> | Network interface not using VirtIO driver |
 | `WG0005` | Hardware | <Severity level="Warning" /> | CD-ROM drive has an image mounted |
-| `WG0008` | Hardware | <Severity level="Warning" /> | Disk uses cache=unsafe — data loss risk on host crash |
-| `IG0007` | Hardware | <Severity level="Info" /> | VM has virtio-rng device — verify this is intentional |
-| `IG0008` | Hardware | <Severity level="Info" /> | VM has serial console configured — verify this is intentional |
-| `IG0012` | Hardware | <Severity level="Info" /> | Machine type not set or without a version (e.g. q35) — may change across PVE upgrades |
-| `IG0016` | Hardware | <Severity level="Info" /> | Machine type pinned to an old version — newer version available on the node |
-| `WG0012` | Hardware | <Severity level="Warning" /> | Host USB/PCI passthrough configured (SPICE USB excluded) — no live migration or HA |
+| `WG0008` | Hardware | <Severity level="Warning" /> | Disk uses cache=unsafe: data loss risk on host crash |
+| `IG0007` | Hardware | <Severity level="Info" /> | VM has virtio-rng device: verify this is intentional |
+| `IG0008` | Hardware | <Severity level="Info" /> | VM has serial console configured: verify this is intentional |
+| `IG0012` | Hardware | <Severity level="Info" /> | Machine type not set or without a version (e.g. q35): may change across PVE upgrades |
+| `IG0016` | Hardware | <Severity level="Info" /> | Machine type pinned to an old version: newer version available on the node |
+| `WG0012` | Hardware | <Severity level="Warning" /> | Host USB/PCI passthrough configured (SPICE USB excluded): no live migration or HA |
 | `WG0018` | Hardware | <Severity level="Warning" /> | Disk detached from VM but still in storage |
-| `IG0005` | Balloon | <Severity level="Info" /> | RAM is statically allocated — no memory ballooning |
+| `IG0005` | Balloon | <Severity level="Info" /> | RAM is statically allocated: no memory ballooning |
 | `IG0006` | Balloon | <Severity level="Info" /> | Balloon has no room to reclaim memory |
 | `WG0010` | SecureBoot | <Severity level="Warning" /> | Windows 11 requires UEFI (bios=ovmf) |
 | `WG0011` | SecureBoot | <Severity level="Warning" /> | Windows 11 requires TPM 2.0 |
@@ -54,8 +56,8 @@ Checks run on every QEMU virtual machine. Templates are skipped, except for `WG0
 | `WG0006` | CPU | <Severity level="Warning" /> | CPU type 'host' or 'max' prevents live migration (cluster only; on an HA VM it is `CG0004`) |
 | `IG0004` | CPU | <Severity level="Info" /> | CPU type is outdated (kvm64, also when no CPU type is set) |
 | `WG0037` | CPU | <Severity level="Warning" /> | Spectre/Meltdown flags missing for the node's CPU vendor (Intel: spec-ctrl, ssbd, pcid, md-clear; AMD: ibpb, virt-ssbd) |
-| `WG0007` | CPU | <Severity level="Warning" /> | CPU hotplug enabled on Windows guest — not supported |
-| `CG0004` | CPU | <Severity level="Critical" /> | CPU type 'host' or 'max' on a VM managed by HA — live migration required by HA is impossible (cluster only) |
+| `WG0007` | CPU | <Severity level="Warning" /> | CPU hotplug enabled on Windows guest: not supported |
+| `CG0004` | CPU | <Severity level="Critical" /> | CPU type 'host' or 'max' on a VM managed by HA: live migration required by HA is impossible (cluster only) |
 | `WG0036` | CPU | <Severity level="Warning" /> | Node vCPU overcommit ratio exceeds configured threshold |
 
 ## Backup and snapshots
@@ -67,25 +69,25 @@ Checks run on every QEMU virtual machine. Templates are skipped, except for `WG0
 | `WG0019` | Backup | <Severity level="Warning" /> | Backup files older than configured days found (protected backups excluded) |
 | `WG0020` | Backup | <Severity level="Warning" /> | No backup found in the last configured days |
 | `WG0021` | AutoSnapshot | <Severity level="Warning" /> | cv4pve-autosnap not configured |
-| `WG0022` | AutoSnapshot | <Severity level="Warning" /> | Old AutoSnap snapshots present — update required |
+| `WG0022` | AutoSnapshot | <Severity level="Warning" /> | Old AutoSnap snapshots present: update required |
 | `WG0023` | SnapshotOld | <Severity level="Warning" /> | Snapshots older than configured age |
-| `WG0035` | Snapshot | <Severity level="Warning" /> | Snapshot includes RAM state — wastes disk space and blocks storage migration |
+| `WG0035` | Snapshot | <Severity level="Warning" /> | Snapshot includes RAM state: wastes disk space and blocks storage migration |
 | `WG0024` | SnapshotCount | <Severity level="Warning" /> | Snapshot count exceeds configured limit |
 
 ## High availability
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `CG0005` | HA | <Severity level="Critical" /> | Disk on non-shared storage, VM managed by HA and not replicated — migration will fail |
-| `IG0015` | HA | <Severity level="Info" /> | Running VM not managed by HA while other guests are — will not be restarted on node failure |
+| `CG0005` | HA | <Severity level="Critical" /> | Disk on non-shared storage, VM managed by HA and not replicated: migration will fail |
+| `IG0015` | HA | <Severity level="Info" /> | Running VM not managed by HA while other guests are: will not be restarted on node failure |
 
 ## Network and firewall
 
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
-| `WG0034` | Network | <Severity level="Warning" /> | VM has no network interface — completely isolated from network |
-| `WG0033` | Network | <Severity level="Warning" /> | MAC address shared with another VM/CT or interface — causes network conflicts |
-| `WG0013` | Firewall | <Severity level="Warning" /> | VM firewall is disabled — exposed to all bridge traffic |
+| `WG0034` | Network | <Severity level="Warning" /> | VM has no network interface: completely isolated from network |
+| `WG0033` | Network | <Severity level="Warning" /> | MAC address shared with another VM/CT or interface: causes network conflicts |
+| `WG0013` | Firewall | <Severity level="Warning" /> | VM firewall is disabled: exposed to all bridge traffic |
 | `IG0009` | Firewall | <Severity level="Info" /> | VM can spoof source IP addresses |
 
 ## Tasks and resource usage

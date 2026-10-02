@@ -1,17 +1,19 @@
 ---
-title: "GDPR"
-description: "GDPR — EU Regulation 2016/679 — the controls cv4pve-diag gives evidence for."
+title: "GDPR: compliance evidence from Proxmox VE"
+description: The GDPR articles (EU Regulation 2016/679) that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each.
+sidebar:
+  label: GDPR
 ---
 
-**GDPR — EU Regulation 2016/679.** Run with `--compliance=Gdpr` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+**GDPR: EU Regulation 2016/679.** Run with `--compliance=Gdpr` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
 
-Controls covered: Art. 5(1)(f), Art. 32(1)(a/b/c/d) — technical security of processing only
+Controls covered: Art. 5(1)(f), Art. 32(1)(a/b/c/d) (technical security of processing only)
 
 Official text: [Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj).
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
 Only technical articles relevant to a virtualisation cluster. Procedural / organisational requirements (DPIA, breach notification, data subject rights, ...) are out of scope.
 

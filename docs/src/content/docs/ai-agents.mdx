@@ -1,6 +1,8 @@
 ---
-title: AI assistants
+title: Diagnose a Proxmox VE cluster with an AI assistant
 description: Let an AI assistant such as Claude Code or Codex run cv4pve-diag and explain the problems of a Proxmox VE cluster, with the cv4pve-diag skill and a read-only token.
+sidebar:
+  label: AI assistants
 ---
 
 import AiSkill from '@corsinvest/cv4pve-docs-theme/components/AiSkill.astro';
@@ -24,6 +26,6 @@ and how to fix it.
 
 The skill tells the assistant what to do; the token decides what it can do. The assistant can read the
 token and call the Proxmox VE API without cv4pve-diag, and the skill cannot prevent that.
-Give it a read-only token — `PVEAuditor`, see [Permissions](/cv4pve-diag/permissions/#privileges) — and
+Give it a read-only token (`PVEAuditor`, see [Permissions](/cv4pve-diag/permissions/#privileges)) and
 put the connection in an [options file](/cv4pve-diag/connection/#options-in-a-file), so the token stays
 out of the conversation.

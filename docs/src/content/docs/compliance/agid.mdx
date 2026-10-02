@@ -1,9 +1,11 @@
 ---
-title: "AgID (Italy)"
-description: "AgID — Misure minime ICT per le PA (Italian Public Administration baseline) — the controls cv4pve-diag gives evidence for."
+title: "AgID (Italy): compliance evidence from Proxmox VE"
+description: The AgID Misure minime ICT per le PA (Italian Public Administration baseline) that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each control.
+sidebar:
+  label: AgID (Italy)
 ---
 
-**AgID — Misure minime ICT per le PA (Italian Public Administration baseline).** Run with `--compliance=AgId` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+**AgID: Misure minime ICT per le PA (Italian Public Administration baseline).** Run with `--compliance=AgId` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
 
 Controls covered: ABSC 2.3, 3.1, 3.2, 4.1, 4.4, 5.1, 5.2, 5.7, 5.10, 8.1, 10.1, 10.3, 10.4, 13.1
 
@@ -11,7 +13,7 @@ Official text: [Misure minime di sicurezza ICT](https://www.agid.gov.it/it/sicur
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
 Subset of ABSC (AgID Basic Security Controls) verifiable on a virtualisation cluster.
 
