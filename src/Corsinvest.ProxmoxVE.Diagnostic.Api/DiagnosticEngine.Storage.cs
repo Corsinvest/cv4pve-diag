@@ -52,7 +52,7 @@ public partial class DiagnosticEngine
 
         // A storage disabled on purpose is left out of /cluster/resources, so it is read from the
         // configuration. Disabling is not a fault in itself: it is reported only while an enabled
-        // backup job or a guest disk still points at it — those will fail.
+        // backup job or a guest disk still points at it: those will fail.
         var usedBy = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         void AddUse(string? storage, string who)
         {
@@ -96,7 +96,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2Ir.C_3_2,
             ]);
 
-        // Storage not reachable from the node — VMs on that node cannot read/write.
+        // Storage not reachable from the node: VMs on that node cannot read/write.
         // Every node is checked: a shared storage can be down on one node only.
         // Storages disabled on purpose are not in /cluster/resources (handled above).
         CreateResultPerItem(
@@ -210,7 +210,7 @@ public partial class DiagnosticEngine
         // the disks and backups of the guests it cannot see would all look orphaned.
         if (_orphanChecksEnabled)
         {
-            // Backup files whose VMID no longer exists in the cluster — orphaned backups waste storage.
+            // Backup files whose VMID no longer exists in the cluster: orphaned backups waste storage.
             // Skipped with the backup checks (Backup.Enabled off, or backup privileges missing): the
             // backup files were not read, and an empty list would read as "no orphaned backups".
             if (_backupChecksEnabled)
@@ -236,8 +236,8 @@ public partial class DiagnosticEngine
                         return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
                     },
                     itemDescriptionKo: ob => ob.Backups.Count == 1
-                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
-                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
+                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}': VMID {ob.VmId} no longer exists"
+                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}): VMID {ob.VmId} no longer exists",
                     aggregatedIdOk: "cluster/storage",
                     aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
                     errorCode: "WS0003",
@@ -247,8 +247,8 @@ public partial class DiagnosticEngine
                     compliance: []);
             }
 
-            // Volumes referenced by a guest config — every entry (data disks, CD-ROM, cloud-init,
-            // unused) — with the nodes of the guests that reference them.
+            // Volumes referenced by a guest config, every entry (data disks, CD-ROM, cloud-init,
+            // unused), with the nodes of the guests that reference them.
             var referencedOn = new Dictionary<(string Storage, string FileName), List<(long VmId, string Node)>>();
             foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm))
             {
@@ -287,7 +287,7 @@ public partial class DiagnosticEngine
         }
         #endregion
 
-        // Allocated disk size per storage for the thin provisioning check — only real data disks
+        // Allocated disk size per storage for the thin provisioning check: only real data disks
         // count, CD-ROM/cloud-init are not provisioned. Keyed like _storageResources: a non-shared
         // storage is a separate pool on every node, so each node counts only its own guests.
         // Exclude LXC mount points (mp*): they may be bind mounts reporting the full device/pool
@@ -357,7 +357,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Storage,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "No storage has 'backup' content type configured — backups cannot be stored",
+            descriptionKo: "No storage has 'backup' content type configured: backups cannot be stored",
             descriptionOk: "At least one storage is configured with 'backup' content type",
             compliance:
             [
@@ -404,7 +404,7 @@ public partial class DiagnosticEngine
                                                  && r.Node == jn.Node
                                                  && r.Storage == jn.Job.Storage),
             itemId: jn => $"nodes/{jn.Node}",
-            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not enabled on node '{jn.Node}' — VMs on this node will not be backed up",
+            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not enabled on node '{jn.Node}': VMs on this node will not be backed up",
             aggregatedIdOk: "cluster",
             aggregatedDescriptionOk: _ => "All backup job storages are enabled on every online node the job runs on",
             errorCode: "WS0007",

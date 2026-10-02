@@ -6,13 +6,13 @@
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
-/// Settings threshold for node — extends host thresholds with node-specific checks
+/// Settings threshold for node: extends host thresholds with node-specific checks
 /// </summary>
 public class SettingsThresholdNode : SettingsThresholdHost
 {
     /// <summary>
     /// Maximum vCPU overcommit ratio (total vCPUs / physical CPUs) before a warning is raised.
-    /// Default 4.0 — e.g. 32 vCPUs on an 8-core node triggers the warning.
+    /// Default 4.0: e.g. 32 vCPUs on an 8-core node triggers the warning.
     /// </summary>
     public double MaxVCpuRatio { get; set; } = 4.0;
 

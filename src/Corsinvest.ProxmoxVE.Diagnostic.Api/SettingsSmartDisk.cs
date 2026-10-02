@@ -7,7 +7,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
 /// Settings for S.M.A.R.T. disk checks.
-/// Requires one API call per disk per node — disabled by default.
+/// Requires one API call per disk per node: disabled by default.
 /// </summary>
 public class SettingsSmartDisk
 {
@@ -28,7 +28,7 @@ public class SettingsSmartDisk
     };
 
     /// <summary>
-    /// SSD wearout threshold — percentage of life consumed (100 - wearout reported by PVE).
+    /// SSD wearout threshold: percentage of life consumed (100 - wearout reported by PVE).
     /// Warning at 70%, Critical at 85%.
     /// </summary>
     public SettingsThreshold<double> SsdWearout { get; set; } = new() { Warning = 70, Critical = 85 };

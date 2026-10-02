@@ -90,7 +90,7 @@ public class Settings
     /// When true, every diagnostic check that uses CreateResult / CreateResultPerItem
     /// also emits an Ok result on success (Gravity = Ok). Useful for full audit-style
     /// reports where you need to prove that controls were verified, not only violated.
-    /// When false (default), output is identical to the legacy mode — only failures appear.
+    /// When false (default), output is identical to the legacy mode: only failures appear.
     /// </summary>
     public bool IncludeOkResult { get; set; }
 
@@ -109,7 +109,7 @@ public class Settings
     };
 
     /// <summary>
-    /// Fast profile — skips the per-guest and per-storage heavy reads: backup content,
+    /// Fast profile. Skips the per-guest and per-storage heavy reads: backup content,
     /// snapshots and LVM-thin metadata. For a quick scan of large clusters.
     /// </summary>
     public static Settings Fast()
@@ -121,11 +121,11 @@ public class Settings
         return settings;
     }
 
-    /// <summary>Standard profile — the defaults. Used when no profile or settings file is given.</summary>
+    /// <summary>Standard profile: the defaults. Used when no profile or settings file is given.</summary>
     public static Settings Standard() => new();
 
     /// <summary>
-    /// Full profile — every optional check turned on: S.M.A.R.T. details, ZFS pool details,
+    /// Full profile. Every optional check turned on: S.M.A.R.T. details, ZFS pool details,
     /// NVD CVE lookup (needs internet access) and Ok results, for audits. Thresholds keep their
     /// defaults; network thresholds stay disabled (they depend on the link speed).
     /// </summary>

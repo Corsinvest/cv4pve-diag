@@ -16,7 +16,7 @@ public partial class DiagnosticEngine
     /// <param name="Privilege">PVE privilege name.</param>
     /// <param name="Root">ACL root the privilege must cover for the whole inventory to be visible.</param>
     /// <param name="Alternative">Privilege that substitutes for it, if any.</param>
-    /// <param name="Impact">What the user loses — phrased as the visible consequence.</param>
+    /// <param name="Impact">What the user loses: phrased as the visible consequence.</param>
     /// <param name="DisablesBackupChecks">Whether the backup checks must be skipped without it.</param>
     /// <param name="DisablesOrphanChecks">Whether the orphaned image/backup checks must be skipped
     /// without it, also when it is granted on part of the root only.</param>
@@ -42,23 +42,23 @@ public partial class DiagnosticEngine
         new("VM.Audit",
             "/vms",
             null,
-            "VMs and containers are missing from the analysis entirely — they are filtered out of /cluster/resources",
+            "VMs and containers are missing from the analysis entirely: they are filtered out of /cluster/resources",
             DisablesOrphanChecks: true),
 
         new("Datastore.Audit",
             "/storage",
             null,
-            "storages are missing from the analysis — storage capacity and orphaned-image checks cannot run"),
+            "storages are missing from the analysis: storage capacity and orphaned-image checks cannot run"),
 
         new("Sys.Audit",
             "/nodes",
             null,
-            "node details are unavailable — services, disks, certificates and version checks cannot run"),
+            "node details are unavailable: services, disks, certificates and version checks cannot run"),
 
         new("Pool.Audit",
             "/pool",
             null,
-            "pools are missing — pool-based backup jobs cannot be resolved to their guests"),
+            "pools are missing: pool-based backup jobs cannot be resolved to their guests"),
 
         // check_volume_access takes the Datastore.Allocate short-circuit before reaching the
         // per-content-type branches, so it substitutes for Datastore.AllocateSpace.
@@ -79,7 +79,7 @@ public partial class DiagnosticEngine
     /// Reports up-front which parts of the cluster the account can actually see. PVE answers a
     /// request the caller is only partly entitled to by filtering the response rather than failing
     /// it, so a narrower ACL silently produces a narrower report with no indication of what was left
-    /// out. Restricting an account is a legitimate choice — the point is to state the resulting
+    /// out. Restricting an account is a legitimate choice: the point is to state the resulting
     /// scope (Info), not to treat it as a fault; Warning is reserved for the backup privileges,
     /// whose absence makes other checks report the opposite of the truth.
     /// </summary>
@@ -108,7 +108,7 @@ public partial class DiagnosticEngine
         }
 
         // Privileges that only matter to the backup checks are irrelevant when those checks are
-        // switched off — reporting them would be noise about a feature the user opted out of.
+        // switched off: reporting them would be noise about a feature the user opted out of.
         var relevant = RequiredPrivileges.Where(a => settings.Backup.Enabled || !a.DisablesBackupChecks);
 
         var missing = relevant.Where(a => !CoversRoot(permissions, a.Privilege, a.Root)
@@ -116,7 +116,7 @@ public partial class DiagnosticEngine
                               .ToList();
 
         // Granted somewhere, but not on the root: the analysis sees only the subset the ACL covers,
-        // and PVE gives no indication that anything was left out. Worth its own message — the fix
+        // and PVE gives no indication that anything was left out. Worth its own message: the fix
         // is different (widen the existing grant) and so is the consequence (partial, not absent).
         var partial = missing.Where(a => HasPrivilegeAnywhere(permissions, a.Privilege)
                                          || (a.Alternative != null && HasPrivilegeAnywhere(permissions, a.Alternative)))
@@ -149,11 +149,11 @@ public partial class DiagnosticEngine
                 Id = "access/permissions",
                 ErrorCode = "WC0020",
                 Description = partial.Contains(item)
-                    ? $"Privilege {name} is granted on part of '{item.Root}' — the analysis covers only that subset. "
+                    ? $"Privilege {name} is granted on part of '{item.Root}': the analysis covers only that subset. "
                       + $"Outside it, {item.Impact}. This is expected if the account is scoped on purpose; "
                       + (item.DisablesOrphanChecks ? "the orphaned image and backup checks (WS0002, WS0003) are skipped; " : "")
                       + $"grant {name} on '{item.Root}' to cover everything."
-                    : $"Privilege {name} is not granted on '{item.Root}' — {item.Impact}. "
+                    : $"Privilege {name} is not granted on '{item.Root}': {item.Impact}. "
                       + "Proxmox omits these from its response without reporting an error, so the analysis cannot see what is missing. "
                       + (item.DisablesBackupChecks ? "The backup checks (WG0019, WG0020, WS0003) are skipped. " : "")
                       + (item.DisablesOrphanChecks ? "The orphaned image and backup checks (WS0002, WS0003) are skipped. " : "")
@@ -167,7 +167,7 @@ public partial class DiagnosticEngine
         }
     }
 
-    // True when the privilege covers the whole root — granted on "/" or on the root itself, both of
+    // True when the privilege covers the whole root: granted on "/" or on the root itself, both of
     // which propagate to every path below. GetPermissionsAsync reports only the paths carrying an
     // explicit ACL (plus the standard roots), so a grant on a single guest or storage appears solely
     // on that path: it would satisfy HasPrivilegeAnywhere while leaving the rest of the inventory
@@ -180,7 +180,7 @@ public partial class DiagnosticEngine
         => permissions.TryGetValue(path, out var privileges)
            && privileges.Contains(privilege, StringComparer.OrdinalIgnoreCase);
 
-    // True when the privilege is granted on any ACL path at all — used to tell "granted on a subset"
+    // True when the privilege is granted on any ACL path at all: used to tell "granted on a subset"
     // apart from "not granted anywhere", which need different advice.
     internal static bool HasPrivilegeAnywhere(IReadOnlyDictionary<string, IReadOnlyList<string>> permissions, string privilege)
         => permissions.Any(a => a.Value.Contains(privilege, StringComparer.OrdinalIgnoreCase));

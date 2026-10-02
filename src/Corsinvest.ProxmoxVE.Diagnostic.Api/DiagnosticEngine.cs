@@ -43,7 +43,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
     // HA-resource ids (vmid) and guest-ids targeted by enabled replication jobs.
     // Populated by CheckClusterHaAndReplicationAsync and consumed by per-guest checks
-    // (VmsWithoutHaResource, VmsWithoutReplication) — saves re-fetching for every guest.
+    // (VmsWithoutHaResource, VmsWithoutReplication): saves re-fetching for every guest.
     private readonly HashSet<long> _haVmIds = [];
     private readonly HashSet<long> _replicatedVmIds = [];
 
@@ -51,7 +51,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // non-shared appear once per node. Used everywhere instead of filtering _resources.
     private List<ClusterResource> _storageResources = [];
 
-    // Backup content keyed by storage name — loaded once in CheckStorageAsync, reused in CheckCommonAsync.
+    // Backup content keyed by storage name: loaded once in CheckStorageAsync, reused in CheckCommonAsync.
     // Shared storages are fetched only once regardless of how many nodes mount them.
     private readonly Dictionary<string, List<NodeStorageContent>> _backupContentByStorage = [];
 
@@ -59,7 +59,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     // The per-guest backup checks are skipped for guests relying on them: no data is not "no backup".
     private readonly HashSet<string> _backupContentUnavailable = new(StringComparer.OrdinalIgnoreCase);
 
-    // Storage names that are shared — used in CheckCommonAsync to build the correct lookup key.
+    // Storage names that are shared: used in CheckCommonAsync to build the correct lookup key.
     private readonly HashSet<string> _sharedStorageNames = new(StringComparer.OrdinalIgnoreCase);
 
     // CPU model of each node ("Intel(R) Xeon ...", "AMD EPYC ..."), from the node status read by
@@ -99,7 +99,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // The foundational call failed — there is nothing to analyze. Report it as
+                // The foundational call failed: there is nothing to analyze. Report it as
                 // critical and return cleanly instead of letting the exception crash the run.
                 _result.Add(new DiagnosticResult
                 {
@@ -115,7 +115,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             _resources = [.. allResources.Where(a => !a.IsUnknown)];
 
-            // Resources with unknown type are always a problem — report them all as Critical.
+            // Resources with unknown type are always a problem: report them all as Critical.
             // Per-item KO carries the originating context (the type-specific DecodeContext).
             foreach (var a in allResources.Where(a => a.IsUnknown))
             {
@@ -139,7 +139,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                       .GroupBy(a => a.Shared ? a.Storage : $"{a.Node}/{a.Storage}")
                                       .Select(g => g.First())];
 
-            // Detect PVE major version from first online node — used to pick the correct Debian release for CVE filtering
+            // Detect PVE major version from first online node: used to pick the correct Debian release for CVE filtering
             var firstOnlineNode = _resources.FirstOrDefault(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline);
             var pveMajorVersion = 8; // default to bookworm
             if (firstOnlineNode != null)
@@ -155,7 +155,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
 
             var hasCluster = await CheckClusterAsync(pveMajorVersion);
 
-            // Pre-fetch backup storages once per node — shared by CheckQemuAsync and CheckLxcAsync
+            // Pre-fetch backup storages once per node: shared by CheckQemuAsync and CheckLxcAsync
             var backupStorageResults = await RunParallelAsync(_resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
                                                                         .Select(a => a.Node),
                                                               async node => new
@@ -167,9 +167,9 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                                                               });
             _backupStoragesByNode = backupStorageResults.ToDictionary(a => a.node, a => (IEnumerable<NodeStorage>)a.storages);
 
-            // Pre-fetch VM configs once — shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync.
+            // Pre-fetch VM configs once: shared by CheckQemuAsync, CheckLxcAsync, CheckStorageAsync.
             // A guest whose config cannot be read is skipped (excluded from the dictionary) so the
-            // checks that index _vmConfigs[VmId] never hit a null — the failure is recorded instead.
+            // checks that index _vmConfigs[VmId] never hit a null: the failure is recorded instead.
             var vmConfigResults = await RunParallelAsync(_resources.Where(a => a.ResourceType == ClusterResourceType.Vm),
                                                          async vm => new
                                                          {
@@ -188,7 +188,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
             // the orphan checks must still count them as owners of their disks and backups.
             _existingGuestIds = [.. _resources.Where(a => a.ResourceType == ClusterResourceType.Vm).Select(a => a.VmId)];
 
-            // Guests whose config failed to load are not present in _vmConfigs — skip them in the
+            // Guests whose config failed to load are not present in _vmConfigs: skip them in the
             // per-guest checks below instead of indexing a missing key.
             _resources = [.. _resources.Where(a => a.ResourceType != ClusterResourceType.Vm
                                                    || _vmConfigs.ContainsKey(a.VmId))];

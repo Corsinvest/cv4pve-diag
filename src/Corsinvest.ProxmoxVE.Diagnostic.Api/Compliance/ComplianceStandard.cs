@@ -7,62 +7,62 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Compliance;
 
 /// <summary>
 /// Normative standards a diagnostic check can map to.
-/// A single check may map to several controls across multiple standards —
+/// A single check may map to several controls across multiple standards:
 /// see <see cref="ComplianceMapping"/>.
 /// </summary>
 public enum ComplianceStandard
 {
-    /// <summary>ISO/IEC 27001:2022 — Information security management systems.</summary>
+    /// <summary>ISO/IEC 27001:2022: Information security management systems.</summary>
     Iso27001,
 
-    /// <summary>ISO/IEC 27017 — Security controls for cloud services.</summary>
+    /// <summary>ISO/IEC 27017: Security controls for cloud services.</summary>
     Iso27017,
 
-    /// <summary>EU NIS2 Directive — Network and Information Security.</summary>
+    /// <summary>EU NIS2 Directive: Network and Information Security.</summary>
     Nis2,
 
-    /// <summary>EU DORA — Digital Operational Resilience Act.</summary>
+    /// <summary>EU DORA: Digital Operational Resilience Act.</summary>
     Dora,
 
-    /// <summary>EU GDPR — General Data Protection Regulation.</summary>
+    /// <summary>EU GDPR: General Data Protection Regulation.</summary>
     Gdpr,
 
-    /// <summary>PCI DSS v4.0 — Payment Card Industry Data Security Standard.</summary>
+    /// <summary>PCI DSS v4.0: Payment Card Industry Data Security Standard.</summary>
     PciDss,
 
     /// <summary>NIST Cybersecurity Framework v2.0.</summary>
     NistCsf,
 
-    /// <summary>CIS Controls v8 — Center for Internet Security.</summary>
+    /// <summary>CIS Controls v8: Center for Internet Security.</summary>
     Cis,
 
-    /// <summary>AgID — Misure minime di sicurezza ICT per le Pubbliche Amministrazioni (Italy).</summary>
+    /// <summary>AgID: Misure minime di sicurezza ICT per le Pubbliche Amministrazioni (Italy).</summary>
     AgId,
 
-    /// <summary>ENS — Esquema Nacional de Seguridad (Spain, Real Decreto 311/2022).</summary>
+    /// <summary>ENS: Esquema Nacional de Seguridad (Spain, Real Decreto 311/2022).</summary>
     Ens,
 
-    /// <summary>C5 — Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).</summary>
+    /// <summary>C5: Cloud Computing Compliance Criteria Catalogue (BSI Germany, C5:2020).</summary>
     C5,
 
-    /// <summary>ISO/IEC 27018:2019 — Protection of PII in public clouds.</summary>
+    /// <summary>ISO/IEC 27018:2019: Protection of PII in public clouds.</summary>
     Iso27018,
 
     /// <summary>SOC 2 (AICPA Trust Services Criteria, 2017 + 2022 revision).</summary>
     Soc2,
 
-    /// <summary>NIST SP 800-53 rev.5 — Security and Privacy Controls (Moderate baseline subset).</summary>
+    /// <summary>NIST SP 800-53 rev.5: Security and Privacy Controls (Moderate baseline subset).</summary>
     Nist80053,
 
-    /// <summary>ACN — Italian NIS2 basic security measures (Determinazione ACN n. 379907/2025).</summary>
+    /// <summary>ACN: Italian NIS2 basic security measures (Determinazione ACN n. 379907/2025).</summary>
     Acn,
 
-    /// <summary>ISO 22301:2019 — Business continuity management systems.</summary>
+    /// <summary>ISO 22301:2019: Business continuity management systems.</summary>
     Iso22301,
 
     /// <summary>BSI IT-Grundschutz-Kompendium, Edition 2023 (Germany).</summary>
     BsiGrundschutz,
 
-    /// <summary>Commission Implementing Regulation (EU) 2024/2690 — NIS2 technical and methodological requirements.</summary>
+    /// <summary>Commission Implementing Regulation (EU) 2024/2690: NIS2 technical and methodological requirements.</summary>
     Nis2Ir,
 }

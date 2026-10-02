@@ -5,7 +5,7 @@
     <AssemblyName>cv4pve-diag</AssemblyName>
     <Product>Corsinvest for Proxmox VE Diagnostic</Product>
     <AssemblyTitle>Corsinvest for Proxmox VE Diagnostic</AssemblyTitle>
-    <Description>Diagnostic tool for Proxmox VE — checks nodes, VMs, LXC containers and storage for common issues</Description>
+    <Description>Diagnostic tool for Proxmox VE: checks nodes, VMs, LXC containers and storage for common issues</Description>
     <ApplicationIcon>..\..\icon.ico</ApplicationIcon>
     <IsPackable>false</IsPackable>
     <InvariantGlobalization>true</InvariantGlobalization>

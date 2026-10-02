@@ -1,6 +1,6 @@
 ---
 name: cv4pve-diag
-description: Run a health check of a Proxmox VE cluster with cv4pve-diag and explain its findings — quorum, HA, backups, snapshots, certificates, updates, disks, storage usage, guest configuration, firewall — with the code, severity and resource of each problem. Use it when the user asks what is wrong with the cluster, whether it follows best practices, or what a cv4pve-diag code means. It only reads.
+description: "Run a health check of a Proxmox VE cluster with cv4pve-diag and explain its findings (quorum, HA, backups, snapshots, certificates, updates, disks, storage usage, guest configuration, firewall) with the code, severity and resource of each problem. Use it when the user asks what is wrong with the cluster, whether it follows best practices, or what a cv4pve-diag code means. It only reads."
 ---
 
 # cv4pve-diag

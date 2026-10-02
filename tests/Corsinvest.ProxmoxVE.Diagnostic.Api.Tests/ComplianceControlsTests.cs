@@ -10,7 +10,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Tests;
 
 /// <summary>
 /// Structural tests on the compliance control catalog. These do not exercise the diagnostic
-/// engine — they guard against typos and refactor accidents in the catalog itself
+/// engine: they guard against typos and refactor accidents in the catalog itself
 /// (duplicate keys, empty titles, standards declared in the enum but missing from the catalog).
 /// </summary>
 public class ComplianceControlsTests

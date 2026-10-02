@@ -5,24 +5,25 @@
 ## [Unreleased]
 
 ### Changed
+- Messages of the checks: a colon in place of the long dash ("Cluster has lost quorum: VM operations may be blocked"); the parts of an API error are joined with " - ". The codes do not change: a filter on the text of a message has to be updated
 - Windows executable icon
 - NuGet package description
 - Project metadata, symbols (Source Link, `.snupkg`) and code style aligned with the other cv4pve tools
 
-## [2.7.0] — 2026-09-28
+## [2.7.0] - 2026-09-28
 
 ### Critical codes for threshold checks
 
-The first letter of a code is now always the severity of the finding. Checks with a warning and a critical threshold used to report both levels with their `W` code; the critical level now has its own `C` code, with the same number as the `W` code (`WN0027` → `CN0027`). **Breaking:** ignore rules on the `W` codes no longer hide the critical findings — add the `C` code to them.
+The first letter of a code is now always the severity of the finding. Checks with a warning and a critical threshold used to report both levels with their `W` code; the critical level now has its own `C` code, with the same number as the `W` code (`WN0027` → `CN0027`). **Breaking:** ignore rules on the `W` codes no longer hide the critical findings: add the `C` code to them.
 
 | Check | Warning | Critical |
 |---|---|---|
-| VM/CT CPU, memory, network in, network out | `WG0025`–`WG0028` | `CG0025`–`CG0028` |
-| VM/CT PSI CPU, I/O, memory | `WG0029`–`WG0031` | `CG0029`–`CG0031` |
+| VM/CT CPU, memory, network in, network out | `WG0025` to `WG0028` | `CG0025` to `CG0028` |
+| VM/CT PSI CPU, I/O, memory | `WG0029` to `WG0031` | `CG0029` to `CG0031` |
 | VM/CT health score | `WG0032` | `CG0032` |
-| Node CPU, memory, network in, network out | `WN0027`, `WN0038`–`WN0040` | `CN0027`, `CN0038`–`CN0040` |
-| Node I/O wait, root filesystem, swap | `WN0028`–`WN0030` | `CN0028`–`CN0030` |
-| Node PSI CPU, I/O, memory | `WN0031`–`WN0033` | `CN0031`–`CN0033` |
+| Node CPU, memory, network in, network out | `WN0027`, `WN0038` to `WN0040` | `CN0027`, `CN0038` to `CN0040` |
+| Node I/O wait, root filesystem, swap | `WN0028` to `WN0030` | `CN0028` to `CN0030` |
+| Node PSI CPU, I/O, memory | `WN0031` to `WN0033` | `CN0031` to `CN0033` |
 | SSD wearout, ZFS pool usage | `WN0018`, `WN0044` | `CN0018`, `CN0044` |
 | Node health score | `WN0048` (was `WG0032`) | `CN0048` |
 | Storage usage | `WS0009` (was `WS0001`) | `CS0009` |
@@ -69,7 +70,7 @@ Retired codes, not reused: `CN0001`, `WG0009`, `WG0043`, `WS0005`. Ignore rules 
 
 ---
 
-## [2.6.0] — 2026-09-24
+## [2.6.0] - 2026-09-24
 
 ### Profiles
 
@@ -79,16 +80,16 @@ Retired codes, not reused: `CN0001`, `WG0009`, `WG0043`, `WS0005`. Ignore rules 
 ### New checks
 
 **Network:**
-- `WN0046` — a VM or container uses a VLAN that its bridge does not let out of the node, so it cannot reach the rest of the network on that VLAN.
-- `WN0047` — a VM or container uses a bridge that does not exist on another node: moving it there (migration or HA) would fail.
+- `WN0046`: a VM or container uses a VLAN that its bridge does not let out of the node, so it cannot reach the rest of the network on that VLAN.
+- `WN0047`: a VM or container uses a bridge that does not exist on another node: moving it there (migration or HA) would fail.
 
 ### Compliance
 
 Four new standards, bringing the total to 18. Use them with `--compliance=Acn`, `--compliance=Nis2Ir`, `--compliance=Iso22301` or `--compliance=BsiGrundschutz`:
-- **ACN (Italy)** — the NIS2 security measures Italian essential and important entities must apply (Determinazione ACN n. 379907 of 19 December 2025, in force from 15 January 2026).
-- **NIS2 Implementing Regulation (EU) 2024/2690** — the detailed NIS2 requirements for cloud, data centre, managed service providers and the other digital providers it covers.
-- **ISO 22301:2019** — business continuity: backup, HA, replication and capacity findings.
-- **BSI IT-Grundschutz** (Germany, Kompendium Edition 2023) — requirements for virtualization, containers, storage, backup, updates, logging, time synchronisation and access.
+- **ACN (Italy)**: the NIS2 security measures Italian essential and important entities must apply (Determinazione ACN n. 379907 of 19 December 2025, in force from 15 January 2026).
+- **NIS2 Implementing Regulation (EU) 2024/2690**: the detailed NIS2 requirements for cloud, data centre, managed service providers and the other digital providers it covers.
+- **ISO 22301:2019**: business continuity (backup, HA, replication and capacity findings).
+- **BSI IT-Grundschutz** (Germany, Kompendium Edition 2023): requirements for virtualization, containers, storage, backup, updates, logging, time synchronisation and access.
 
 See [docs/compliance.md](docs/compliance.md) for the controls and where they appear.
 
@@ -120,9 +121,9 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 - With `--compliance`, the findings saying the analysis is incomplete (API errors, missing permissions) are kept, so an audit report cannot look clean when data was not read.
 - JSON output writes Context and Gravity as names; HTML and Markdown output escape the text.
 - `--fast` and `--full` together are now an error instead of silently using `--fast`.
-- `CC0002` could never fire. It now reports a node whose loss leaves the cluster without quorum — for example a node holding 2 of 3 votes, or either node of a two-node cluster without a QDevice.
+- `CC0002` could never fire. It now reports a node whose loss leaves the cluster without quorum: for example a node holding 2 of 3 votes, or either node of a two-node cluster without a QDevice.
 - The API token checks (`WC0006`, `IC0006`, `IC0021`, `WC0015`) never saw any token and always reported Ok. They now read the tokens.
-- When the list of users, backup jobs, HA resources, replication jobs, metric servers or ACLs cannot be read, the checks that depend on it are skipped (the error is reported as `WG0042`) instead of reporting "nothing configured" — for example "root@pam has no TFA" or "no backup job".
+- When the list of users, backup jobs, HA resources, replication jobs, metric servers or ACLs cannot be read, the checks that depend on it are skipped (the error is reported as `WG0042`) instead of reporting "nothing configured": for example "root@pam has no TFA" or "no backup job".
 - `WG0017` (guest not backed up) now honours the job's excluded guests and its node restriction, and no longer reads each pool again for every guest.
 - `IC0004` could never find an empty pool.
 - `WN0001` (node firewall disabled) reported nodes whose firewall is on by default. `WC0004` now checks the inbound policy only, with PVE's default (DROP) when unset; REJECT counts as strict too. `WC0008` reports only rules that accept traffic from/to any address, including `::/0`, one finding per rule.
@@ -174,12 +175,12 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 - Findings on a shared storage (e.g. a backup server used by all nodes) are always reported on the same node, whichever node the tool connects to. Before, the node could change between runs and ignore rules for these findings stopped working. After updating, check once that your ignore rules for shared storages still match.
 
 
-## [2.5.0] — 2026-09-22
+## [2.5.0] - 2026-09-22
 
 ### New checks
 
 **Cluster:**
-- `WC0020` — the account used for the analysis cannot see part of the cluster. Proxmox VE hides what the account is not allowed to see without raising any error, so the report could look complete when it is not. The finding says what was left out. (#52)
+- `WC0020`: the account used for the analysis cannot see part of the cluster. Proxmox VE hides what the account is not allowed to see without raising any error, so the report could look complete when it is not. The finding says what was left out. (#52)
 
 ### Fixes
 
@@ -189,36 +190,36 @@ See [docs/compliance.md](docs/compliance.md) for the controls and where they app
 
 ### Documentation
 
-- README: corrected the permissions needed to check backups — `Datastore.Audit` alone is not enough.
+- README: corrected the permissions needed to check backups: `Datastore.Audit` alone is not enough.
 
 
-## [2.4.0] — 2026-06-01
+## [2.4.0] - 2026-06-01
 
 ### Compliance reporting
 
-cv4pve-diag can now produce **compliance-aware reports** alongside the usual diagnostic output. Diagnostic findings are tagged with the normative controls they satisfy — so when an admin user has no two-factor authentication, the same finding doubles as evidence of a gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2.
+cv4pve-diag can now produce **compliance-aware reports** alongside the usual diagnostic output. Diagnostic findings are tagged with the normative controls they satisfy: so when an admin user has no two-factor authentication, the same finding doubles as evidence of a gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2.
 
-- **40+ diagnostic checks** are mapped to compliance controls across **14 frameworks**: ISO 27001:2022, NIS2, DORA, PCI DSS v4.0, GDPR, AgID (Italian PA), ENS (Spanish PA, RD 311/2022), BSI C5:2020 (German cloud baseline), SOC 2 (AICPA Trust Services Criteria), NIST SP 800-53 rev.5 (Moderate baseline subset), ISO/IEC 27017 (cloud), ISO/IEC 27018 (PII in cloud), CIS Controls v8 and NIST CSF 2.0. Each finding can carry several control ids — for example, the "admin user without two-factor authentication" finding now references controls across most frameworks at once.
+- **40+ diagnostic checks** are mapped to compliance controls across **14 frameworks**: ISO 27001:2022, NIS2, DORA, PCI DSS v4.0, GDPR, AgID (Italian PA), ENS (Spanish PA, RD 311/2022), BSI C5:2020 (German cloud baseline), SOC 2 (AICPA Trust Services Criteria), NIST SP 800-53 rev.5 (Moderate baseline subset), ISO/IEC 27017 (cloud), ISO/IEC 27018 (PII in cloud), CIS Controls v8 and NIST CSF 2.0. Each finding can carry several control ids: for example, the "admin user without two-factor authentication" finding now references controls across most frameworks at once.
 - New `--compliance=<standard>` command-line option. When passed, the report is filtered to keep only the findings mapped to that standard, and a `ControlId` column is added so each finding shows the specific control identifier (e.g. `A.5.17`, `Art.21(j)`).
 - Works with every output format: Text, Markdown, HTML, JSON, Excel. The Excel header carries the selected standard so the file is self-describing.
 - New `IncludeOkResult` setting (top-level): when enabled, passing checks are also written to the report (as `Ok` results). Useful for **full audit-style reports** that need to prove a control was verified, not only that it was violated.
 - Full explanation, list of standards, control catalog and disclaimer in the new [docs/compliance.md](docs/compliance.md).
 
-> **Important:** the compliance mapping is **technical and informative only** — it covers the subset of each standard that can be verified from the Proxmox VE state. It does not replace a formal audit. See the disclaimer in `docs/compliance.md` for full scope and limits.
+> **Important:** the compliance mapping is **technical and informative only**: it covers the subset of each standard that can be verified from the Proxmox VE state. It does not replace a formal audit. See the disclaimer in `docs/compliance.md` for full scope and limits.
 
 ### New diagnostic checks
 
 Two new observability checks fill a gap on long-term monitoring evidence:
 
-- `IC0018` — No external metric server configured on the cluster. Without an InfluxDB / Graphite metric server, long-term monitoring relies only on the volatile per-node RRD, which is reset on reboot — auditors typically require persistent historical data for incident investigation.
-- `IC0019` — Metric servers exist but every one of them is disabled — same effect as `IC0018`, but worth surfacing separately because the fix is just toggling the existing configuration on.
-- `IG0016` — VM has a machine type pinned to an old version while the node already offers a newer one (e.g. `pc-i440fx-6.2` while `pc-i440fx-9.2` is available). Pinning is correct for stability, but old machine versions accumulate deprecated CPU / microcode behaviour and miss QEMU bug-fixes; tagged against the patch-management controls. Upgrade requires a VM stop/start.
-- `IC0020` — Pool with members but no ACL entry at `/pool/<id>`. The pool exists as an organisational tag but is not used as a privilege boundary, which is the point of pools.
-- `IC0021` — API token without a comment. Without a comment the token's purpose / owner cannot be attributed at audit time, making safe revocation impossible.
-- `WC0019` — Two or more enabled backup jobs run on the same storage at the same systemd-calendar schedule, causing I/O contention and longer overall runtime.
-- `WN0045` — Node clock drifts more than 5 seconds from another cluster node. Even when each node looks fine vs NTP, mutual drift is a frequent silent cause of corosync token retransmits, HA fencing instability and broken log correlation.
+- `IC0018`: No external metric server configured on the cluster. Without an InfluxDB / Graphite metric server, long-term monitoring relies only on the volatile per-node RRD, which is reset on reboot: auditors typically require persistent historical data for incident investigation.
+- `IC0019` (Metric servers exist but every one of them is disabled) same effect as `IC0018`, but worth surfacing separately because the fix is just toggling the existing configuration on.
+- `IG0016`: VM has a machine type pinned to an old version while the node already offers a newer one (e.g. `pc-i440fx-6.2` while `pc-i440fx-9.2` is available). Pinning is correct for stability, but old machine versions accumulate deprecated CPU / microcode behaviour and miss QEMU bug-fixes; tagged against the patch-management controls. Upgrade requires a VM stop/start.
+- `IC0020`: Pool with members but no ACL entry at `/pool/<id>`. The pool exists as an organisational tag but is not used as a privilege boundary, which is the point of pools.
+- `IC0021`: API token without a comment. Without a comment the token's purpose / owner cannot be attributed at audit time, making safe revocation impossible.
+- `WC0019`: Two or more enabled backup jobs run on the same storage at the same systemd-calendar schedule, causing I/O contention and longer overall runtime.
+- `WN0045`: Node clock drifts more than 5 seconds from another cluster node. Even when each node looks fine vs NTP, mutual drift is a frequent silent cause of corosync token retransmits, HA fencing instability and broken log correlation.
 
-In addition, a wider set of **pre-existing checks now also carries compliance tags** (TFA on transitive admins, account lifecycle, firewall logging, certificate management, PVE patch level, container privileged-access checks, …) — the diagnostic logic and codes are unchanged, but findings now reference the relevant ISO 27001 / NIS2 / DORA / PCI DSS controls. The full mapping per area is in [docs/compliance.md](docs/compliance.md); the full list of checks is in [docs/checks.md](docs/checks.md).
+In addition, a wider set of **pre-existing checks now also carries compliance tags** (TFA on transitive admins, account lifecycle, firewall logging, certificate management, PVE patch level, container privileged-access checks, …): the diagnostic logic and codes are unchanged, but findings now reference the relevant ISO 27001 / NIS2 / DORA / PCI DSS controls. The full mapping per area is in [docs/compliance.md](docs/compliance.md); the full list of checks is in [docs/checks.md](docs/checks.md).
 
 ### Reporting & output
 
@@ -230,57 +231,57 @@ In addition, a wider set of **pre-existing checks now also carries compliance ta
 
 The README has been restructured around the most common reading paths. Long content has moved into dedicated docs so the README stays scannable:
 
-- New [docs/checks.md](docs/checks.md) — full catalog of every diagnostic check with code, description and severity.
-- New [docs/settings.md](docs/settings.md) — full `settings.json` reference with field-by-field defaults, performance tuning recipes and CVE scanning configuration.
-- New [docs/compliance.md](docs/compliance.md) — what the compliance mapping is, list of standards and controls, `--compliance` CLI usage, and the audit disclaimer.
-- New [docs/ignored-issues.md](docs/ignored-issues.md) — full guide to suppressing accepted findings.
+- New [docs/checks.md](docs/checks.md): full catalog of every diagnostic check with code, description and severity.
+- New [docs/settings.md](docs/settings.md): full `settings.json` reference with field-by-field defaults, performance tuning recipes and CVE scanning configuration.
+- New [docs/compliance.md](docs/compliance.md): what the compliance mapping is, list of standards and controls, `--compliance` CLI usage, and the audit disclaimer.
+- New [docs/ignored-issues.md](docs/ignored-issues.md): full guide to suppressing accepted findings.
 
 ### Fixes
 
-- **Error code collision fixed (`WG0025`)**: the code was incorrectly used both for the per-VM/CT CPU threshold check and for "HA guest has no replication job". The HA replication check now has its own code (`WG0043`). Ignore rules referencing `WG0025` for HA replication need to be updated — `WG0025` from now on means only CPU threshold breach.
-- **Error code collision fixed (`WN0023`)**: the code was used both for "TLS certificate expires within 30 days" and for "ZFS pool disk usage above threshold". The ZFS pool usage check now uses the new `WN0044` code. Ignore rules referencing `WN0023` for ZFS pool usage need to be updated — `WN0023` from now on means only certificate expiration warning.
+- **Error code collision fixed (`WG0025`)**: the code was incorrectly used both for the per-VM/CT CPU threshold check and for "HA guest has no replication job". The HA replication check now has its own code (`WG0043`). Ignore rules referencing `WG0025` for HA replication need to be updated: `WG0025` from now on means only CPU threshold breach.
+- **Error code collision fixed (`WN0023`)**: the code was used both for "TLS certificate expires within 30 days" and for "ZFS pool disk usage above threshold". The ZFS pool usage check now uses the new `WN0044` code. Ignore rules referencing `WN0023` for ZFS pool usage need to be updated: `WN0023` from now on means only certificate expiration warning.
 - **Cross-node checks skipped on single-node setups** (`CN0001`, `CN0002`, `WN0005`, `WN0006`, `WN0007`, `WN0008`, `WN0009`): these checks compare a node against its peers. On a host with no peers they are now skipped entirely instead of emitting empty / vacuously-true results. Single-node compliance gaps are already surfaced by `IC0017`, `IC0002`, `IC0003`.
 - All remaining cluster fetches are now resilient: a failing call (access, HA, replication, firewall options/rules, pools, status, log, tasks, RRD) no longer aborts the analysis. The affected check is skipped and a `WG0042` Warning is recorded, consistently with what was already in place for per-node and per-guest fetches.
 
 ### New checks
 
 **Access:**
-- `WC0013` — User holds Administrator role transitively via a group but has no TFA.
-- `WC0014` — Disabled user still has Administrator role on `/`.
-- `WC0015` — `root@pam` has API tokens with no privilege separation (token holds full root rights).
-- `WC0016` — User is still enabled past its expiration date.
-- `IC0010` — Administrator ACL on `/` with Propagate disabled — children resources do not inherit.
-- `IC0011` — External realm (LDAP / AD / OpenID) does not enforce TFA at realm level.
+- `WC0013`: User holds Administrator role transitively via a group but has no TFA.
+- `WC0014`: Disabled user still has Administrator role on `/`.
+- `WC0015`: `root@pam` has API tokens with no privilege separation (token holds full root rights).
+- `WC0016`: User is still enabled past its expiration date.
+- `IC0010` (Administrator ACL on `/` with Propagate disabled) children resources do not inherit.
+- `IC0011`: External realm (LDAP / AD / OpenID) does not enforce TFA at realm level.
 
 **Backup:**
-- `WC0017` — Enabled backup job has no schedule — it will never run automatically.
-- `WC0018` — Recent backup task ended with a non-OK status.
-- `IC0012` — Backup job is currently disabled.
+- `WC0017` (Enabled backup job has no schedule) it will never run automatically.
+- `WC0018`: Recent backup task ended with a non-OK status.
+- `IC0012`: Backup job is currently disabled.
 
 **Firewall:**
-- `IC0013` — Cluster firewall has enabled rules but none configure logging — no audit trail.
-- `IC0014` — Cluster firewall has 10+ disabled rules — stale configuration.
+- `IC0013` (Cluster firewall has enabled rules but none configure logging) no audit trail.
+- `IC0014` (Cluster firewall has 10+ disabled rules) stale configuration.
 
 **Cluster:**
-- `IC0015` — 10+ error-level entries in the recent cluster journal.
-- `IC0016` — 10%+ of recent cluster tasks failed — investigate recurring errors.
-- `IC0017` — Cluster has a single node — HA, quorum and replication provide no real protection.
+- `IC0015`: 10+ error-level entries in the recent cluster journal.
+- `IC0016` (10%+ of recent cluster tasks failed) investigate recurring errors.
+- `IC0017` (Cluster has a single node) HA, quorum and replication provide no real protection.
 
 **Per guest:**
-- `IG0015` — Running guest is not covered by any HA resource.
-- `WG0043` — HA guest has no enabled replication job — on non-shared storage the failover target will have no recent data. (Originally landed as `WG0025`; reassigned to fix a code collision — see *Fixes* above.)
+- `IG0015`: Running guest is not covered by any HA resource.
+- `WG0043`: HA guest has no enabled replication job: on non-shared storage the failover target will have no recent data. (Originally landed as `WG0025`; reassigned to fix a code collision: see *Fixes* above.)
 
 ### CVE checks
 
 - **Removed** the Debian Security Tracker check (`CN0014` / `WN0041`) and the `Cve.DebianTrackerEnabled` setting. PVE's `/apt/versions` API only exposes a curated list of Proxmox-distributed packages (`proxmox-ve`, `pve-manager`, kernel, `qemu-server`, …), which is not what the Debian Security Tracker indexes. The two sets do not overlap, so the check was producing zero findings by design. For a Debian-wide audit run `debsecan` directly on each node.
-- `CN0015` / `WN0042` (NVD) — the NVD query now uses `virtualMatchString` (instead of `cpeName` with a `*` version wildcard, which NVD rejects with 404), so the check actually runs and returns Proxmox VE CVEs across all versions.
+- `CN0015` / `WN0042` (NVD): the NVD query now uses `virtualMatchString` (instead of `cpeName` with a `*` version wildcard, which NVD rejects with 404), so the check actually runs and returns Proxmox VE CVEs across all versions.
 - NVD fetch failures now emit a `WG0042` warning instead of leaving the check silently empty.
 - NVD CVE entries with no CVSS score or no description are skipped.
 
 > **Migration:** if your `settings.json` contains `"DebianTrackerEnabled": true`, just remove that line. The rest of the `Cve` section keeps working as before.
 
 
-## [2.3.0] — 2026-05-27
+## [2.3.0] - 2026-05-27
 
 ### Resilience
 
@@ -289,47 +290,47 @@ The README has been restructured around the most common reading paths. Long cont
 ### New checks
 
 **Cluster:**
-- `CC0005` — HA resource in error state (manual recovery required).
-- `WC0009` — replication job disabled (guest data no longer replicated).
-- `WC0010` — enabled replication job without a schedule (it will never run).
-- `WC0011` — nodes run different Proxmox VE versions.
-- `WC0012` — nodes run different kernel versions.
-- `IC0007` — user without an email (will not receive notifications).
-- `IC0008` — empty group.
-- `IC0009` — unused custom role (not assigned in any ACL).
+- `CC0005`: HA resource in error state (manual recovery required).
+- `WC0009`: replication job disabled (guest data no longer replicated).
+- `WC0010`: enabled replication job without a schedule (it will never run).
+- `WC0011`: nodes run different Proxmox VE versions.
+- `WC0012`: nodes run different kernel versions.
+- `IC0007`: user without an email (will not receive notifications).
+- `IC0008`: empty group.
+- `IC0009`: unused custom role (not assigned in any ACL).
 
 **Node:**
-- `WN0023` — certificate expiring within 30 days.
-- `WN0034` — bond with fewer than two slaves (no link redundancy).
-- `IN0004` — self-signed certificate.
+- `WN0023`: certificate expiring within 30 days.
+- `WN0034`: bond with fewer than two slaves (no link redundancy).
+- `IN0004`: self-signed certificate.
 
 **Storage:**
-- `WS0008` — storage disabled.
+- `WS0008`: storage disabled.
 
 ### Fixes
 
-- `CS0001` (Storage unavailable) no longer fires for storages disabled on purpose — those are reported as `WS0008` (Warning) instead of a false Critical.
+- `CS0001` (Storage unavailable) no longer fires for storages disabled on purpose: those are reported as `WS0008` (Warning) instead of a false Critical.
 
 
-## [2.2.4] — 2026-05-14
+## [2.2.4] - 2026-05-14
 
 ### Fixes
 
-- `WS0002` (Image Orphaned) — cloud-init drives (`vm-{vmid}-cloudinit`) and mounted ISOs are recognised as in-use and no longer reported as orphaned. Thin provisioning calculations are unchanged: they still consider only real data disks. (#38)
-- `WG0005` (Cdrom mounted) — cloud-init drives are no longer flagged. Real ISO mounts are still reported, with the drive id and `storage:filename` in the description for easier triage. (#38)
-- `CG0002` (Disk disabled for backup) — LXC `rootfs` is no longer flagged when no `backup=` flag is set. The parser now matches Proxmox defaults: Qemu disks included unless `backup=0`, LXC `rootfs` always included, LXC `mp*` excluded unless `backup=1`. (#37)
-- `IC0001` (Backup job no compression) — backup jobs targeting Proxmox Backup Server are no longer flagged. PBS handles compression server-side and exposes no `compress` option on the job. (#39)
+- `WS0002` (Image Orphaned): cloud-init drives (`vm-{vmid}-cloudinit`) and mounted ISOs are recognised as in-use and no longer reported as orphaned. Thin provisioning calculations are unchanged: they still consider only real data disks. (#38)
+- `WG0005` (Cdrom mounted): cloud-init drives are no longer flagged. Real ISO mounts are still reported, with the drive id and `storage:filename` in the description for easier triage. (#38)
+- `CG0002` (Disk disabled for backup): LXC `rootfs` is no longer flagged when no `backup=` flag is set. The parser now matches Proxmox defaults: Qemu disks included unless `backup=0`, LXC `rootfs` always included, LXC `mp*` excluded unless `backup=1`. (#37)
+- `IC0001` (Backup job no compression): backup jobs targeting Proxmox Backup Server are no longer flagged. PBS handles compression server-side and exposes no `compress` option on the job. (#39)
 
 ### Dependencies
 
 - Updated Corsinvest API packages to `9.1.18`.
 
 
-## [2.2.3] — 2026-05-13
+## [2.2.3] - 2026-05-13
 
 ### Fixes
 
-- CVE checks are now really disabled by default (#34) — no more unexpected calls to `services.nvd.nist.gov` and `security-tracker.debian.org` unless you enable them in `settings.json`.
+- CVE checks are now really disabled by default (#34): no more unexpected calls to `services.nvd.nist.gov` and `security-tracker.debian.org` unless you enable them in `settings.json`.
 - More reliable detection of TPM 2.0 on Windows 11 VMs.
 
 ### Dependencies
@@ -337,7 +338,7 @@ The README has been restructured around the most common reading paths. Long cont
 - Updated Corsinvest API packages to 9.1.17.
 
 
-## [2.2.2] — 2026-04-18
+## [2.2.2] - 2026-04-18
 
 ### Documentation
 
@@ -348,20 +349,20 @@ The README has been restructured around the most common reading paths. Long cont
 - NuGet package license metadata corrected from `MIT` to `GPL-3.0-only` to match the project licence.
 
 
-## [2.2.1] — 2026-04-17
+## [2.2.1] - 2026-04-17
 
 ### Fixes
 
 - HA Groups correctly skipped on PVE 9 and later where the API endpoint was removed
 
 
-## [2.2.0] — 2026-04-13
+## [2.2.0] - 2026-04-13
 
 ### New checks
 
-**Node — CVE scanning (opt-in):**
-- **Open CVEs on installed packages** (`CN0014` / `WN0041`) — checks every installed package against the Debian security advisory feed for the detected PVE release. Packages with known open vulnerabilities are reported as Critical (high severity) or Warning (medium / unrated).
-- **Proxmox-specific CVEs** (`CN0015` / `WN0042`) — checks the NVD database for CVEs affecting Proxmox VE. Only CVEs that apply to the installed version are reported. Severity ≥ 9.0 → Critical; ≥ 7.0 → Warning.
+**Node: CVE scanning (opt-in):**
+- **Open CVEs on installed packages** (`CN0014` / `WN0041`): checks every installed package against the Debian security advisory feed for the detected PVE release. Packages with known open vulnerabilities are reported as Critical (high severity) or Warning (medium / unrated).
+- **Proxmox-specific CVEs** (`CN0015` / `WN0042`): checks the NVD database for CVEs affecting Proxmox VE. Only CVEs that apply to the installed version are reported. Severity ≥ 9.0 → Critical; ≥ 7.0 → Warning.
 
 Both checks are **disabled by default**. Enable them via the new `Cve` settings section.
 
@@ -379,11 +380,11 @@ New `Cve` section:
 }
 ```
 
-- `DebianTrackerEnabled` — check installed packages against Debian security advisories.
-- `NvdEnabled` — check for CVEs specific to Proxmox VE.
-- `MinCvssScore` — ignore CVEs below this severity score (default: 7.0).
+- `DebianTrackerEnabled`: check installed packages against Debian security advisories.
+- `NvdEnabled`: check for CVEs specific to Proxmox VE.
+- `MinCvssScore`: ignore CVEs below this severity score (default: 7.0).
 
-The correct Debian release is detected automatically from the PVE version — no manual configuration needed.
+The correct Debian release is detected automatically from the PVE version: no manual configuration needed.
 
 ### Performance
 
@@ -391,24 +392,24 @@ Analysis is faster on large clusters. All per-node API calls (subscription, serv
 
 ---
 
-## [2.1.0] — 2026-04-08
+## [2.1.0] - 2026-04-08
 
 ### New checks
 
 **Node:**
-- **Memory overcommit** (`WN0036`) — the total RAM allocated to VMs and containers on a node exceeds the node's physical memory. This can cause system instability or unexpected VM crashes.
-- **Bridge not VLAN-aware** (`WN0037`) — a VM or container uses a VLAN tag on a network bridge that does not support VLANs. The tag is silently ignored and network traffic may not be isolated as expected.
-- **VM consolidation candidate** (`IN0003`) — a node has very low CPU and RAM usage. Consider migrating its VMs to other nodes to free up hardware.
-- **Firewall rule allows all traffic** (`WC0008`) — a cluster firewall rule uses `0.0.0.0/0` as source or destination, allowing traffic from or to any address. This is overly permissive and increases the attack surface.
+- **Memory overcommit** (`WN0036`): the total RAM allocated to VMs and containers on a node exceeds the node's physical memory. This can cause system instability or unexpected VM crashes.
+- **Bridge not VLAN-aware** (`WN0037`): a VM or container uses a VLAN tag on a network bridge that does not support VLANs. The tag is silently ignored and network traffic may not be isolated as expected.
+- **VM consolidation candidate** (`IN0003`): a node has very low CPU and RAM usage. Consider migrating its VMs to other nodes to free up hardware.
+- **Firewall rule allows all traffic** (`WC0008`): a cluster firewall rule uses `0.0.0.0/0` as source or destination, allowing traffic from or to any address. This is overly permissive and increases the attack surface.
 
 **LXC containers (new checks):**
-- **Nesting without keyctl** (`WG0038`) — the container has Docker nesting enabled but is missing the `keyctl` option. Without it, nested containers may leak cryptographic keys between each other.
-- **Privileged container** (`WG0039`) — the container runs as privileged, meaning the root user inside has the same permissions as root on the host. Use unprivileged containers where possible.
-- **Privileged without AppArmor** (`CG0006`) — a privileged container also has AppArmor protection disabled. There is no kernel-level confinement: a compromised container can affect the entire host.
-- **No memory limit** (`WG0040`) — the container has no RAM limit configured. It can consume all available host memory and starve other VMs and containers.
-- **Swap disabled** (`IG0013`) — the container has no swap space. Under heavy memory pressure, the OS will kill processes instead of using swap.
-- **No hostname** (`IG0014`) — the container has no hostname set, making it harder to identify in logs and monitoring tools.
-- **Raw LXC config entries** (`WG0041`) — the container has low-level LXC configuration entries that bypass Proxmox VE management. These can cause unexpected behavior after upgrades.
+- **Nesting without keyctl** (`WG0038`): the container has Docker nesting enabled but is missing the `keyctl` option. Without it, nested containers may leak cryptographic keys between each other.
+- **Privileged container** (`WG0039`): the container runs as privileged, meaning the root user inside has the same permissions as root on the host. Use unprivileged containers where possible.
+- **Privileged without AppArmor** (`CG0006`): a privileged container also has AppArmor protection disabled. There is no kernel-level confinement: a compromised container can affect the entire host.
+- **No memory limit** (`WG0040`): the container has no RAM limit configured. It can consume all available host memory and starve other VMs and containers.
+- **Swap disabled** (`IG0013`): the container has no swap space. Under heavy memory pressure, the OS will kill processes instead of using swap.
+- **No hostname** (`IG0014`): the container has no hostname set, making it harder to identify in logs and monitoring tools.
+- **Raw LXC config entries** (`WG0041`): the container has low-level LXC configuration entries that bypass Proxmox VE management. These can cause unexpected behavior after upgrades.
 
 ### Error code unification
 
@@ -418,7 +419,7 @@ VM and container checks previously used separate code prefixes (`WQ*`/`IQ*`/`CQ*
 
 ### Performance
 
-Analysis is significantly faster on large clusters. Backup content, VM configs, and storage lists are now fetched once and reused across all checks — instead of being fetched repeatedly for each VM or container. On a typical cluster this reduces the number of API calls by ~18% and total analysis time by ~32%.
+Analysis is significantly faster on large clusters. Backup content, VM configs, and storage lists are now fetched once and reused across all checks: instead of being fetched repeatedly for each VM or container. On a typical cluster this reduces the number of API calls by ~18% and total analysis time by ~32%.
 
 ### Fixes
 
@@ -427,7 +428,7 @@ Analysis is significantly faster on large clusters. Backup content, VM configs, 
 
 ---
 
-## [2.0.3] — 2026-04-03
+## [2.0.3] - 2026-04-03
 
 ### License change
 
@@ -436,85 +437,85 @@ Analysis is significantly faster on large clusters. Backup content, VM configs, 
 ### New checks
 
 **VM (QEMU):**
-- **CPU type 'host' with HA enabled** (`CQ0004`) — critical when a VM uses CPU type `host` and is managed by HA. HA requires live migration, which is impossible with `host` CPU type.
-- **Disk on local storage with HA enabled** (`CQ0005`) — critical when a VM disk is on non-shared storage but the VM is managed by HA. Live migration will fail.
-- **vCPU overcommit** (`WQ0036`) — warns when the total vCPU count on a node exceeds the configured ratio vs physical CPUs (default 4.0x, configurable via `Node.MaxVCpuRatio`).
-- **Machine type not set** (`IQ0012`) — info when a VM has no machine type configured. QEMU will use the default, which may change across PVE upgrades and cause unexpected guest behavior.
-- **No network interface** (`WQ0034`) — warns when a VM has no network interface configured (completely isolated from the network).
-- **Duplicate MAC address** (`WQ0033`) — warns when two or more VMs share the same MAC address, which causes network conflicts.
-- **Snapshot with RAM state** (`WQ0035`) — warns when a snapshot includes the full guest RAM state, wasting disk space and blocking storage migration.
+- **CPU type 'host' with HA enabled** (`CQ0004`): critical when a VM uses CPU type `host` and is managed by HA. HA requires live migration, which is impossible with `host` CPU type.
+- **Disk on local storage with HA enabled** (`CQ0005`): critical when a VM disk is on non-shared storage but the VM is managed by HA. Live migration will fail.
+- **vCPU overcommit** (`WQ0036`): warns when the total vCPU count on a node exceeds the configured ratio vs physical CPUs (default 4.0x, configurable via `Node.MaxVCpuRatio`).
+- **Machine type not set** (`IQ0012`): info when a VM has no machine type configured. QEMU will use the default, which may change across PVE upgrades and cause unexpected guest behavior.
+- **No network interface** (`WQ0034`): warns when a VM has no network interface configured (completely isolated from the network).
+- **Duplicate MAC address** (`WQ0033`): warns when two or more VMs share the same MAC address, which causes network conflicts.
+- **Snapshot with RAM state** (`WQ0035`): warns when a snapshot includes the full guest RAM state, wasting disk space and blocking storage migration.
 
 **LXC:**
-- **No memory limit** (`WL0022`) — warns when a container has `Memory=0` (unbounded), which allows it to consume all host RAM and starve other guests.
+- **No memory limit** (`WL0022`): warns when a container has `Memory=0` (unbounded), which allows it to consume all host RAM and starve other guests.
 
 **Storage:**
-- **No backup storage configured** (`WS0006`) — warns when no storage in the cluster has the `backup` content type, meaning vzdump has nowhere to save backups.
-- **Backup storage unreachable from node** (`WS0007`) — warns when a backup job targets a storage that is not available on a node where VMs reside. Those VMs will not be backed up.
+- **No backup storage configured** (`WS0006`): warns when no storage in the cluster has the `backup` content type, meaning vzdump has nowhere to save backups.
+- **Backup storage unreachable from node** (`WS0007`): warns when a backup job targets a storage that is not available on a node where VMs reside. Those VMs will not be backed up.
 
 ### Improvements
 
-- **Excel export** (`--output=Excel`) — new output format that generates an `.xlsx` report with a summary header (generated date, duration, nodes, version) and a filtered table with all diagnostic results. File name defaults to `cv4pve-diagnostic-<timestamp>.xlsx` if `--output-file` is not specified.
-- **`--output-file`** — new option to save any output format to a file instead of stdout.
-- **`Node.MaxVCpuRatio`** — new configurable setting (default `4.0`) for the vCPU overcommit check.
-- **`SettingsPressure`** — PSI pressure thresholds extracted into a dedicated class (`Pressure.Cpu`, `Pressure.IoFull`, `Pressure.MemoryFull`) for cleaner settings structure.
+- **Excel export** (`--output=Excel`): new output format that generates an `.xlsx` report with a summary header (generated date, duration, nodes, version) and a filtered table with all diagnostic results. File name defaults to `cv4pve-diagnostic-<timestamp>.xlsx` if `--output-file` is not specified.
+- **`--output-file`**: new option to save any output format to a file instead of stdout.
+- **`Node.MaxVCpuRatio`**: new configurable setting (default `4.0`) for the vCPU overcommit check.
+- **`SettingsPressure`**: PSI pressure thresholds extracted into a dedicated class (`Pressure.Cpu`, `Pressure.IoFull`, `Pressure.MemoryFull`) for cleaner settings structure.
 
 ---
 
-## [2.0.2] — 2026-03-25
+## [2.0.2] - 2026-03-25
 
 ### New checks
 
 **Node:**
-- **Disk temperature** — warns when a disk temperature exceeds the configured threshold (requires SMART data).
-- **Disk SMART errors** — detects reallocated sectors, pending sectors, offline uncorrectable sectors, UDMA CRC errors and reported uncorrectable errors. Each is a separate check with its own threshold.
-- **ZFS vdev state** — warns when a ZFS pool vdev is in a degraded or faulted state.
-- **ZFS vdev I/O errors** — warns when a ZFS pool vdev has accumulated read, write or checksum errors.
-- **ZFS pool errors** — warns when a ZFS pool reports errors.
-- **LVM-thin metadata usage** — warns when LVM-thin metadata usage is high. A full metadata volume causes data corruption.
-- **IOWait** — warns when node IOWait (from RRD data) exceeds the configured threshold.
-- **Root filesystem usage** — warns when the root filesystem usage exceeds the configured threshold.
-- **SWAP usage** — warns when SWAP usage exceeds the configured threshold.
-- **PSI CPU / IO / Memory pressure** — warns when Linux Pressure Stall Information (PSI) metrics exceed thresholds (PVE 9.0+).
+- **Disk temperature**: warns when a disk temperature exceeds the configured threshold (requires SMART data).
+- **Disk SMART errors**: detects reallocated sectors, pending sectors, offline uncorrectable sectors, UDMA CRC errors and reported uncorrectable errors. Each is a separate check with its own threshold.
+- **ZFS vdev state**: warns when a ZFS pool vdev is in a degraded or faulted state.
+- **ZFS vdev I/O errors**: warns when a ZFS pool vdev has accumulated read, write or checksum errors.
+- **ZFS pool errors**: warns when a ZFS pool reports errors.
+- **LVM-thin metadata usage**: warns when LVM-thin metadata usage is high. A full metadata volume causes data corruption.
+- **IOWait**: warns when node IOWait (from RRD data) exceeds the configured threshold.
+- **Root filesystem usage**: warns when the root filesystem usage exceeds the configured threshold.
+- **SWAP usage**: warns when SWAP usage exceeds the configured threshold.
+- **PSI CPU / IO / Memory pressure**: warns when Linux Pressure Stall Information (PSI) metrics exceed thresholds (PVE 9.0+).
 
 **VM/CT:**
-- **Pending config changes** — warns when a VM or container has configuration changes that require a reboot to take effect.
-- **VM state in snapshot** — warns when a snapshot includes the RAM state, which significantly increases snapshot size and restore time.
+- **Pending config changes**: warns when a VM or container has configuration changes that require a reboot to take effect.
+- **VM state in snapshot**: warns when a snapshot includes the RAM state, which significantly increases snapshot size and restore time.
 
 **LXC:**
-- **Privileged container** — warns when a container runs as privileged (root inside = root on host).
-- **Privileged container without AppArmor** — critical when a privileged container also has AppArmor disabled (no kernel confinement).
-- **Nesting without keyctl** — warns when nesting is enabled but `keyctl` is not (required for Docker-in-LXC).
-- **Raw LXC config** — warns when a container has raw LXC config entries that bypass PVE abstractions.
-- **Swap = 0** — warns when a container has swap disabled (OOM killer risk under memory pressure).
-- **No hostname** — info when a container has no hostname configured.
+- **Privileged container**: warns when a container runs as privileged (root inside = root on host).
+- **Privileged container without AppArmor**: critical when a privileged container also has AppArmor disabled (no kernel confinement).
+- **Nesting without keyctl**: warns when nesting is enabled but `keyctl` is not (required for Docker-in-LXC).
+- **Raw LXC config**: warns when a container has raw LXC config entries that bypass PVE abstractions.
+- **Swap = 0**: warns when a container has swap disabled (OOM killer risk under memory pressure).
+- **No hostname**: info when a container has no hostname configured.
 
 **Cluster:**
-- **No backup job** — warns when no backup job is configured for any VM/CT.
-- **Backup job without compression** — info when a backup job has no compression configured.
-- **Backup job without retention** — warns when a backup job has no maxfiles/prune policy (storage will fill up).
-- **No HA resources** — info when no HA resources are configured (VMs won't restart on node failure).
-- **No storage replication** — info when no storage replication jobs exist.
-- **Cluster firewall disabled** — warns when the cluster-level firewall is disabled.
-- **Cluster firewall policy** — warns when inbound or outbound firewall policy is not DROP.
-- **root@pam without TFA** — critical when the root user has no two-factor authentication configured.
-- **Admin users without TFA** — warns when admin users have no TFA configured.
-- **Overly broad permissions** — warns when a user has the Administrator role at root path `/` instead of pool- or node-scoped permissions.
-- **Disabled user with active API token** — warns when a disabled user still has valid API tokens that should be revoked.
+- **No backup job**: warns when no backup job is configured for any VM/CT.
+- **Backup job without compression**: info when a backup job has no compression configured.
+- **Backup job without retention**: warns when a backup job has no maxfiles/prune policy (storage will fill up).
+- **No HA resources**: info when no HA resources are configured (VMs won't restart on node failure).
+- **No storage replication**: info when no storage replication jobs exist.
+- **Cluster firewall disabled**: warns when the cluster-level firewall is disabled.
+- **Cluster firewall policy**: warns when inbound or outbound firewall policy is not DROP.
+- **root@pam without TFA**: critical when the root user has no two-factor authentication configured.
+- **Admin users without TFA**: warns when admin users have no TFA configured.
+- **Overly broad permissions**: warns when a user has the Administrator role at root path `/` instead of pool- or node-scoped permissions.
+- **Disabled user with active API token**: warns when a disabled user still has valid API tokens that should be revoked.
 
 ### Improvements
 
-- **Unique error code per check** — every check now has a distinct code in the format `[gravity][context][0001-9999]` (e.g. `WN0014`, `CQ0001`). This makes it possible to ignore individual checks precisely via ignore rules.
-- **macOS `.pkg` packages** — releases now include `.pkg` installers for `osx-x64` and `osx-arm64`.
-- **Packages for Linux** — releases now include `.deb` and `.rpm` packages for `amd64`, `arm64` and `armhf`/`armv7hl`. AUR package updated automatically on release.
+- **Unique error code per check**: every check now has a distinct code in the format `[gravity][context][0001-9999]` (e.g. `WN0014`, `CQ0001`). This makes it possible to ignore individual checks precisely via ignore rules.
+- **macOS `.pkg` packages**: releases now include `.pkg` installers for `osx-x64` and `osx-arm64`.
+- **Packages for Linux**: releases now include `.deb` and `.rpm` packages for `amd64`, `arm64` and `armhf`/`armv7hl`. AUR package updated automatically on release.
 
 ### Breaking changes
 
-- **Error codes changed** — all codes have been reassigned. Existing ignore rules must be updated. Run `cv4pve-diag diag` and check the `Code` column for the new values.
-- **Settings JSON structure changed** — new top-level sections `Rrd`, `SmartDisk`, `Backup`, `NodeStorage` have been added. Regenerate your `settings.json` with `cv4pve-diag create-settings`.
+- **Error codes changed**: all codes have been reassigned. Existing ignore rules must be updated. Run `cv4pve-diag diag` and check the `Code` column for the new values.
+- **Settings JSON structure changed**: new top-level sections `Rrd`, `SmartDisk`, `Backup`, `NodeStorage` have been added. Regenerate your `settings.json` with `cv4pve-diag create-settings`.
 
 ---
 
-## [2.0.1] — 2026-03-21
+## [2.0.1] - 2026-03-21
 
 ### Improvements
 
@@ -526,28 +527,28 @@ Analysis is significantly faster on large clusters. Backup content, VM configs, 
 
 ---
 
-## [2.0.0] — 2026-03-20
+## [2.0.0] - 2026-03-20
 
 ### What's new
 
 **New diagnostic checks:**
 
-- **Thin Provisioning Overcommit** — detects when the total disk space allocated to VMs/CTs exceeds the actual physical capacity of thin-provisioned storages (LVM-thin, ZFS, Ceph). Helps prevent unexpected out-of-space failures.
-- **Disk Cache Unsafe** — warns when a VM disk is configured with `cache=unsafe`. This setting improves performance but risks data loss on power failure.
-- **Snapshot Count** — warns when a VM/CT has too many snapshots. Long snapshot chains degrade I/O performance.
-- **Snapshot Age** — warns when snapshots are older than a configured number of days. Old snapshots are often forgotten and waste storage space.
-- **Health Score** — a composite score (0–100) based on CPU, memory and disk usage. Raises a warning or critical when the score drops below configured thresholds.
-- **LXC Nesting without Keyctl** — warns when a container has `nesting=1` (required for Docker inside LXC) but is missing `keyctl=1`, which is needed for full compatibility.
-- **Unused disks on containers** — detached disks (`unused0`, `unused1`, …) are now detected and reported on LXC containers too, not only on VMs.
-- **VM/CT locked** — warns when a VM or container is locked (e.g. during a backup or migration that did not complete).
-- **CPU x86-64 compatibility** — detects mismatched CPU feature levels across cluster nodes that could prevent safe live migration.
+- **Thin Provisioning Overcommit**: detects when the total disk space allocated to VMs/CTs exceeds the actual physical capacity of thin-provisioned storages (LVM-thin, ZFS, Ceph). Helps prevent unexpected out-of-space failures.
+- **Disk Cache Unsafe**: warns when a VM disk is configured with `cache=unsafe`. This setting improves performance but risks data loss on power failure.
+- **Snapshot Count**: warns when a VM/CT has too many snapshots. Long snapshot chains degrade I/O performance.
+- **Snapshot Age**: warns when snapshots are older than a configured number of days. Old snapshots are often forgotten and waste storage space.
+- **Health Score**: a composite score (0-100) based on CPU, memory and disk usage. Raises a warning or critical when the score drops below configured thresholds.
+- **LXC Nesting without Keyctl**: warns when a container has `nesting=1` (required for Docker inside LXC) but is missing `keyctl=1`, which is needed for full compatibility.
+- **Unused disks on containers**: detached disks (`unused0`, `unused1`, …) are now detected and reported on LXC containers too, not only on VMs.
+- **VM/CT locked**: warns when a VM or container is locked (e.g. during a backup or migration that did not complete).
+- **CPU x86-64 compatibility**: detects mismatched CPU feature levels across cluster nodes that could prevent safe live migration.
 
 ### Settings
 
 Two new sections in `settings.json`:
 
-- `Snapshot` — configure max snapshot count and max snapshot age in days
-- `HealthScore` — configure warning and critical score thresholds
+- `Snapshot`: configure max snapshot count and max snapshot age in days
+- `HealthScore`: configure warning and critical score thresholds
 
 ### Breaking change for library users
 

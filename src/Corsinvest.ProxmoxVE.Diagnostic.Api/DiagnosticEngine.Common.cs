@@ -150,7 +150,7 @@ public partial class DiagnosticEngine
                 compliance: backupGuestControls);
         }
 
-        // Individual disks excluded from backup — even if the job exists, these disks won't be saved.
+        // Individual disks excluded from backup: even if the job exists, these disks won't be saved.
         // Container bind mounts (host path) and device mounts (/dev) are never backed up by vzdump:
         // there is no backup flag to set, so they are not reported.
         CreateResultPerItem(
@@ -169,13 +169,13 @@ public partial class DiagnosticEngine
             compliance: backupGuestControls);
 
         #region Unused disks
-        // Disks detached from the VM/CT config but still present in storage — consuming space silently
-        // Size is already available in VmDisk.SizeBytes parsed from config — no extra API call needed
+        // Disks detached from the VM/CT config but still present in storage: consuming space silently
+        // Size is already available in VmDisk.SizeBytes parsed from config: no extra API call needed
         CreateResultPerItem(
             items: config.Disks.ToList(),
             isItemOk: a => !a.IsUnused,
             itemId: _ => id,
-            itemDescriptionKo: a => $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : "")} — detached from VM but still in storage",
+            itemDescriptionKo: a => $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : "")}: detached from VM but still in storage",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "No unused disks left attached to storage",
             errorCode: "WG0018",
@@ -201,7 +201,7 @@ public partial class DiagnosticEngine
                                                     && (!string.IsNullOrEmpty(d.MountSourcePath) || d.Passthrough))).ToList(),
                 isItemOk: d => replicated || _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
                 itemId: _ => id,
-                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated — migration and failover will fail",
+                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated: migration and failover will fail",
                 aggregatedIdOk: id,
                 aggregatedDescriptionOk: _ => replicated
                                                 ? $"HA {guest} is replicated to the other nodes"
@@ -242,7 +242,7 @@ public partial class DiagnosticEngine
                                                                && _backupContentUnavailable.Contains(BackupStorageKey(node, a.Storage)));
         if (_backupChecksEnabled && !backupContentUnknown)
         {
-            // Reuse already-fetched backup content — filter by vmId in memory, no extra API call.
+            // Reuse already-fetched backup content: filter by vmId in memory, no extra API call.
             // Key is storage name for shared storage, node/storage for non-shared.
             var backupContents = nodeBackupStorages.Where(a => a.Active)
                                                    .SelectMany(a => _backupContentByStorage.TryGetValue(BackupStorageKey(node, a.Storage), out var list)
@@ -268,7 +268,7 @@ public partial class DiagnosticEngine
                     compliance: backupGuestControls);
             }
 
-            // No backup found within RecentDays — RPO violation
+            // No backup found within RecentDays: RPO violation
             if (settings.Backup.RecentDays > 0)
             {
                 var hasRecent = backupContents.Any(a => a.CreationDate.Date >= _now.Date.AddDays(-settings.Backup.RecentDays));
@@ -287,7 +287,7 @@ public partial class DiagnosticEngine
         #endregion
 
         #region Task history
-        // Failed tasks for this VM in the last 48 hours — vmid filtered server-side
+        // Failed tasks for this VM in the last 48 hours: vmid filtered server-side
         var dayTask = new DateTimeOffset(_now.AddDays(-2)).ToUnixTimeSeconds();
         var tasks = (await nodeApi.Tasks.GetAsync(errors: true, limit: 1000, vmid: (int)vmId)
                                         .ToSafeEnum(_result, id, context, $"task history of guest {vmId}"))
@@ -301,7 +301,7 @@ public partial class DiagnosticEngine
 
         CheckGuestRrd(thresholdHost, context, id, rrdData);
 
-        // HA / Replication coverage — only meaningful for running, non-template guests.
+        // HA / Replication coverage: only meaningful for running, non-template guests.
         // IC0002 / IC0003 already cover the "no HA at all / no replication at all" cluster-wide
         // cases; these two flag individual guests that are NOT covered when the cluster has
         // HA/replication in use. Both findings are also compliance-relevant (A.5.30, Nis2 Art.21(c),
@@ -341,7 +341,7 @@ public partial class DiagnosticEngine
                     subContext: "HA",
                     context: context,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "Guest is not managed by any HA resource — it will not be restarted automatically on node failure",
+                    descriptionKo: "Guest is not managed by any HA resource: it will not be restarted automatically on node failure",
                     descriptionOk: "Guest is managed by an HA resource",
                     compliance: resilienceControls);
             }
@@ -416,7 +416,7 @@ public partial class DiagnosticEngine
             descriptionOk: $"'{autosnapAppName}' is configured for automated rolling snapshots",
             compliance: []);
 
-        // Old tool name — user should migrate to the current version
+        // Old tool name: user should migrate to the current version
         CreateResult(
             isOk: !snapshots.Any(a => a.Description == autosnapAppNameOld || a.Description == $"{autosnapAppNameOld}\n"),
             id: id,
@@ -428,7 +428,7 @@ public partial class DiagnosticEngine
             descriptionOk: $"No legacy '{autosnapAppNameOld}' snapshots present",
             compliance: []);
 
-        // Snapshots older than MaxAgeDays — likely forgotten, wasting storage
+        // Snapshots older than MaxAgeDays: likely forgotten, wasting storage
         if (snapshotSettings.MaxAgeDays > 0)
         {
             var snapOldCount = realSnapshots.Count(a => a.Date < execution.AddDays(-snapshotSettings.MaxAgeDays));
@@ -450,7 +450,7 @@ public partial class DiagnosticEngine
             items: realSnapshots,
             isItemOk: s => !s.VmStatus,
             itemId: _ => id,
-            itemDescriptionKo: snap => $"Snapshot '{snap.Name}' includes RAM state — wastes disk space and blocks storage migration",
+            itemDescriptionKo: snap => $"Snapshot '{snap.Name}' includes RAM state: wastes disk space and blocks storage migration",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "No snapshot includes RAM state",
             errorCode: "WG0035",
@@ -513,7 +513,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"{kind} firewall is disabled — the guest is exposed to all traffic on the node bridge",
+            descriptionKo: $"{kind} firewall is disabled: the guest is exposed to all traffic on the node bridge",
             descriptionOk: $"{kind} firewall is enabled",
             compliance: firewallControls);
 
@@ -526,7 +526,7 @@ public partial class DiagnosticEngine
                 subContext: "Firewall",
                 context: context,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"{kind} firewall IP filter is disabled — the guest can spoof source IP addresses",
+                descriptionKo: $"{kind} firewall IP filter is disabled: the guest can spoof source IP addresses",
                 descriptionOk: $"{kind} firewall IP filter is enabled",
                 compliance: firewallControls);
         }
@@ -558,9 +558,9 @@ public partial class DiagnosticEngine
                            netInErrorCode: ("WG0027", "CG0027"),
                            netOutErrorCode: ("WG0028", "CG0028"));
 
-        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
+        // PSI pressure: only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
         // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
-        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
+        // and pvestatd stores them unscaled, unlike CPU/memory RRD fields, which are 0-1 fractions.
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(thresholdHost.Rrd.Pressure.Cpu,

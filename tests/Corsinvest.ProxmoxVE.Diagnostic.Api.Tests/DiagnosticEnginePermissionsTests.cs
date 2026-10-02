@@ -10,7 +10,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Tests;
 /// <summary>
 /// Privilege detection behind the backup-permission pre-check. The interesting case is the one
 /// from issue #52: PVEAuditor grants every *.Audit privilege, which is enough to list a storage's
-/// content but NOT to see the backup volumes inside it — PVE filters those out and returns an
+/// content but NOT to see the backup volumes inside it: PVE filters those out and returns an
 /// empty list rather than an error, so the backup checks would report healthy guests as unprotected.
 /// </summary>
 public class DiagnosticEnginePermissionsTests
@@ -105,7 +105,7 @@ public class DiagnosticEnginePermissionsTests
     public void PveAuditor_holds_every_foundational_audit_privilege()
     {
         // The privileges that /cluster/resources filters on are all part of PVEAuditor, so an
-        // auditor account sees the full inventory — it is only the backup volumes it cannot see.
+        // auditor account sees the full inventory: it is only the backup volumes it cannot see.
         // This is what makes the bug so easy to hit: the report looks complete.
         var permissions = new Dictionary<string, IReadOnlyList<string>>
         {
@@ -170,7 +170,7 @@ public class DiagnosticEnginePermissionsTests
     public void Root_listed_without_the_privilege_does_not_count_as_coverage()
     {
         // get_effective_permissions always includes the standard roots, so the key being present
-        // says nothing on its own — only the privilege list under it does.
+        // says nothing on its own: only the privilege list under it does.
         var permissions = Perms(("/vms", ["VM.Audit"]), ("/storage", []));
 
         Assert.False(DiagnosticEngine.CoversRoot(permissions, "Datastore.Audit", "/storage"));
@@ -181,7 +181,7 @@ public class DiagnosticEnginePermissionsTests
     {
         // Not a fault: an account deliberately restricted to one storage should analyze that
         // storage. The visibility privileges are absent at root, which is reported as reduced
-        // scope (Info) — only the backup privileges escalate to Warning, because their absence
+        // scope (Info): only the backup privileges escalate to Warning, because their absence
         // makes other checks report the opposite of the truth instead of simply reporting less.
         var permissions = Perms(("/storage/backups", ["Datastore.Audit"]));
 
