@@ -10,9 +10,9 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 
 /// <summary>
 /// Safe wrappers around SDK calls. Mirror cv4pve-report's <c>ToSafe*</c>: a failing PVE API
-/// call never aborts the analysis — it degrades to an empty list / default and records a
+/// call never aborts the analysis: it degrades to an empty list / default and records a
 /// Warning DiagnosticResult so the user knows the picture is incomplete. A 501 (endpoint not
-/// implemented on this PVE version) is silent — it is not a problem.
+/// implemented on this PVE version) is silent: it is not a problem.
 /// </summary>
 internal static class DiagnosticSafeExtensions
 {
@@ -65,7 +65,7 @@ internal static class DiagnosticSafeExtensions
     {
         if (ex is OperationCanceledException) { return false; }
 
-        // Endpoint not implemented on this PVE version — expected, not a problem.
+        // Endpoint not implemented on this PVE version: expected, not a problem.
         if (ex is PveResultException { Result.StatusCode: HttpStatusCode.NotImplemented }) { return true; }
 
         var detail = ex is PveResultException pex ? BuildApiErrorMessage(pex.Result) : ex.Message;
@@ -86,7 +86,7 @@ internal static class DiagnosticSafeExtensions
         return true;
     }
 
-    // "<code> <reason> — <api error> — <METHOD> <path>" so a finding is self-contained.
+    // "<code> <reason> - <api error> - <METHOD> <path>" so a finding is self-contained.
     public static string BuildApiErrorMessage(Result r)
     {
         var parts = new List<string> { $"{(int)r.StatusCode} {r.ReasonPhrase}" };

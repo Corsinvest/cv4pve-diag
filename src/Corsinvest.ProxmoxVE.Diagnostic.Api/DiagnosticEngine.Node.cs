@@ -80,7 +80,7 @@ public partial class DiagnosticEngine
         var lvmThinListTask = settings.Node.NodeStorage.LvmThinMetadata
                                     ? api.Disks.Lvmthin.GetAsync().ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"LVM-thin metadata on node '{node}'")
                                     : Task.FromResult<IReadOnlyList<NodeDiskLvmThin>>([]);
-        // GetAsync is provided by the temporary shim in Helpers/PveSdkShims.cs — remove the
+        // GetAsync is provided by the temporary shim in Helpers/PveSdkShims.cs: remove the
         // shim and this comment once cv4pve-api-dotnet > 9.2.0 ships the strong-typed extension.
         var qemuMachinesTask = api.Capabilities.Qemu.Machines.GetAsync()
                                   .ToSafeEnum(_result, id, DiagnosticResultContext.Node, $"QEMU machines on node '{node}'");
@@ -106,7 +106,7 @@ public partial class DiagnosticEngine
     {
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
 
-        // Pre-fetch lightweight per-node data — nodes in parallel, 8 calls per node in parallel.
+        // Pre-fetch lightweight per-node data: nodes in parallel, 8 calls per node in parallel.
         // These are the node's foundational data (version, status, network, …) used together by
         // most node checks. If any of them fails the whole node is skipped (with a finding) rather
         // than carrying half-populated state into every downstream check.
@@ -178,7 +178,7 @@ public partial class DiagnosticEngine
         }
 
         #region Cluster-wide version / kernel consistency
-        // Compared once across all online nodes (not per node) — mixed versions/kernels after a partial upgrade
+        // Compared once across all online nodes (not per node): mixed versions/kernels after a partial upgrade
         ComplianceMapping[] patchConsistencyControls =
         [
             ComplianceControls.Iso27001.A_8_8,
@@ -284,7 +284,7 @@ public partial class DiagnosticEngine
                 ]);
             if (!item.IsOnline) { continue; }
 
-            // Node data failed to load — the failure was already recorded, skip this node.
+            // Node data failed to load: the failure was already recorded, skip this node.
             if (!nodeCompareData.TryGetValue(item.Node, out var compareData)) { continue; }
 
             var nodeApi = client.Nodes[item.Node];
@@ -333,7 +333,7 @@ public partial class DiagnosticEngine
 
             #region Subscription
             // Without an active subscription the node uses the community repo and has no enterprise support.
-            // Subscription is null when its fetch failed — the failure was already recorded, so just skip.
+            // Subscription is null when its fetch failed: the failure was already recorded, so just skip.
             if (fetch.Subscription != null)
             {
                 var subscriptionActive = fetch.Subscription.Status.Equals("active", StringComparison.CurrentCultureIgnoreCase);
@@ -371,7 +371,7 @@ public partial class DiagnosticEngine
             #endregion
 
             #region RrdData
-            // Historical resource usage (CPU, RAM, network, disk) via RRD — period configurable (day/week)
+            // Historical resource usage (CPU, RAM, network, disk) via RRD: period configurable (day/week)
             CheckNodeRrd(settings,
                          id,
                          await nodeApi.Rrddata.GetAsync(settings.Node.Rrd.TimeFrame, settings.Node.Rrd.Consolidation)
@@ -380,7 +380,7 @@ public partial class DiagnosticEngine
 
             #region Cross-node comparisons
             // Cross-node checks compare this node against every other online node. They have no
-            // meaning on a single-node setup (no peers to compare to) — skip the whole block to
+            // meaning on a single-node setup (no peers to compare to): skip the whole block to
             // avoid emitting Ok results that confuse the report. Single-node compliance gaps are
             // already surfaced by IC0017 / IC0002 / IC0003.
             var otherNodesData = onlineNodes.Where(a => a.Node != item.Node)
@@ -424,7 +424,7 @@ public partial class DiagnosticEngine
                     compliance: patchConsistencyControls);
 
                 // APT repository sources must be identical across nodes to ensure consistent upgrades.
-                // Compare the enabled URIs from all repository files — order-insensitive.
+                // Compare the enabled URIs from all repository files: order-insensitive.
                 static List<string> GetUris(NodeAptRepositories? repos)
                     => [.. (repos?.Files ?? [])
                          .SelectMany(f => f.Repositories ?? [])
@@ -445,7 +445,7 @@ public partial class DiagnosticEngine
 
                 // MTU mismatch on physical NICs between nodes can cause packet fragmentation,
                 // corosync instability and live migration failures.
-                // Compare MTU of eth interfaces by name — only flag if the same interface exists on both nodes.
+                // Compare MTU of eth interfaces by name: only flag if the same interface exists on both nodes.
                 var myMtus = networks.Where(a => a.Type == "eth" && a.Mtu.HasValue)
                                      .ToDictionary(a => a.Interface, a => a.Mtu!.Value);
                 var mtuMismatchesList = otherNodesData
@@ -468,7 +468,7 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Network Card
-            // Physical NICs (type=eth) that are down — could mean a cable/switch problem.
+            // Physical NICs (type=eth) that are down: could mean a cable/switch problem.
             // Only NICs that are in use: a spare port with no cable is down by design.
             var usedInterfaces = UsedInterfaces(networks);
             CreateResultPerItem(
@@ -500,7 +500,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2Ir.C_3_2,
                 ]);
 
-            // Bond with fewer than two slaves provides no link redundancy — a single NIC/cable failure takes it down
+            // Bond with fewer than two slaves provides no link redundancy: a single NIC/cable failure takes it down
             CreateResultPerItem(
                 items: networks.Where(a => a.Type == "bond").ToList(),
                 isItemOk: a => (a.Slaves ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2,
@@ -643,7 +643,7 @@ public partial class DiagnosticEngine
                 gravityKo: DiagnosticResultGravity.Critical,
                 compliance: cryptoCertControls);
 
-            // Certificates expiring within the warning window — renew before they break access
+            // Certificates expiring within the warning window: renew before they break access
             var certExpiryLimit = _now.AddDays(CertificateExpiringDays);
             CreateResultPerItem(
                 items: fetch.Certificates.Where(a =>
@@ -774,7 +774,7 @@ public partial class DiagnosticEngine
 
             #region NTP
             // Compare node UTC time against the clock of the machine running the analysis, read when
-            // the node answered — offset > 60s indicates an NTP issue (or a wrong client clock).
+            // the node answered: offset > 60s indicates an NTP issue (or a wrong client clock).
             // Mapped to logging controls: accurate timestamps are a precondition for usable audit logs.
             if (nodeUtcTime > 0)
             {
@@ -818,7 +818,7 @@ public partial class DiagnosticEngine
                     ]);
             }
 
-            // WN0045 — time drift between cluster nodes. Even when each node looks fine vs the
+            // WN0045: time drift between cluster nodes. Even when each node looks fine vs the
             // diag client, clocks can have drifted from each other (typical sign: corosync token
             // retransmits, HA fencing instability, broken Kerberos/LDAP, replayable log timestamps).
             // Compare this node's clock against the maximum delta among the other online nodes. The
@@ -904,11 +904,11 @@ public partial class DiagnosticEngine
             CheckNodeCve(id, aptVersions);
             #endregion
 
-            // TODO: backup history anomaly check — uncomment when BackupHelper.ParseVzdumpLog is available via NuGet.
+            // TODO: backup history anomaly check, uncomment when BackupHelper.ParseVzdumpLog is available via NuGet.
             // Reads vzdump task logs for the last N days, computes per-VM average duration and size,
             // and warns when the latest backup deviates significantly.
             // Requires: using Corsinvest.ProxmoxVE.Api.Shared.Utils;
-            // NOTE on codes: when activated, allocate fresh WN slots (last in use is WN0045) — the
+            // NOTE on codes: when activated, allocate fresh WN slots (last in use is WN0045): the
             // codes commented below were drafted before the catalog reached its current state and
             // would collide with WN0034 (bond redundancy).
             //
@@ -946,7 +946,7 @@ public partial class DiagnosticEngine
             //                Context     = DiagnosticResultContext.Node,
             //                SubContext  = "Backup",
             //                Gravity     = DiagnosticResultGravity.Warning,
-            //                Description = $"VM {vmGroup.Key} backup duration {last.Duration:hh\\:mm\\:ss} is {last.Duration.TotalSeconds / avgDuration.TotalSeconds:F1}x the average — possible issue",
+            //                Description = $"VM {vmGroup.Key} backup duration {last.Duration:hh\\:mm\\:ss} is {last.Duration.TotalSeconds / avgDuration.TotalSeconds:F1}x the average: possible issue",
             //            });
             //        }
             //
@@ -967,7 +967,7 @@ public partial class DiagnosticEngine
         }
 
         #region Guest NICs vs host bridges
-        // Guests on a node, with their config — the input of both bridge checks below.
+        // Guests on a node, with their config: the input of both bridge checks below.
         var guestsByNode = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                  && !a.IsTemplate
                                                  && _vmConfigs.ContainsKey(a.VmId))
@@ -1013,7 +1013,7 @@ public partial class DiagnosticEngine
             compliance: []);
 
         // A bridge that exists on the guest's node but not on a peer: migrating or HA-recovering the
-        // guest to that peer fails. A bridge missing on the guest's own node is skipped on purpose —
+        // guest to that peer fails. A bridge missing on the guest's own node is skipped on purpose:
         // SDN vnets are not listed in /nodes/{node}/network, so it cannot be told apart from a vnet.
         if (nodeCompareData.Count > 1)
         {
@@ -1043,7 +1043,7 @@ public partial class DiagnosticEngine
         #endregion
 
         #region Memory overcommit
-        // Sum of VM/CT allocated RAM on a node exceeds physical node RAM — risk of OOM
+        // Sum of VM/CT allocated RAM on a node exceeds physical node RAM: risk of OOM
         var memOvercommitItems = onlineNodes
             .Select(n =>
             {
@@ -1075,7 +1075,7 @@ public partial class DiagnosticEngine
         #endregion
 
         #region VM consolidation
-        // Nodes with very low CPU and RAM utilization — VMs could be moved to free the node
+        // Nodes with very low CPU and RAM utilization: VMs could be moved to free the node
         var consolidationCandidates = onlineNodes
             .Where(n => nodeCompareData.ContainsKey(n.Node))
             .Select(n =>
@@ -1176,7 +1176,7 @@ public partial class DiagnosticEngine
                            netInErrorCode: ("WN0039", "CN0039"),
                            netOutErrorCode: ("WN0040", "CN0040"));
 
-        // IOWait = time CPU spent waiting for I/O — high values indicate storage bottleneck.
+        // IOWait = time CPU spent waiting for I/O: high values indicate storage bottleneck.
         // Own thresholds: the CPU ones (70/85%) are far above any real iowait problem.
         CheckThreshold(settings.Node.IoWait,
                        "WN0028",
@@ -1203,7 +1203,7 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        // SWAP usage — high swap indicates RAM pressure and causes severe performance degradation.
+        // SWAP usage: high swap indicates RAM pressure and causes severe performance degradation.
         // No swap (the default on ZFS-root installs) has nothing to measure: 0/0 was an Ok "NaN%".
         if (rrdList.Any(a => a.SwapSize > 0))
         {
@@ -1220,9 +1220,9 @@ public partial class DiagnosticEngine
                            true);
         }
 
-        // PSI pressure — only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
+        // PSI pressure: only meaningful when non-zero (PVE 9.0+ only; older nodes always return 0).
         // PSI values are already percentages (0-100): the kernel reports /proc/pressure avgN that way
-        // and pvestatd stores them unscaled — unlike CPU/memory RRD fields, which are 0-1 fractions.
+        // and pvestatd stores them unscaled, unlike CPU/memory RRD fields, which are 0-1 fractions.
         if (rrdList.Any(a => a.PressureCpuSome > 0))
         {
             CheckThreshold(settings.Node.Rrd.Pressure.Cpu,
@@ -1288,7 +1288,7 @@ public partial class DiagnosticEngine
                          nodeWeightedLoad);
     }
 
-    // Data-integrity / storage-health controls — used for ZFS, SMART, LVM-thin metadata.
+    // Data-integrity / storage-health controls: used for ZFS, SMART, LVM-thin metadata.
     // Subset of the RESIL family that focuses on disk-level integrity rather than full HA.
     private static readonly ComplianceMapping[] _storageIntegrityControls =
     [
@@ -1367,7 +1367,7 @@ public partial class DiagnosticEngine
         var disksAll = fetch.Disks;
 
         CreateResultPerItem(
-            // UNKNOWN: PVE cannot read S.M.A.R.T. (disk behind a RAID controller or a USB bridge) —
+            // UNKNOWN: PVE cannot read S.M.A.R.T. (disk behind a RAID controller or a USB bridge):
             // nothing to judge, not a failing disk.
             items: disksAll.Where(a => !string.Equals(a.Health, "UNKNOWN", StringComparison.OrdinalIgnoreCase)).ToList(),
             isItemOk: a => a.Health == "PASSED" || a.Health == "OK",
@@ -1381,7 +1381,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: _storageIntegrityControls);
 
-        // SSD wearout reported as N/A means the drive doesn't expose wear data — worth investigating
+        // SSD wearout reported as N/A means the drive doesn't expose wear data: worth investigating
         CreateResultPerItem(
             items: disksAll.Where(a => a.IsSsd).ToList(),
             isItemOk: a => a.Wearout != "N/A",
@@ -1406,7 +1406,7 @@ public partial class DiagnosticEngine
                        true,
                        false);
 
-        // Detailed S.M.A.R.T. attribute checks — one API call per disk, disabled by default
+        // Detailed S.M.A.R.T. attribute checks: one API call per disk, disabled by default
         if (settings.Node.Smart.Enabled)
         {
             var smartResults = await RunParallelAsync(disksAll.Where(a => !string.IsNullOrWhiteSpace(a.DevPath)),
@@ -1451,7 +1451,7 @@ public partial class DiagnosticEngine
                             }
                             break;
 
-                        // Reallocated sectors (ID 5) — non-zero = sectors remapped due to errors
+                        // Reallocated sectors (ID 5): non-zero = sectors remapped due to errors
                         case "5" when int.TryParse(attr.Raw?.Split(' ')[0], out var val5) && val5 > 0:
                             CreateResult(
                                 isOk: false,
@@ -1465,7 +1465,7 @@ public partial class DiagnosticEngine
                                 compliance: _storageIntegrityControls);
                             break;
 
-                        // Current pending sectors (ID 197) — unstable sectors waiting to be remapped
+                        // Current pending sectors (ID 197): unstable sectors waiting to be remapped
                         case "197" when int.TryParse(attr.Raw?.Split(' ')[0], out var val197) && val197 > 0:
                             CreateResult(
                                 isOk: false,
@@ -1493,7 +1493,7 @@ public partial class DiagnosticEngine
                                 compliance: _storageIntegrityControls);
                             break;
 
-                        // UDMA CRC errors (ID 199) — cable or controller issue
+                        // UDMA CRC errors (ID 199): cable or controller issue
                         case "199" when int.TryParse(attr.Raw?.Split(' ')[0], out var val199) && val199 > 0:
                             CreateResult(
                                 isOk: false,
@@ -1555,7 +1555,7 @@ public partial class DiagnosticEngine
                        false,
                        true);
 
-        // Detailed ZFS checks: pool errors and vdev state — one API call per pool
+        // Detailed ZFS checks: pool errors and vdev state, one API call per pool
         if (settings.Node.NodeStorage.ZfsDetail && zfsList.Any())
         {
             var zfsDetails = await RunParallelAsync(zfsList, zfs => nodeApi.Disks.Zfs[zfs.Name].GetAsync()
@@ -1580,14 +1580,14 @@ public partial class DiagnosticEngine
                         compliance: _storageIntegrityControls);
                 }
 
-                // vdev state check — recurse through children
+                // vdev state check: recurse through children
                 CheckZfsChildren(id, zfs.Name, detail.Children);
             }
         }
         #endregion
 
         #region LVM-thin metadata
-        // LVM-thin metadata pool full causes silent data corruption — check before it's too late
+        // LVM-thin metadata pool full causes silent data corruption: check before it's too late
         if (settings.Node.NodeStorage.LvmThinMetadata)
         {
             var lvmThinList = fetch.LvmThinList;
@@ -1710,7 +1710,7 @@ public partial class DiagnosticEngine
     /// <summary>
     /// Bridges a guest uses that exist on the guest's own node but not on every other node in
     /// <paramref name="bridgesByNode"/>. One entry per (node, bridge) with the guests using it.
-    /// Bridges absent on the guest's own node are ignored — they may be SDN vnets.
+    /// Bridges absent on the guest's own node are ignored: they may be SDN vnets.
     /// </summary>
     internal static List<(string Node, string Bridge, List<long> VmIds, List<string> MissingOn)> FindBridgesMissingOnPeers(
         IReadOnlyDictionary<string, HashSet<string>> bridgesByNode,

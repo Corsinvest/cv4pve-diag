@@ -16,7 +16,7 @@ public partial class DiagnosticEngine
     /// <param name="Privilege">PVE privilege name.</param>
     /// <param name="Root">ACL root the privilege must cover for the whole inventory to be visible.</param>
     /// <param name="Alternative">Privilege that substitutes for it, if any.</param>
-    /// <param name="Impact">What the user loses — phrased as the visible consequence.</param>
+    /// <param name="Impact">What the user loses: phrased as the visible consequence.</param>
     /// <param name="DisablesBackupChecks">Whether the backup checks must be skipped without it.</param>
     /// <param name="DisablesOrphanChecks">Whether the orphaned image/backup checks must be skipped
     /// without it, also when it is granted on part of the root only.</param>
@@ -79,7 +79,7 @@ public partial class DiagnosticEngine
     /// Reports up-front which parts of the cluster the account can actually see. PVE answers a
     /// request the caller is only partly entitled to by filtering the response rather than failing
     /// it, so a narrower ACL silently produces a narrower report with no indication of what was left
-    /// out. Restricting an account is a legitimate choice — the point is to state the resulting
+    /// out. Restricting an account is a legitimate choice: the point is to state the resulting
     /// scope (Info), not to treat it as a fault; Warning is reserved for the backup privileges,
     /// whose absence makes other checks report the opposite of the truth.
     /// </summary>
@@ -108,7 +108,7 @@ public partial class DiagnosticEngine
         }
 
         // Privileges that only matter to the backup checks are irrelevant when those checks are
-        // switched off — reporting them would be noise about a feature the user opted out of.
+        // switched off: reporting them would be noise about a feature the user opted out of.
         var relevant = RequiredPrivileges.Where(a => settings.Backup.Enabled || !a.DisablesBackupChecks);
 
         var missing = relevant.Where(a => !CoversRoot(permissions, a.Privilege, a.Root)
@@ -116,7 +116,7 @@ public partial class DiagnosticEngine
                               .ToList();
 
         // Granted somewhere, but not on the root: the analysis sees only the subset the ACL covers,
-        // and PVE gives no indication that anything was left out. Worth its own message — the fix
+        // and PVE gives no indication that anything was left out. Worth its own message: the fix
         // is different (widen the existing grant) and so is the consequence (partial, not absent).
         var partial = missing.Where(a => HasPrivilegeAnywhere(permissions, a.Privilege)
                                          || (a.Alternative != null && HasPrivilegeAnywhere(permissions, a.Alternative)))
@@ -167,7 +167,7 @@ public partial class DiagnosticEngine
         }
     }
 
-    // True when the privilege covers the whole root — granted on "/" or on the root itself, both of
+    // True when the privilege covers the whole root: granted on "/" or on the root itself, both of
     // which propagate to every path below. GetPermissionsAsync reports only the paths carrying an
     // explicit ACL (plus the standard roots), so a grant on a single guest or storage appears solely
     // on that path: it would satisfy HasPrivilegeAnywhere while leaving the rest of the inventory
@@ -180,7 +180,7 @@ public partial class DiagnosticEngine
         => permissions.TryGetValue(path, out var privileges)
            && privileges.Contains(privilege, StringComparer.OrdinalIgnoreCase);
 
-    // True when the privilege is granted on any ACL path at all — used to tell "granted on a subset"
+    // True when the privilege is granted on any ACL path at all: used to tell "granted on a subset"
     // apart from "not granted anywhere", which need different advice.
     internal static bool HasPrivilegeAnywhere(IReadOnlyDictionary<string, IReadOnlyList<string>> permissions, string privilege)
         => permissions.Any(a => a.Value.Contains(privilege, StringComparer.OrdinalIgnoreCase));

@@ -47,7 +47,7 @@ public partial class DiagnosticEngine
             var id = item.GetWebUrl();
 
             #region Firewall and IP filter
-            // Firewall is null when its fetch failed — the failure was already recorded, so skip.
+            // Firewall is null when its fetch failed: the failure was already recorded, so skip.
             if (fetch.Firewall != null) { CheckVmFirewall(fetch.Firewall, id, DiagnosticResultContext.Lxc); }
             #endregion
 
@@ -101,7 +101,7 @@ public partial class DiagnosticEngine
                 #endregion
 
                 #region Privileged container
-                // Privileged containers share the host user namespace — root inside = root on host
+                // Privileged containers share the host user namespace: root inside = root on host
                 CreateResult(
                     isOk: lxc.Unprivileged,
                     id: id,
@@ -115,8 +115,8 @@ public partial class DiagnosticEngine
 
                 if (!lxc.Unprivileged)
                 {
-                    // Privileged container with AppArmor disabled via raw lxc.apparmor.profile=unconfined
-                    // — no kernel confinement at all. pve-container has no feature flag for AppArmor.
+                    // Privileged container with AppArmor disabled via raw lxc.apparmor.profile=unconfined:
+                    // no kernel confinement at all. pve-container has no feature flag for AppArmor.
                     var appArmorDisabled = RawLxcEntries(lxcConfig).Any(kv =>
                         kv.Key.Equals("lxc.apparmor.profile", StringComparison.OrdinalIgnoreCase)
                         && kv.Value.Equals("unconfined", StringComparison.OrdinalIgnoreCase));
@@ -135,7 +135,7 @@ public partial class DiagnosticEngine
                 #endregion
 
                 #region No memory limit
-                // Memory=0 means unbounded RAM — the container can consume all host memory and starve other VMs/CTs
+                // Memory=0 means unbounded RAM: the container can consume all host memory and starve other VMs/CTs
                 CreateResult(
                     isOk: lxc.Memory != 0,
                     id: id,
@@ -149,7 +149,7 @@ public partial class DiagnosticEngine
                 #endregion
 
                 #region Swap disabled
-                // Swap=0 means no swap — under memory pressure the OOM killer will terminate processes
+                // Swap=0 means no swap: under memory pressure the OOM killer will terminate processes
                 CreateResult(
                     isOk: lxc.Swap != 0,
                     id: id,

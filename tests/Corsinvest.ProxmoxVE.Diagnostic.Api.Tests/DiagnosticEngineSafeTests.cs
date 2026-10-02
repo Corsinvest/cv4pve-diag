@@ -30,7 +30,7 @@ public class DiagnosticEngineSafeTests
         var r = MakeResult(HttpStatusCode.Forbidden, "Forbidden", "/cluster/firewall/options",
                            responseError: "Permission check failed (/cluster, Sys.Audit)");
         var msg = DiagnosticSafeExtensions.BuildApiErrorMessage(r);
-        // Result.GetError() prefixes each error entry with its key ("root : ...") — the
+        // Result.GetError() prefixes each error entry with its key ("root : ..."): the
         // formatter just embeds it verbatim, so the assertion mirrors the real PVE output shape.
         Assert.Contains("403 Forbidden", msg);
         Assert.Contains("Permission check failed (/cluster, Sys.Audit)", msg);

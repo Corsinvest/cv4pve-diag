@@ -96,7 +96,7 @@ internal class OutputEngine
         var result = await new DiagnosticEngine(client, settings!, httpClient).AnalyzeAsync(ignoredIssues!);
         duration.Stop();
 
-        // When --compliance is passed, keep only findings mapped to that standard — plus the ones
+        // When --compliance is passed, keep only findings mapped to that standard, plus the ones
         // saying the analysis is incomplete (API errors, unreadable resources, missing privileges):
         // without them an audit report looks clean when the data was never read.
         if (compliance.HasValue)
@@ -198,7 +198,7 @@ internal class OutputEngine
 
         var data = TableGenerator.To(columns, rows, tabOutput);
 
-        // The HTML table has no <head>: declare UTF-8 so "—" and "°C" read correctly when opened locally.
+        // The HTML table has no <head>: declare UTF-8 so "→" and "°C" read correctly when opened locally.
         if (output == OutputType.Html) { data = "<meta charset=\"utf-8\">" + data; }
 
         if (!string.IsNullOrWhiteSpace(outputFile))

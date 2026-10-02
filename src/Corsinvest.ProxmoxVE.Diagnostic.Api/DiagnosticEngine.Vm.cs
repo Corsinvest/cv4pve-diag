@@ -27,8 +27,8 @@ public partial class DiagnosticEngine
     private const string OsTypeWin11 = "win11";
 
     // PVE ostype values whose vendor support has fully ended.
-    // win10 covers Win10/2016/2019 — Server 2016/2019 still supported, so excluded.
-    // win8  covers Win8/2012/2012R2 — all EOL (Oct 2023).
+    // win10 covers Win10/2016/2019: Server 2016/2019 still supported, so excluded.
+    // win8  covers Win8/2012/2012R2: all EOL (Oct 2023).
     private static readonly string[] _osNotMaintained = ["win8", "win7", "wvista", "w2k8", "w2k3", "wxp", "w2k"];
 
     private record VmFetchData(ClusterResource Item,
@@ -70,7 +70,7 @@ public partial class DiagnosticEngine
                                 .Select(a => a.VmId)
                                 .ToHashSet();
 
-        // vCPU overcommit check — sum of vCPUs per node vs physical CPUs
+        // vCPU overcommit check: sum of vCPUs per node vs physical CPUs
         // CpuSize on node resource = physical CPU count; on VM resource = assigned vCPUs
         foreach (var nodeGroup in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                        && a.VmType == VmType.Qemu
@@ -115,7 +115,7 @@ public partial class DiagnosticEngine
             var id = item.GetWebUrl();
 
             #region OS
-            // OsType drives several PVE defaults (RTC, drivers, etc.) — must be set correctly.
+            // OsType drives several PVE defaults (RTC, drivers, etc.): must be set correctly.
             // Not set means 'other' for PVE (the SDK reports it so): no guest-specific optimization.
             CreateResult(
                 isOk: config.OsType != null && !config.OsType.Equals("other", StringComparison.OrdinalIgnoreCase),
@@ -245,7 +245,7 @@ public partial class DiagnosticEngine
 
             #region Cdrom
             // A mounted ISO left in the drive is harmless but wastes storage and may confuse OS reinstalls.
-            // Cloud-init drives are excluded (Kind == CloudInit) — they always look like a cdrom but are
+            // Cloud-init drives are excluded (Kind == CloudInit): they always look like a cdrom but are
             // legitimate and would otherwise generate a noisy false positive.
             // Empty drives (Storage "none") are also skipped.
             CreateResultPerItem(
@@ -364,7 +364,7 @@ public partial class DiagnosticEngine
 
                 #region CPU hotplug
                 // CPU hotplug allows adding vCPUs to a running VM without restarting it.
-                // Windows guests do not support CPU hotplug — they enumerate CPUs only at boot.
+                // Windows guests do not support CPU hotplug: they enumerate CPUs only at boot.
                 // Enabling it on a Windows VM wastes resources (PVE reserves CPU slots) and may confuse the guest.
                 if (config.OsType?.StartsWith("win", StringComparison.OrdinalIgnoreCase) is true)
                 {
@@ -385,7 +385,7 @@ public partial class DiagnosticEngine
                 #endregion
 
                 #region Balloon
-                // Balloon=0 disables the virtio-balloon driver — RAM is fully reserved and cannot be reclaimed
+                // Balloon=0 disables the virtio-balloon driver: RAM is fully reserved and cannot be reclaimed
                 // by the host. Skip this check when hugepages are used (balloon is incompatible with hugepages).
                 if (string.IsNullOrWhiteSpace(qemuConfig.Hugepages))
                 {
@@ -430,7 +430,7 @@ public partial class DiagnosticEngine
                     ComplianceControls.Nis2Ir.C_4_2,
                 ];
 
-                // cache=unsafe disables all host-side flushing — data loss on host crash even without backup issues
+                // cache=unsafe disables all host-side flushing: data loss on host crash even without backup issues
                 CreateResultPerItem(
                     items: config.Disks.Where(d => !d.IsUnused && !string.IsNullOrWhiteSpace(d.Cache)).ToList(),
                     isItemOk: d => d.Cache != DiskCacheUnsafe,
@@ -493,7 +493,7 @@ public partial class DiagnosticEngine
                 #endregion
 
                 #region RNG device
-                // virtio-rng is rarely needed — may indicate misconfiguration
+                // virtio-rng is rarely needed: may indicate misconfiguration
                 CreateResult(
                     isOk: string.IsNullOrWhiteSpace(qemuConfig.Rng0),
                     id: id,
@@ -546,7 +546,7 @@ public partial class DiagnosticEngine
                     descriptionOk: $"Machine type pinned to '{machineType}'",
                     compliance: []);
 
-                // IG0016 — pinned machine type lags behind the latest available on the node.
+                // IG0016: pinned machine type lags behind the latest available on the node.
                 // Skipped when the type is not pinned to a version (IG0012 handles that) or when
                 // the node's machine catalog couldn't be fetched. Pinning is the right thing to do for
                 // stability, but versions accumulate deprecated security/microcode behaviour and
@@ -591,7 +591,7 @@ public partial class DiagnosticEngine
             #endregion
 
             #region No network interface
-            // A VM with no network interface is completely isolated — likely a misconfiguration
+            // A VM with no network interface is completely isolated: likely a misconfiguration
             CreateResult(
                 isOk: config.Networks.Any(),
                 id: id,
@@ -605,12 +605,12 @@ public partial class DiagnosticEngine
             #endregion
 
             #region Firewall and IP filter
-            // Firewall is null when its fetch failed — the failure was already recorded, so skip.
+            // Firewall is null when its fetch failed: the failure was already recorded, so skip.
             if (fetch.Firewall != null) { CheckVmFirewall(fetch.Firewall, id, DiagnosticResultContext.Qemu); }
             #endregion
 
             #region USB/PCI passthrough
-            // USB or PCI passthrough binds the VM to a specific node — prevents live migration and HA failover
+            // USB or PCI passthrough binds the VM to a specific node: prevents live migration and HA failover
             var passthroughKeys = config.ExtensionData?
                 .Where(kv => IsHostPassthrough(kv.Key, kv.Value?.ToString()))
                 .Select(kv => kv.Key)
@@ -642,7 +642,7 @@ public partial class DiagnosticEngine
                                      _backupStoragesByNode.GetValueOrDefault(item.Node, []));
         }
 
-        // Duplicate MAC check — collect the MACs of every VM and CT (they share the same
+        // Duplicate MAC check: collect the MACs of every VM and CT (they share the same
         // networks) and flag duplicates, also between two interfaces of the same guest.
         var allMacs = _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                             && !a.IsTemplate)
@@ -722,7 +722,7 @@ public partial class DiagnosticEngine
                 compliance: macControls);
         }
 
-        // Template checks — config already pre-fetched
+        // Template checks: config already pre-fetched
         foreach (var item in _resources.Where(a => a.ResourceType == ClusterResourceType.Vm
                                                   && a.VmType == VmType.Qemu
                                                   && a.IsTemplate))
@@ -731,7 +731,7 @@ public partial class DiagnosticEngine
             var config = (VmConfigQemu)_vmConfigs[item.VmId];
 
             #region Template with QEMU agent enabled
-            // QEMU agent on a template is useless — the template is never running.
+            // QEMU agent on a template is useless: the template is never running.
             // Worse: clones inherit the setting and may generate spurious "agent not running" warnings
             // until the guest installs the agent, creating noise in diagnostics.
             CreateResult(
@@ -748,7 +748,7 @@ public partial class DiagnosticEngine
         }
     }
 
-    // IG0016 helpers — parse "pc-<family>-<version>" identifiers and rank versions
+    // IG0016 helpers: parse "pc-<family>-<version>" identifiers and rank versions
     // numerically (so "8.10" sorts after "8.2"), tolerating optional pve-vendor suffixes
     // (e.g. "pc-i440fx-8.0+pve0"). "pc-i440fx-latest", "q35" (no version) and similar
     // intentional aliases return false and are skipped.

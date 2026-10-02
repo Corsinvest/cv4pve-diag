@@ -26,7 +26,7 @@ public class DiagnosticResultTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("unknown")]
-    [InlineData("vm")]              // PVE sometimes uses "vm" not "qemu" — falls through
+    [InlineData("vm")]              // PVE sometimes uses "vm" not "qemu": falls through
     public void DecodeContext_unknown_falls_back_to_Cluster(string text)
         => Assert.Equal(DiagnosticResultContext.Cluster, DiagnosticResult.DecodeContext(text));
 

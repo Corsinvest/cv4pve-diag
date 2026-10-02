@@ -61,7 +61,7 @@ public class DiagnosticResult
 
     /// <summary>
     /// Normative controls satisfied by this check. Empty when the check is not mapped to any
-    /// compliance framework. May contain multiple entries — even within the same standard —
+    /// compliance framework. May contain multiple entries (even within the same standard)
     /// when the check covers several controls.
     /// </summary>
     public IReadOnlyList<ComplianceMapping> Compliance { get; set; } = [];

@@ -13,7 +13,7 @@ internal static class VlanIds
 {
     /// <summary>
     /// Parses a VLAN id list into inclusive ranges. Space, comma and semicolon all separate items;
-    /// malformed items and single ids outside 1–4094 are skipped. A range reaching past the valid
+    /// malformed items and single ids outside 1-4094 are skipped. A range reaching past the valid
     /// ids is clamped rather than dropped: PVE accepts <c>trunks=1-4095</c>, which means "all VLANs".
     /// </summary>
     public static IReadOnlyList<(int From, int To)> Parse(string? value)

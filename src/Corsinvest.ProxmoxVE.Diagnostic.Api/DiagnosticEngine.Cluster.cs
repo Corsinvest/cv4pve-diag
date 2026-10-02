@@ -88,7 +88,7 @@ public partial class DiagnosticEngine
 
     private async Task CheckClusterMetricsAsync()
     {
-        // External metric server (InfluxDB / Graphite) — required for persistent long-term
+        // External metric server (InfluxDB / Graphite): required for persistent long-term
         // monitoring beyond the in-node RRD. Auditors want historical evidence of system
         // behaviour for incident investigation; RRD data is short-lived and lost on reboot.
         // Unreadable list (already reported as WG0042): unknown, not "no metric server".
@@ -122,7 +122,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2Ir.C_3_2,
         ];
 
-        // IC0018 — no metric server configured at all.
+        // IC0018: no metric server configured at all.
         CreateResult(
             isOk: servers.Count > 0,
             id: "cluster/metrics",
@@ -135,7 +135,7 @@ public partial class DiagnosticEngine
             compliance: observabilityControls);
         if (servers.Count == 0) { return; }
 
-        // IC0019 — servers are configured but every one of them is disabled ('disable' = 1).
+        // IC0019: servers are configured but every one of them is disabled ('disable' = 1).
         var enabledCount = servers.Count(s => !s.Disable);
         CreateResult(
             isOk: enabledCount > 0,
@@ -151,10 +151,10 @@ public partial class DiagnosticEngine
 
     private async Task CheckClusterLogAsync()
     {
-        // 200 recent entries — enough to catch a burst of errors without dragging the whole journal.
+        // 200 recent entries: enough to catch a burst of errors without dragging the whole journal.
         var entries = await client.Cluster.Log.GetAsync(max: 200).ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster log");
 
-        // syslog priorities 0..3 are emerg/alert/crit/err — anything above is warning/info/debug.
+        // syslog priorities 0..3 are emerg/alert/crit/err: anything above is warning/info/debug.
         var errors = entries.Count(e => e.Severity >= 0 && e.Severity <= 3);
         CreateResult(
             isOk: errors < 10,
@@ -194,7 +194,7 @@ public partial class DiagnosticEngine
             ]);
     }
 
-    // Backup compliance controls — reused for WC0002/WC0017/WC0018/IC0012.
+    // Backup compliance controls: reused for WC0002/WC0017/WC0018/IC0012.
     private static readonly ComplianceMapping[] _backupControls =
     [
         ComplianceControls.Iso27001.A_8_13,
@@ -223,7 +223,7 @@ public partial class DiagnosticEngine
     {
         var backupList = _clusterBackups.ToList();
 
-        // No backup jobs defined at all — entire cluster has no automated backup
+        // No backup jobs defined at all: entire cluster has no automated backup
         CreateResult(
             isOk: backupList.Count > 0,
             id: "cluster/backup",
@@ -274,7 +274,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: []);
 
-        // Backup jobs without retention policy — storage will fill up indefinitely.
+        // Backup jobs without retention policy: storage will fill up indefinitely.
         // A job without its own prune-backups uses the one of its target storage; keep-all=1 (the
         // default when neither sets one) keeps everything. Jobs whose storage configuration could
         // not be read (already reported as WG0042) are skipped: their retention is unknown.
@@ -332,7 +332,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: _backupControls);
 
-        // WC0019 — multiple enabled backup jobs run on the same schedule against the same storage,
+        // WC0019: multiple enabled backup jobs run on the same schedule against the same storage,
         // causing I/O contention and longer job runtime. Schedule is the systemd-calendar string
         // (e.g. "daily 02:00", "mon..fri 03:00") trimmed and compared case-insensitively. Jobs
         // with no schedule are skipped (WC0017 already flags those).
@@ -388,10 +388,10 @@ public partial class DiagnosticEngine
     // Task feed checks: independent of the backup jobs (the early return there used to skip them).
     private async Task CheckClusterTasksAsync()
     {
-        // Cluster-wide task feed — used here for recent backup failures and below for task error rate.
+        // Cluster-wide task feed: used here for recent backup failures and below for task error rate.
         var clusterTasks = (await client.Cluster.Tasks.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "cluster task feed")).ToList();
 
-        // Recent vzdump task that did not complete successfully — backup likely failed.
+        // Recent vzdump task that did not complete successfully: backup likely failed.
         var vzdumpTasks = clusterTasks.Where(t => (t.Type?.StartsWith("vzdump", StringComparison.OrdinalIgnoreCase) ?? false)
                                                    && t.EndTime > 0)
                                        .ToList();
@@ -408,7 +408,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: _backupControls);
 
-        // Overall task failure rate — sustained failures across the cluster usually indicate a systemic issue.
+        // Overall task failure rate: sustained failures across the cluster usually indicate a systemic issue.
         var finishedTasks = clusterTasks.Where(t => t.EndTime > 0).ToList();
         if (finishedTasks.Count >= 10)
         {
@@ -455,7 +455,7 @@ public partial class DiagnosticEngine
 
     private async Task CheckClusterHaAndReplicationAsync()
     {
-        // Cluster without any HA resource configured — no automatic failover on node failure
+        // Cluster without any HA resource configured: no automatic failover on node failure
         var haResourcesTask = client.Cluster.Ha.Resources.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "HA resources");
         var haStatusTask = client.Cluster.Ha.Status.Current.GetAsync().ToSafeEnum(_result, "cluster", DiagnosticResultContext.Cluster, "HA status");
         var replJobsTask = client.Cluster.Replication.GetAsync().ToSafeEnumOrNull(_result, "cluster", DiagnosticResultContext.Cluster, "replication jobs");
@@ -469,7 +469,7 @@ public partial class DiagnosticEngine
         // Cache the guest ids referenced by HA / enabled replication so per-guest checks don't re-walk them.
         foreach (var h in haResources ?? [])
         {
-            // Sid format is "<type>:<vmid>" — e.g. "vm:100", "ct:200".
+            // Sid format is "<type>:<vmid>", e.g. "vm:100", "ct:200".
             var parts = (h.Sid ?? "").Split(':');
             if (parts.Length == 2 && long.TryParse(parts[1], out var vmid)) { _haVmIds.Add(vmid); }
         }
@@ -478,7 +478,7 @@ public partial class DiagnosticEngine
             if (long.TryParse(r.Guest, out var vmid)) { _replicatedVmIds.Add(vmid); }
         }
 
-        // No HA configured — without HA resources, guests won't automatically restart on node failure.
+        // No HA configured: without HA resources, guests won't automatically restart on node failure.
         // Emitted regardless of node count: a single-node host is itself non-compliant with the
         // resilience controls this check maps to (A.5.30, DORA Art.12). IC0017 reports the
         // single-node topology in addition to this finding.
@@ -540,7 +540,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2Ir.C_4_2,
         ];
 
-        // HA service in error state — the resource is not running and will not be recovered automatically
+        // HA service in error state: the resource is not running and will not be recovered automatically
         CreateResultPerItem(
             items: haStatusTask.Result.Where(a => a.Type == "service").ToList(),
             isItemOk: a => string.IsNullOrWhiteSpace(a.State)
@@ -557,7 +557,7 @@ public partial class DiagnosticEngine
 
         if (replJobs == null) { return; }
 
-        // Cluster without any replication job — no storage redundancy between nodes.
+        // Cluster without any replication job: no storage redundancy between nodes.
         // Emitted regardless of node count: like IC0002, a single-node deployment is itself
         // non-compliant with the resilience controls this check maps to.
         CreateResult(
@@ -571,7 +571,7 @@ public partial class DiagnosticEngine
             descriptionOk: $"{replJobs.Count} storage replication job(s) configured",
             compliance: resilienceControls);
 
-        // Disabled replication job — the guest's data is no longer kept in sync on the target node
+        // Disabled replication job: the guest's data is no longer kept in sync on the target node
         CreateResultPerItem(
             items: replJobs,
             isItemOk: a => !a.Disable,
@@ -585,7 +585,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: resilienceControls);
 
-        // Enabled replication job without a schedule — it will never run automatically
+        // Enabled replication job without a schedule: it will never run automatically
         CreateResultPerItem(
             items: replJobs.Where(a => !a.Disable).ToList(),
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Schedule),
@@ -626,7 +626,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2Ir.C_4_2,
         ];
 
-        // Quorum lost means the cluster cannot make decisions — VMs may not start or migrate
+        // Quorum lost means the cluster cannot make decisions: VMs may not start or migrate
         var clusterInfo = clusterStatus.FirstOrDefault(a => a.Type == "cluster");
         if (clusterInfo != null)
         {
@@ -669,7 +669,7 @@ public partial class DiagnosticEngine
 
         if (pveMajorVersion < 9)
         {
-            // HA groups referencing nodes that are currently offline — failover may not work
+            // HA groups referencing nodes that are currently offline: failover may not work
             var onlineNodeNames = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline)
                                             .Select(a => a.Node)
                                             .ToHashSet();
@@ -739,7 +739,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: poolPrivilegeControls);
 
-        // IC0020 — pools that have members but no ACL entry pointing at /pool/<id>.
+        // IC0020: pools that have members but no ACL entry pointing at /pool/<id>.
         // The pool is being used as an organisational tag rather than as a privilege boundary,
         // which is what pools exist for. Empty pools are handled by IC0004 and skipped here.
         // Unreadable ACLs (already reported as WG0042): whether a pool has one is unknown.
@@ -767,10 +767,10 @@ public partial class DiagnosticEngine
     {
         var clusterFwOptions = await client.Cluster.Firewall.Options.GetAsync()
                                      .ToSafeSingle(_result, "cluster", DiagnosticResultContext.Cluster, "cluster firewall options");
-        // If the fetch failed we already recorded a finding — nothing else this method can do.
+        // If the fetch failed we already recorded a finding: nothing else this method can do.
         if (clusterFwOptions == null) { return; }
 
-        // Cluster firewall completely disabled — no traffic filtering at all
+        // Cluster firewall completely disabled: no traffic filtering at all
         CreateResult(
             isOk: clusterFwOptions.Enable,
             id: "cluster",
@@ -845,7 +845,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: firewallControls);
 
-        // Firewall enabled at cluster level but disabled on individual nodes — inconsistent protection.
+        // Firewall enabled at cluster level but disabled on individual nodes: inconsistent protection.
         // The per-node fetch is wrapped: a single faulty node degrades to null and is silently skipped
         // (the failure was already recorded as a finding by ToSafeSingle).
         var onlineNodes = _resources.Where(a => a.ResourceType == ClusterResourceType.Node && a.IsOnline).ToList();
@@ -869,7 +869,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: firewallControls);
 
-        // Cluster firewall rules that accept incoming traffic from any address — overly permissive.
+        // Cluster firewall rules that accept incoming traffic from any address: overly permissive.
         // Only enabled inbound ACCEPT rules count: a DROP / REJECT from anywhere is a good rule. An empty
         // source means any address in PVE, like 0.0.0.0/0. The destination is not judged: on an inbound
         // rule an empty destination is the host itself.
@@ -890,7 +890,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: firewallControls);
 
-        // Cluster firewall is enabled but no enabled rule has logging configured — no audit trail.
+        // Cluster firewall is enabled but no enabled rule has logging configured: no audit trail.
         // "nolog" or empty disables logging; anything else (warning, info, debug, …) is considered logging.
         var enabledRules = clusterRules.Where(r => r.Enable).ToList();
         if (enabledRules.Count > 0)
@@ -935,7 +935,7 @@ public partial class DiagnosticEngine
                 ]);
         }
 
-        // Many disabled rules cluster-wide — stale configuration accumulating noise.
+        // Many disabled rules cluster-wide: stale configuration accumulating noise.
         var disabledCount = clusterRules.Count(r => !r.Enable);
         CreateResult(
             isOk: disabledCount < 10,
@@ -963,7 +963,7 @@ public partial class DiagnosticEngine
         await Task.WhenAll(accessUsersTask, tfaEntriesTask, aclsTask, groupsTask, rolesTask, domainsTask);
 
         // Users, TFA entries and ACLs feed almost every check below: with one of them unreadable
-        // (already reported as WG0042) the results would be wrong both ways — a Critical on root and
+        // (already reported as WG0042) the results would be wrong both ways: a Critical on root and
         // every admin, or a false Ok. Skip the access checks instead.
         if (accessUsersTask.Result is not { } accessUsers
             || tfaEntriesTask.Result is not { } tfaEntries
@@ -980,7 +980,7 @@ public partial class DiagnosticEngine
                                      .Select(t => t.UserId)
                                      .ToHashSet();
 
-        // root@pam without TFA is a critical security risk — full access with a single password.
+        // root@pam without TFA is a critical security risk: full access with a single password.
         var root = accessUsers.FirstOrDefault(u => u.Id == "root@pam" && u.Enable);
         // Check is "Ok" when root@pam is not enabled (so the check does not apply) OR TFA is set.
         CreateResult(
@@ -1015,7 +1015,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2Ir.C_11_7,
             ]);
 
-        // Admin users without TFA — fetch ACLs once to find users with Administrator role
+        // Admin users without TFA: fetch ACLs once to find users with Administrator role
         var adminUserIds = acls.Where(a => a.Roleid == "Administrator" && a.Type == "user")
                                .Select(a => a.UsersGroupid)
                                .ToHashSet();
@@ -1084,7 +1084,7 @@ public partial class DiagnosticEngine
             ComplianceControls.Nis2Ir.C_11_5,
         ];
 
-        // ACL Administrator role assigned at root path '/' — too permissive, prefer scoped permissions.
+        // ACL Administrator role assigned at root path '/': too permissive, prefer scoped permissions.
         // Disabled users are left to WC0014, which asks to revoke the entry.
         var disabledUserIds = accessUsers.Where(u => !u.Enable)
                                          .Select(u => u.Id)
@@ -1103,7 +1103,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: accessPrivilegeControls);
 
-        // Disabled users with active API tokens — tokens remain valid even when user is disabled
+        // Disabled users with active API tokens: tokens remain valid even when user is disabled
         CreateResultPerItem(
             items: accessUsers.Where(u => !u.Enable && u.Tokens.Any())
                               .SelectMany(u => u.Tokens.Select(t => (User: u, Token: t)))
@@ -1133,7 +1133,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Warning,
             compliance: tfaControls);
 
-        // Local users (pam/pve) — expiration and tokens analysed separately on the same set.
+        // Local users (pam/pve): expiration and tokens analysed separately on the same set.
         var localUsers = accessUsers.Where(a => a.Enable && (a.RealmType == "pam" || a.RealmType == "pve")).ToList();
 
         CreateResultPerItem(
@@ -1149,7 +1149,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: accountLifecycleControls);
 
-        // API tokens without expiration remain valid indefinitely — security risk
+        // API tokens without expiration remain valid indefinitely: security risk
         CreateResultPerItem(
             items: localUsers.SelectMany(u => u.Tokens.Select(t => (User: u, Token: t))).ToList(),
             isItemOk: ut => ut.Token.Expire != 0,
@@ -1163,7 +1163,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: accountLifecycleControls);
 
-        // IC0021 — API tokens without a comment cannot be attributed to a use case.
+        // IC0021: API tokens without a comment cannot be attributed to a use case.
         // Audit trail / inventory: when reviewing tokens months later, "what is this token for?"
         // is unanswerable without a comment, which makes safe revocation impossible.
         CreateResultPerItem(
@@ -1179,7 +1179,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: accountLifecycleControls);
 
-        // Enabled users without an email — notifications (backup failures, fencing, etc.) cannot reach them.
+        // Enabled users without an email: notifications (backup failures, fencing, etc.) cannot reach them.
         // Mapped to monitoring/audit: without notification channels, security-relevant events go unseen.
         CreateResultPerItem(
             items: accessUsers.Where(a => a.Enable).ToList(),
@@ -1224,7 +1224,7 @@ public partial class DiagnosticEngine
                 ComplianceControls.Nis2Ir.C_11_5,
             ]);
 
-        // Empty groups — no users assigned, usually leftover configuration
+        // Empty groups: no users assigned, usually leftover configuration
         CreateResultPerItem(
             items: groups,
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Users),
@@ -1238,7 +1238,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: accountLifecycleControls);
 
-        // Custom roles not referenced by any ACL — dead configuration
+        // Custom roles not referenced by any ACL: dead configuration
         var rolesInUse = acls.Where(a => !string.IsNullOrWhiteSpace(a.Roleid))
                              .Select(a => a.Roleid)
                              .ToHashSet();
@@ -1331,7 +1331,7 @@ public partial class DiagnosticEngine
             gravityKo: DiagnosticResultGravity.Info,
             compliance: tfaControls);
 
-        // root@pam API tokens without privilege separation inherit full root rights — they should always be priv-separated.
+        // root@pam API tokens without privilege separation inherit full root rights: they should always be priv-separated.
         if (root != null)
         {
             CreateResultPerItem(

@@ -59,7 +59,7 @@ app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIs
    .SetAction((_) =>
    {
        // An empty DiagnosticResult matched every finding (default Context/Gravity mean "any"):
-       // the template is a real, narrow example instead — edit it before use.
+       // the template is a real, narrow example instead: edit it before use.
        var example = new DiagnosticResult
        {
            ErrorCode = "IG0011",

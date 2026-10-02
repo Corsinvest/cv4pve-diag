@@ -14,7 +14,7 @@ public partial class DiagnosticEngine
 {
     private static readonly string[] _cvssMetricKeys = ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"];
 
-    // NVD CVE entry — only what we need
+    // NVD CVE entry: only what we need
     private record NvdCveEntry(string Id,
                                string Description,
                                double? CvssScore,
@@ -86,7 +86,7 @@ public partial class DiagnosticEngine
 
                 var (score, severity) = ExtractCvss(cve);
 
-                // A CVE with no CVSS score cannot be ranked for severity — skip rather than
+                // A CVE with no CVSS score cannot be ranked for severity: skip rather than
                 // emit an Info finding with no actionable information.
                 if (score is null || score < settings.Cve.MinCvssScore) { continue; }
 
@@ -96,7 +96,7 @@ public partial class DiagnosticEngine
                 if (ranges.Count == 0) { continue; }
 
                 var desc = ExtractEnglishDescription(cve);
-                // A finding without a description is noise — skip it.
+                // A finding without a description is noise: skip it.
                 if (string.IsNullOrWhiteSpace(desc)) { continue; }
 
                 result.Add(new NvdCveEntry(id, desc, score, severity, ranges));
@@ -175,7 +175,7 @@ public partial class DiagnosticEngine
                     var criteria = Get(cpe, "criteria") ?? "";
                     if (!criteria.Contains("proxmox:virtual_environment", StringComparison.OrdinalIgnoreCase)) { continue; }
 
-                    // cpe:2.3:a:proxmox:virtual_environment:<version>:... — a concrete version with no
+                    // cpe:2.3:a:proxmox:virtual_environment:<version>:... is a concrete version with no
                     // range fields means exactly that version.
                     var parts = criteria.Split(':');
                     var cpeVersion = parts.Length > 5 && parts[5] is not ("*" or "-") ? parts[5] : null;
@@ -194,7 +194,7 @@ public partial class DiagnosticEngine
 
     private void CheckNodeCve(string id, IEnumerable<NodeAptVersion> aptVersions)
     {
-        // NVD — Proxmox VE specific CVEs, already filtered by MinCvssScore at fetch time.
+        // NVD: Proxmox VE specific CVEs, already filtered by MinCvssScore at fetch time.
         // Matched against the installed pve-manager version (the canonical PVE version marker).
         if (!settings.Cve.NvdEnabled || _nvdCveData == null) { return; }
 

@@ -11,7 +11,7 @@ namespace Corsinvest.ProxmoxVE.Diagnostic.Api;
 public enum DiagnosticResultGravity
 {
     /// <summary>
-    /// Ok — a check that was evaluated and passed.
+    /// Ok: a check that was evaluated and passed.
     /// Emitted only when <c>Settings.IncludeOkResult</c> is enabled.
     /// Value is -1 so adding it does not shift the existing numeric ordering of Info/Warning/Critical.
     /// </summary>
