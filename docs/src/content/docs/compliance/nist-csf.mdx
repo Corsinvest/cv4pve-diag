@@ -1,17 +1,19 @@
 ---
-title: "NIST CSF"
-description: "NIST CSF 2.0 — the controls cv4pve-diag gives evidence for."
+title: "NIST CSF 2.0: compliance evidence from Proxmox VE"
+description: The NIST CSF 2.0 subcategories that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each.
+sidebar:
+  label: NIST CSF
 ---
 
 **NIST CSF 2.0.** Run with `--compliance=NistCsf` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
 
-Controls covered: ID.AM/RA, PR.AA/DS/IR/PS, DE.CM, RC.RP — relevant subcategories
+Controls covered: ID.AM/RA, PR.AA/DS/IR/PS, DE.CM, RC.RP (relevant subcategories)
 
 Official text: [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework).
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
 Subcategories chosen for relevance to virtualisation cluster diagnostics.
 

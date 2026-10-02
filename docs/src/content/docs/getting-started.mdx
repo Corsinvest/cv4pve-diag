@@ -1,11 +1,13 @@
 ---
-title: Getting started
+title: Install cv4pve-diag and check a Proxmox VE cluster
 description: Install cv4pve-diag, connect it to a Proxmox VE cluster, run it and read the report.
+sidebar:
+  label: Getting started
 ---
 
 import CliInstall from '@corsinvest/cv4pve-docs-theme/components/CliInstall.astro';
 
-cv4pve-diag runs **outside the cluster** — on your workstation, a management VM or a scheduled job —
+cv4pve-diag runs **outside the cluster** (on your workstation, a management VM or a scheduled job)
 and talks only to the Proxmox VE REST API on port 8006. Nothing is installed on the nodes.
 
 ## Installation
@@ -14,7 +16,7 @@ and talks only to the Proxmox VE REST API on port 8006. Nothing is installed on 
 
 ## First run
 
-Create a dedicated user and API token first — see [Permissions](/cv4pve-diag/permissions/). Then point
+Create a dedicated user and API token first: see [Permissions](/cv4pve-diag/permissions/). Then point
 the tool at any node:
 
 ```bash
@@ -31,8 +33,8 @@ cv4pve-diag has three commands:
 | Command | What it does |
 |---|---|
 | `execute` | Analyses the cluster and prints the report. `--fast` and `--full` choose the [profile](/cv4pve-diag/settings/#profiles). |
-| `create-settings` | Writes `settings.json` with the default thresholds (or those of `--fast` / `--full`), to edit and pass with `--settings-file` — see [Settings](/cv4pve-diag/settings/). |
-| `create-ignored-issues` | Writes `ignored-issues.json` with an example rule, to edit and pass with `--ignored-issues-file` — see [Ignore rules](/cv4pve-diag/ignored-issues/). |
+| `create-settings` | Writes `settings.json` with the default thresholds (or those of `--fast` / `--full`), to edit and pass with `--settings-file`: see [Settings](/cv4pve-diag/settings/). |
+| `create-ignored-issues` | Writes `ignored-issues.json` with an example rule, to edit and pass with `--ignored-issues-file`: see [Ignore rules](/cv4pve-diag/ignored-issues/). |
 
 The two `create-` commands need no connection to the cluster.
 

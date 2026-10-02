@@ -1,12 +1,12 @@
 ---
-title: Compliance Mapping
+title: "Proxmox VE compliance mapping: ISO 27001, NIS2, DORA, PCI DSS"
 description: How cv4pve-diag findings map to ISO 27001, NIS2, DORA, PCI DSS and 14 more frameworks.
 next: false
 ---
 
 import ReportPreview from '../../../components/ReportPreview.astro';
 
-`cv4pve-diag` tags many of its diagnostic checks with the normative controls they satisfy. A failed check on two-factor authentication, for example, is also a documented gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2 — the report doubles as **evidence for auditors**.
+`cv4pve-diag` tags many of its diagnostic checks with the normative controls they satisfy. A failed check on two-factor authentication, for example, is also a documented gap against ISO 27001 A.5.17, NIS2 Art. 21(j), DORA Art. 9 and PCI DSS 8.4.2: the report doubles as **evidence for auditors**.
 
 The diagnostic logic is unchanged: same checks, same severity, same descriptions. Compliance is an additional **mapping** layer attached to the findings.
 
@@ -21,7 +21,7 @@ with the controls it concerns. An example report with `--compliance=Nis2`:
 
 - Checks **without** a compliance mapping are reported as before (e.g. performance thresholds, hardware health, configuration hygiene).
 - Checks **with** a compliance mapping include the list of normative controls (standard + control id + title) on every result they produce.
-- When the top-level `IncludeOkResult` flag is enabled in [Settings](../settings/), every check also emits an `Ok` result on success — useful for full audit reports where you need to prove that controls were verified, not only that they were violated.
+- When the top-level `IncludeOkResult` flag is enabled in [Settings](../settings/), every check also emits an `Ok` result on success, useful for full audit reports where you need to prove that controls were verified, not only that they were violated.
 
 ---
 
@@ -29,7 +29,7 @@ with the controls it concerns. An example report with `--compliance=Nis2`:
 
 A single-node Proxmox VE host is, by design, **not compliant** with the resilience and business-continuity controls that most standards require (ISO 27001 A.5.30, NIS2 Art. 21(c), DORA Art. 11, …). With only one node:
 
-- There is **no HA failover** — if the host goes down, every guest goes down with it.
+- There is **no HA failover**: if the host goes down, every guest goes down with it.
 - There is **no replication target** between nodes.
 - There is **no live migration** for planned maintenance.
 
@@ -37,7 +37,7 @@ For this reason `cv4pve-diag` reports the related findings on single-node setups
 
 | Code | When it fires on a single node |
 |---|---|
-| `IC0017` | Always — the cluster has a single node, HA / quorum / replication are ineffective |
+| `IC0017` | Always: the cluster has a single node, HA / quorum / replication are ineffective |
 | `IC0002` | Only when the node is part of a corosync cluster (a one-node cluster): no HA resources configured |
 | `IC0003` | Only when the node is part of a corosync cluster: no replication jobs configured |
 | `IG0015` | Only when some HA resources exist: a running guest is not managed by HA |
@@ -49,7 +49,7 @@ This is **intentional**: on a production single-node deployment those findings A
 
 If you run `cv4pve-diag` on a lab or dev single-node setup and the noise bothers you, the right tool is the **ignore rules**: add the codes you do not want to see in `ignored-issues.json` and the next runs will hide them (or keep them, marked as ignored, with `--ignored-issues-show`). See [ignore rules](../ignored-issues/).
 
-> **Cross-node checks** (`CN0002`, `WN0005`–`WN0009`, `WN0015`, `WN0045`, `WN0047`, `WC0011`, `WC0012`, `CC0002`) are different: they compare each node against its peers. On a single-node setup there is nothing to compare to, so these checks are skipped entirely (no KO and no OK emitted) — they would have no compliance value.
+> **Cross-node checks** (`CN0002`, `WN0005` to `WN0009`, `WN0015`, `WN0045`, `WN0047`, `WC0011`, `WC0012`, `CC0002`) are different: they compare each node against its peers. On a single-node setup there is nothing to compare to, so these checks are skipped entirely (no KO and no OK emitted): they would have no compliance value.
 
 ---
 
@@ -57,7 +57,7 @@ If you run `cv4pve-diag` on a lab or dev single-node setup and the noise bothers
 
 When you pass `--compliance=<standard>` on the `execute` command, two things happen:
 
-1. The output is **filtered**: only findings that have at least one mapping for the selected standard are kept — plus `WG0042`, `CU0001` and `WC0020`, which are always kept because they say what the analysis could not verify.
+1. The output is **filtered**: only findings that have at least one mapping for the selected standard are kept, plus `WG0042`, `CU0001` and `WC0020`, which are always kept because they say what the analysis could not verify.
 2. A `ControlId` column (`Control Id` in Excel) is **added** to the report, listing the control identifiers of that standard for each finding (comma-separated when more than one). In Excel the summary also shows a `Compliance:` row with the selected standard.
 
 Accepted values: the `--compliance` column of [Frameworks](#frameworks).
@@ -78,7 +78,7 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
   --compliance=Iso27001 execute
 
-# Same, exported to Excel — the header table shows "Compliance: Nis2"
+# Same, exported to Excel: the header table shows "Compliance: Nis2"
 cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
   --compliance=Nis2 --output=Excel execute
 
@@ -101,20 +101,20 @@ One page per framework, with the controls and the checks that give evidence for 
 |---|---|---|
 | [ISO/IEC 27001](/cv4pve-diag/compliance/iso-27001/) | `Iso27001` | **ISO/IEC 27001:2022** |
 | [NIS2](/cv4pve-diag/compliance/nis2/) | `Nis2` | **NIS2** (EU Directive 2022/2555) |
-| [NIS2 Implementing Regulation](/cv4pve-diag/compliance/nis2-ir/) | `Nis2Ir` | **NIS2 Implementing Regulation (EU) 2024/2690** — cloud, data centre, managed service providers and other digital providers |
-| [ACN NIS2 (Italy)](/cv4pve-diag/compliance/acn/) | `Acn` | **ACN** — NIS2 basic security measures (Italy, Determinazione ACN n. 379907/2025) |
+| [NIS2 Implementing Regulation](/cv4pve-diag/compliance/nis2-ir/) | `Nis2Ir` | **NIS2 Implementing Regulation (EU) 2024/2690**: cloud, data centre, managed service providers and other digital providers |
+| [ACN NIS2 (Italy)](/cv4pve-diag/compliance/acn/) | `Acn` | **ACN**: NIS2 basic security measures (Italy, Determinazione ACN n. 379907/2025) |
 | [DORA](/cv4pve-diag/compliance/dora/) | `Dora` | **DORA** (EU Regulation 2022/2554) |
 | [PCI DSS](/cv4pve-diag/compliance/pci-dss/) | `PciDss` | **PCI DSS v4.0** |
 | [GDPR](/cv4pve-diag/compliance/gdpr/) | `Gdpr` | **GDPR** (EU Regulation 2016/679) |
-| [AgID (Italy)](/cv4pve-diag/compliance/agid/) | `AgId` | **AgID** — Misure minime ICT (Italian PA) |
-| [ENS (Spain)](/cv4pve-diag/compliance/ens/) | `Ens` | **ENS** — Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
-| [BSI IT-Grundschutz](/cv4pve-diag/compliance/bsi-grundschutz/) | `BsiGrundschutz` | **BSI IT-Grundschutz** — Kompendium Edition 2023 (Germany) |
-| [BSI C5](/cv4pve-diag/compliance/c5/) | `C5` | **C5** — BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) |
-| [ISO 22301](/cv4pve-diag/compliance/iso-22301/) | `Iso22301` | **ISO 22301:2019** — Business continuity management systems |
-| [SOC 2](/cv4pve-diag/compliance/soc-2/) | `Soc2` | **SOC 2** — AICPA Trust Services Criteria (2017 + 2022) |
-| [NIST SP 800-53](/cv4pve-diag/compliance/nist-800-53/) | `Nist80053` | **NIST SP 800-53 rev.5** — Moderate baseline subset |
+| [AgID (Italy)](/cv4pve-diag/compliance/agid/) | `AgId` | **AgID**: Misure minime ICT (Italian PA) |
+| [ENS (Spain)](/cv4pve-diag/compliance/ens/) | `Ens` | **ENS**: Esquema Nacional de Seguridad (Spanish PA, RD 311/2022) |
+| [BSI IT-Grundschutz](/cv4pve-diag/compliance/bsi-grundschutz/) | `BsiGrundschutz` | **BSI IT-Grundschutz**: Kompendium Edition 2023 (Germany) |
+| [BSI C5](/cv4pve-diag/compliance/c5/) | `C5` | **C5**: BSI Cloud Computing Compliance Criteria Catalogue (Germany, C5:2020) |
+| [ISO 22301](/cv4pve-diag/compliance/iso-22301/) | `Iso22301` | **ISO 22301:2019**: Business continuity management systems |
+| [SOC 2](/cv4pve-diag/compliance/soc-2/) | `Soc2` | **SOC 2**: AICPA Trust Services Criteria (2017 + 2022) |
+| [NIST SP 800-53](/cv4pve-diag/compliance/nist-800-53/) | `Nist80053` | **NIST SP 800-53 rev.5**: Moderate baseline subset |
 | [ISO/IEC 27017](/cv4pve-diag/compliance/iso-27017/) | `Iso27017` | **ISO/IEC 27017:2015** |
-| [ISO/IEC 27018](/cv4pve-diag/compliance/iso-27018/) | `Iso27018` | **ISO/IEC 27018:2019** — PII in public clouds |
+| [ISO/IEC 27018](/cv4pve-diag/compliance/iso-27018/) | `Iso27018` | **ISO/IEC 27018:2019**: PII in public clouds |
 | [CIS Controls](/cv4pve-diag/compliance/cis/) | `Cis` | **CIS Controls v8** |
 | [NIST CSF](/cv4pve-diag/compliance/nist-csf/) | `NistCsf` | **NIST CSF 2.0** |
 
@@ -138,7 +138,7 @@ The mapping is concentrated where compliance frameworks actually demand verifiab
 
 ## Disclaimer & limits
 
-The compliance mapping in `cv4pve-diag` is **automated and technical only** — it reads the cluster state and tags findings against the verifiable subset of each standard. Procedural, organisational and physical controls are out of scope and require manual review.
+The compliance mapping in `cv4pve-diag` is **automated and technical only**: it reads the cluster state and tags findings against the verifiable subset of each standard. Procedural, organisational and physical controls are out of scope and require manual review.
 
 The report **does not constitute formal certification**. Use it as a continuous self-assessment input alongside your audit programme, never as the sole evidence of conformity.
 
@@ -151,4 +151,4 @@ Specifically:
 - **Controls evolve.** Standard revisions (ISO 27001 minor updates, NIS2 secondary acts, PCI DSS minor versions, …) may shift control numbering or scope. Re-check the catalog when a new release of `cv4pve-diag` is published.
 - **Mapping is best-effort and informative.** The association between an automated check and a normative control reflects the project maintainers' interpretation; an auditor may disagree on specific mappings. Treat findings as inputs to a conversation, not as authoritative pronouncements.
 
-In short: a clean `cv4pve-diag --compliance=…` report means *the cluster passes the technical controls this tool can verify for that standard*. It is a strong signal, but it is not — and cannot be — a substitute for a formal audit.
+In short: a clean `cv4pve-diag --compliance=…` report means *the cluster passes the technical controls this tool can verify for that standard*. It is a strong signal, but it is not, and cannot be, a substitute for a formal audit.

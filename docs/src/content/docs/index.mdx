@@ -1,6 +1,6 @@
 ---
 title: cv4pve-diag
-description: Health checks and diagnostics for Proxmox VE — analyzes your entire cluster in one run and tells you what is wrong.
+description: "Health checks and diagnostics for Proxmox VE: analyzes your entire cluster in one run and tells you what is wrong."
 head:
   # Search results and browser tab: the name and what it is, without Starlight's "| site title" suffix
   - tag: title
@@ -12,7 +12,7 @@ head:
 template: splash
 hero:
   title: Find what is wrong in your <span class="accent-mark">Proxmox VE</span> cluster
-  tagline: Runs outside the nodes, API only — 170+ health checks on cluster, nodes, storages, VMs and containers in a single run, with findings mapped to 18 compliance frameworks from ISO 27001 to NIS2 and DORA.
+  tagline: Runs outside the nodes, API only. 170+ health checks on cluster, nodes, storages, VMs and containers in a single run, with findings mapped to 18 compliance frameworks from ISO 27001 to NIS2 and DORA.
   actions:
     - text: Get started
       link: /cv4pve-diag/getting-started/
@@ -29,12 +29,12 @@ import CtaBand from '@corsinvest/cv4pve-docs-theme/components/CtaBand.astro';
 import proxmoxLogo from '../../assets/proxmox-logo.svg';
 
 export const features = [
-  { title: "Cluster-wide in one run", text: "Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks — cluster, nodes, storages, VMs and containers together.", href: 'checks/' },
+  { title: "Cluster-wide in one run", text: "Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks: cluster, nodes, storages, VMs and containers together.", href: 'checks/' },
   { title: "Audit evidence, not just alerts", text: "100+ findings carry the controls they relate to. Filter with --compliance and the report gets a ControlId column ready for your auditor.", href: 'compliance/' },
   { title: "Honest about what it cannot see", text: "Proxmox VE silently filters what a token may not read. cv4pve-diag checks the privileges first and states in the report what the analysis does not cover.", href: 'permissions/' },
   { title: "Tuned to your cluster", text: "Thresholds for CPU, memory, PSI pressure, SMART and health score, fast / standard / full profiles, parallel API requests for large clusters.", href: 'settings/' },
-  { title: "Silence what you accepted", text: "Ignore rules by code, resource, context or severity keep the report focused on what is new — and can still be shown for review.", href: 'ignored-issues/' },
-  { title: "Every format you need", text: "Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation — from one self-contained binary.", href: 'getting-started/' },
+  { title: "Silence what you accepted", text: "Ignore rules by code, resource, context or severity keep the report focused on what is new, and can still be shown for review.", href: 'ignored-issues/' },
+  { title: "Every format you need", text: "Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation, from one self-contained binary.", href: 'getting-started/' },
 ];
 
 <Tabs>
@@ -59,7 +59,7 @@ export const features = [
 A Proxmox VE cluster rarely breaks all at once: it drifts. A disk gets excluded from backup, a
 snapshot is forgotten for months, a node keeps running the old kernel after an update, `root@pam`
 has no second factor, an HA guest has no replica to fail over to. The web UI shows each object on
-its own page, so nothing tells you what is wrong across the cluster — you find out during a
+its own page, so nothing tells you what is wrong across the cluster: you find out during a
 restore, a failover or an audit.
 
 cv4pve-diag reads the whole cluster and lists those problems in one report, each with a stable code,
@@ -78,7 +78,7 @@ questions, two tools, used together.
 | **Purpose** | Diagnostics and health checks | Inventory and reporting |
 | **Result** | A list of problems, each with a code, a severity and the resource it concerns | The full inventory: nodes, VMs, containers, storage, network, users… |
 | **Formats** | Text, HTML, JSON, Markdown, Excel | Excel, static HTML site, multi-file JSON, plus an SVG network diagram |
-| **Compliance** | Findings tagged with the controls of 18 standards | — |
+| **Compliance** | Findings tagged with the controls of 18 standards | - |
 | **Access** | Proxmox VE API only, from outside the nodes | Proxmox VE API only, from outside the nodes |
 
 Want both on a schedule, from a web interface? [cv4pve-admin](https://github.com/Corsinvest/cv4pve-admin)
@@ -87,7 +87,7 @@ runs them as its [Diagnostics](https://corsinvest.github.io/cv4pve-admin/modules
 
 ## Outside the nodes, API only
 
-cv4pve-diag runs outside the cluster — on your workstation, a management VM or a scheduled job — and
+cv4pve-diag runs outside the cluster (on your workstation, a management VM or a scheduled job) and
 talks only to the Proxmox VE REST API. Nothing is installed on the nodes and no SSH or root shell is
 needed: an API token with the privileges listed in [Permissions](/cv4pve-diag/permissions/) is enough.
 Give it more than one node and it connects to the first one that answers, so it still runs while a node is down.
@@ -96,7 +96,7 @@ Give it more than one node and it connects to the first one that answers, so it 
 
 100+ findings are tagged with the controls they relate to. Run it with `--compliance=Nis2` (or any of
 18 frameworks) and the report keeps only the findings that matter for that standard, each with its
-control — `root@pam` without TFA becomes a gap against NIS2 Art. 21(j), a disk excluded from backup
+control: `root@pam` without TFA becomes a gap against NIS2 Art. 21(j), a disk excluded from backup
 one against Art. 21(c). A report you can hand to an auditor, produced from the cluster itself.
 
 ISO 27001 · **NIS2** · NIS2 Implementing Regulation · **ACN NIS2 Italy** · DORA · PCI DSS · GDPR · AgID ·

@@ -1,6 +1,8 @@
 ---
-title: "CIS Controls"
-description: "CIS Controls v8 — the controls cv4pve-diag gives evidence for."
+title: "CIS Controls v8: compliance evidence from Proxmox VE"
+description: The CIS Controls v8 that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each control.
+sidebar:
+  label: CIS Controls
 ---
 
 **CIS Controls v8.** Run with `--compliance=Cis` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
@@ -11,7 +13,7 @@ Official text: [CIS Controls v8](https://www.cisecurity.org/controls/v8).
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
 | Control | Title | Where it appears |
 |---|---|---|

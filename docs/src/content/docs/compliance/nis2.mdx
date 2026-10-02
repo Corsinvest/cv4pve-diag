@@ -1,11 +1,13 @@
 ---
-title: "NIS2"
-description: "NIS2 — Art. 21 — the controls cv4pve-diag gives evidence for."
+title: "NIS2 Article 21: compliance evidence from Proxmox VE"
+description: The NIS2 Art. 21 measures that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each.
+sidebar:
+  label: NIS2
 ---
 
 import ReportPreview from '../../../components/ReportPreview.astro';
 
-**NIS2 — Art. 21.** Run with `--compliance=Nis2` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+**NIS2, Art. 21.** Run with `--compliance=Nis2` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
 
 Controls covered: Art. 21(c/e/f/h/i/j)
 
@@ -15,7 +17,7 @@ Official text: [Directive (EU) 2022/2555](https://eur-lex.europa.eu/eli/dir/2022
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
 | Article | Title | Where it appears |
 |---|---|---|

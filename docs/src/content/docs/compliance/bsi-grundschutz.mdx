@@ -1,9 +1,11 @@
 ---
-title: "BSI IT-Grundschutz"
-description: "BSI IT-Grundschutz — Kompendium Edition 2023 (Germany) — the controls cv4pve-diag gives evidence for."
+title: "BSI IT-Grundschutz: compliance evidence from Proxmox VE"
+description: The BSI IT-Grundschutz requirements (Kompendium Edition 2023, Germany) that cv4pve-diag checks on a Proxmox VE cluster, and the findings that give evidence for each.
+sidebar:
+  label: BSI IT-Grundschutz
 ---
 
-**BSI IT-Grundschutz — Kompendium Edition 2023 (Germany).** Run with `--compliance=BsiGrundschutz` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
+**BSI IT-Grundschutz: Kompendium Edition 2023 (Germany).** Run with `--compliance=BsiGrundschutz` to keep only the findings mapped to it, with their control ids in a `ControlId` column.
 
 Controls covered: CON.1.A1, CON.3.A5, OPS.1.1.3.A15, OPS.1.1.5.A3/A4, ORP.4.A10/A21, SYS.1.1.A19, SYS.1.5.A4/A17/A20, SYS.1.6.A17, SYS.1.8.A13
 
@@ -11,9 +13,9 @@ Official text: [IT-Grundschutz-Kompendium](https://www.bsi.bund.de/DE/Themen/Unt
 
 ## Controls
 
-In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API — typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
+In the tables below, **Where it appears** names the checks that carry the control. **(declared)** marks a control of the standard that is relevant to a virtualisation cluster but that no check can verify from the Proxmox VE API, typically a process, a plan or a test. It is listed so the coverage is explicit: evidence for it has to come from outside `cv4pve-diag`.
 
-Requirements (*Anforderungen*) of the IT-Grundschutz-Kompendium, Edition 2023 — the last edition; it is superseded by Grundschutz++ (published October 2026, certifiable from 2027) and remains certifiable until November 2031. Titles are the German ones of the Kompendium; the letter is the protection level: (B) Basis, (S) Standard, (H) elevated protection needs.
+Requirements (*Anforderungen*) of the IT-Grundschutz-Kompendium, Edition 2023. This is the last edition: it is superseded by Grundschutz++ (published October 2026, certifiable from 2027) and remains certifiable until November 2031. Titles are the German ones of the Kompendium; the letter is the protection level: (B) Basis, (S) Standard, (H) elevated protection needs.
 
 | Requirement | Title | Where it appears |
 |---|---|---|

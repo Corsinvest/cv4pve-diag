@@ -10,7 +10,7 @@ import TerminalTable from '@corsinvest/cv4pve-docs-theme/components/TerminalTabl
  *
  * `standard` shows the output of --compliance=<standard>: only the findings mapped to it, plus the
  * ControlId column (all the controls of that standard in one cell). --compliance takes one standard
- * per run: to show several frameworks, use one preview per standard. `controls` holds the real mapping of each check in the engine — keep it in step
+ * per run: to show several frameworks, use one preview per standard. `controls` holds the real mapping of each check in the engine: keep it in step
  * with DiagnosticEngine*.cs when a mapping changes.
  */
 type Standard = 'Nis2' | 'Iso27001' | 'Dora';
@@ -35,12 +35,12 @@ const allRows: {
   sub: string;
   gravity: string;
   controls?: Partial<Record<Standard, string>>;
-  /** Reported only with IncludeOkResult: true — shown in the compliance views only. */
+  /** Reported only with IncludeOkResult: true, shown in the compliance views only. */
   ok?: boolean;
 }[] = [
-  { id: 'access/users/root@pam', code: 'CC0004', text: 'root@pam has no TFA configured — full access protected only by password', context: 'Cluster', sub: 'Access', gravity: 'Critical',
+  { id: 'access/users/root@pam', code: 'CC0004', text: 'root@pam has no TFA configured: full access protected only by password', context: 'Cluster', sub: 'Access', gravity: 'Critical',
     controls: { Nis2: 'Art.21(j)', Iso27001: 'A.5.17, A.8.5', Dora: 'Art.9' } },
-  { id: 'nodes/pve02/lxc/101', code: 'CG0006', text: 'Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access', context: 'Lxc', sub: 'Security', gravity: 'Critical',
+  { id: 'nodes/pve02/lxc/101', code: 'CG0006', text: 'Privileged container has AppArmor disabled: no kernel confinement, root inside has unrestricted host access', context: 'Lxc', sub: 'Security', gravity: 'Critical',
     controls: { Nis2: 'Art.21(i)', Iso27001: 'A.5.15, A.8.2' } },
   { id: 'nodes/pve02/qemu/203', code: 'CG0002', text: "Disk 'scsi0' disabled for backup", context: 'Qemu', sub: 'Backup', gravity: 'Critical',
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
@@ -51,13 +51,13 @@ const allRows: {
   { id: 'nodes/pve01/storage/pbs01', code: 'WS0009', text: 'Storage usage 80% - 2.58 TB of 3.22 TB', context: 'Storage', sub: 'Usage', gravity: 'Warning',
     controls: { Iso27001: 'A.5.30, A.8.16', Dora: 'Art.11' } },
   { id: 'nodes/pve02/qemu/106', code: 'WG0003', text: 'Qemu Agent not enabled', context: 'Qemu', sub: 'Agent', gravity: 'Warning' },
-  { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear — add to cpu flags to mitigate Spectre/Meltdown/MDS", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
+  { id: 'nodes/pve01/qemu/1010', code: 'WG0037', text: "CPU type 'kvm64' is missing security flags: +spec-ctrl, +ssbd, +pcid, +md-clear. Add to cpu flags to mitigate Spectre/Meltdown/MDS", context: 'Qemu', sub: 'CPU', gravity: 'Warning',
     controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
   { id: 'nodes/pve02/qemu/999', code: 'WG0017', text: 'vzdump backup not configured', context: 'Qemu', sub: 'Backup', gravity: 'Warning',
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.8.13', Dora: 'Art.11, Art.12' } },
   { id: 'nodes/pve01/qemu/1013', code: 'WG0002', text: "OS 'Microsoft Windows 8.x/2012/2012r2' not maintained from vendor!", context: 'Qemu', sub: 'OSNotMaintained', gravity: 'Warning',
     controls: { Nis2: 'Art.21(e)', Iso27001: 'A.8.8' } },
-  { id: 'cluster', code: 'IC0002', text: 'No HA resources configured — VMs will not automatically restart on node failure', context: 'Cluster', sub: 'HA', gravity: 'Info',
+  { id: 'cluster', code: 'IC0002', text: 'No HA resources configured: VMs will not automatically restart on node failure', context: 'Cluster', sub: 'HA', gravity: 'Info',
     controls: { Nis2: 'Art.21(c)', Iso27001: 'A.5.30', Dora: 'Art.11' } },
   { id: 'nodes/pve02', code: 'IN0001', text: '6 Update available', context: 'Node', sub: 'Update', gravity: 'Info' },
   { id: 'nodes/pve01/qemu/1000', code: 'IG0011', text: 'For production environment is better VM Protection = enabled', context: 'Qemu', sub: 'Protection', gravity: 'Info' },
@@ -92,7 +92,7 @@ const columns = [
 ];
 const cells = rows.map((r) => [r.gravity, ...(standard ? [r.controls?.[standard] ?? ''] : []), r.code, r.id, r.text, r.context, r.sub]);
 const footNote = withOk && note
-  ? 'One row per object: a check failing — or passing — on ten VMs gives ten rows, all the controls of a finding in the same row. <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.'
+  ? 'One row per object: a check failing (or passing) on ten VMs gives ten rows, all the controls of a finding in the same row. <code>Ok</code> rows come from <code>--full</code>, or <code>IncludeOkResult: true</code> in the settings file.'
   : undefined;
 
 ---

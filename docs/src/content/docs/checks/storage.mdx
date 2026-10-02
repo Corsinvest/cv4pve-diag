@@ -1,6 +1,8 @@
 ---
-title: Storage checks
+title: Proxmox VE storage health checks
 description: "Checks on storages: availability, usage, orphaned images and backups, thin provisioning, backup targets."
+sidebar:
+  label: Storage checks
 ---
 
 import Severity from '@corsinvest/cv4pve-docs-theme/components/Severity.astro';
@@ -27,8 +29,8 @@ Checks on every storage, on each node that can use it. How to read the codes: [O
 | Code | SubContext | Gravity | Description |
 |---|---|---|---|
 | `WS0003` | Backup | <Severity level="Warning" /> | Backup files whose VMID no longer exists (one finding per VMID and storage) |
-| `WS0006` | Backup | <Severity level="Warning" /> | No storage has 'backup' content type — backups cannot be stored |
-| `WS0007` | Backup | <Severity level="Warning" /> | Enabled backup job storage not enabled on a node it runs on — VMs there not backed up (a storage enabled but not reachable is `CS0001`) |
+| `WS0006` | Backup | <Severity level="Warning" /> | No storage has 'backup' content type: backups cannot be stored |
+| `WS0007` | Backup | <Severity level="Warning" /> | Enabled backup job storage not enabled on a node it runs on: VMs there not backed up (a storage enabled but not reachable is `CS0001`) |
 | `WS0002` | Image | <Severity level="Warning" /> | Disk image or container volume not attached to any VM/CT on that node |
 
 Any of these can be hidden with an [ignore rule](/cv4pve-diag/ignored-issues/) on its code.
