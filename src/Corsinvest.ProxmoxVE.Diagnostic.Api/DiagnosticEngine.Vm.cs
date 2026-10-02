@@ -95,7 +95,7 @@ public partial class DiagnosticEngine
                         subContext: "CPU",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: $"Node '{nodeGroup.Key}' vCPU overcommit ratio is {ratio:F1}x ({totalVCpus} vCPUs / {nodeResource.CpuSize} physical) — exceeds threshold of {settings.Node.MaxVCpuRatio}x",
+                        descriptionKo: $"Node '{nodeGroup.Key}' vCPU overcommit ratio is {ratio:F1}x ({totalVCpus} vCPUs / {nodeResource.CpuSize} physical): exceeds threshold of {settings.Node.MaxVCpuRatio}x",
                         descriptionOk: "",
                         compliance: []);
                 }
@@ -124,7 +124,7 @@ public partial class DiagnosticEngine
                 subContext: "OS",
                 context: DiagnosticResultContext.Qemu,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: "OsType not set (Other) — Proxmox VE applies no guest-specific settings",
+                descriptionKo: "OsType not set (Other): Proxmox VE applies no guest-specific settings",
                 descriptionOk: $"OsType set to '{config.OsTypeDecode}'",
                 compliance: []);
             if (config.OsType != null)
@@ -298,7 +298,7 @@ public partial class DiagnosticEngine
                         subContext: "CPU",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Critical,
-                        descriptionKo: $"CPU type '{cpuType}' is incompatible with HA — HA requires live migration which needs a portable CPU type",
+                        descriptionKo: $"CPU type '{cpuType}' is incompatible with HA: HA requires live migration which needs a portable CPU type",
                         descriptionOk: $"CPU type '{cpuType}' is compatible with HA live migration",
                         compliance: []);
                 }
@@ -336,7 +336,7 @@ public partial class DiagnosticEngine
                         subContext: "CPU",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: $"CPU type '{cpuType}' is missing security flags: {string.Join(", ", missingFlags)} — add to cpu flags to mitigate Spectre/Meltdown/MDS",
+                        descriptionKo: $"CPU type '{cpuType}' is missing security flags: {string.Join(", ", missingFlags)}; add to cpu flags to mitigate Spectre/Meltdown/MDS",
                         descriptionOk: $"CPU type '{cpuType}' has all Spectre/Meltdown/MDS mitigation flags configured",
                         compliance:
                         [
@@ -378,7 +378,7 @@ public partial class DiagnosticEngine
                         subContext: "CPU",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Warning,
-                        descriptionKo: "CPU hotplug is enabled but Windows guests do not support it — disable to avoid resource waste",
+                        descriptionKo: "CPU hotplug is enabled but Windows guests do not support it: disable to avoid resource waste",
                         descriptionOk: "CPU hotplug is not enabled on this Windows guest",
                         compliance: []);
                 }
@@ -486,7 +486,7 @@ public partial class DiagnosticEngine
                         subContext: "Balloon",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Info,
-                        descriptionKo: $"VM memory balloon ({qemuConfig.Balloon}MB) is >95% of total memory ({config.Memory}MB) — ballooning has no room to reclaim memory",
+                        descriptionKo: $"VM memory balloon ({qemuConfig.Balloon}MB) is >95% of total memory ({config.Memory}MB): ballooning has no room to reclaim memory",
                         descriptionOk: $"VM memory balloon ({qemuConfig.Balloon}MB) leaves room to reclaim memory (total {config.Memory}MB)",
                         compliance: []);
                 }
@@ -501,7 +501,7 @@ public partial class DiagnosticEngine
                     subContext: "Hardware",
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "VM has a virtio-rng (RNG) device configured — verify this is intentional",
+                    descriptionKo: "VM has a virtio-rng (RNG) device configured: verify this is intentional",
                     descriptionOk: "VM has no RNG device configured",
                     compliance: []);
                 #endregion
@@ -518,7 +518,7 @@ public partial class DiagnosticEngine
                     subContext: "Hardware",
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: $"VM has serial console configured ({string.Join(", ", serialKeys)}) — verify this is intentional",
+                    descriptionKo: $"VM has serial console configured ({string.Join(", ", serialKeys)}): verify this is intentional",
                     descriptionOk: "VM has no serial console configured",
                     compliance: []);
                 #endregion
@@ -541,8 +541,8 @@ public partial class DiagnosticEngine
                     context: DiagnosticResultContext.Qemu,
                     gravityKo: DiagnosticResultGravity.Info,
                     descriptionKo: machineType.Length == 0
-                                    ? "Machine type not set — QEMU will use the default, which may change across PVE upgrades"
-                                    : $"Machine type '{machineType}' has no version — it follows the QEMU default, which may change across PVE upgrades",
+                                    ? "Machine type not set: QEMU will use the default, which may change across PVE upgrades"
+                                    : $"Machine type '{machineType}' has no version: it follows the QEMU default, which may change across PVE upgrades",
                     descriptionOk: $"Machine type pinned to '{machineType}'",
                     compliance: []);
 
@@ -563,7 +563,7 @@ public partial class DiagnosticEngine
                         subContext: "Hardware",
                         context: DiagnosticResultContext.Qemu,
                         gravityKo: DiagnosticResultGravity.Info,
-                        descriptionKo: $"Machine type '{machineType}' is outdated — latest available on node '{item.Node}' is '{latestId}' (upgrade requires VM stop/start)",
+                        descriptionKo: $"Machine type '{machineType}' is outdated: latest available on node '{item.Node}' is '{latestId}' (upgrade requires VM stop/start)",
                         descriptionOk: "",
                         compliance:
                         [
@@ -599,7 +599,7 @@ public partial class DiagnosticEngine
                 subContext: "Network",
                 context: DiagnosticResultContext.Qemu,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: "VM has no network interface configured — completely isolated from network",
+                descriptionKo: "VM has no network interface configured: completely isolated from network",
                 descriptionOk: $"VM has {config.Networks.Count()} network interface(s) configured",
                 compliance: []);
             #endregion
@@ -623,7 +623,7 @@ public partial class DiagnosticEngine
                 subContext: "Hardware",
                 context: DiagnosticResultContext.Qemu,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: $"VM has USB/PCI passthrough configured ({string.Join(", ", passthroughKeys)}) — live migration and HA failover are not possible",
+                descriptionKo: $"VM has USB/PCI passthrough configured ({string.Join(", ", passthroughKeys)}): live migration and HA failover are not possible",
                 descriptionOk: "VM has no USB/PCI passthrough configured",
                 compliance: []);
             #endregion
@@ -702,8 +702,8 @@ public partial class DiagnosticEngine
                 context: x.Entry.Context,
                 gravityKo: DiagnosticResultGravity.Warning,
                 descriptionKo: x.Others.Count > 0
-                                ? $"Duplicate MAC address {x.Entry.Mac} shared with guest(s) {string.Join(", ", x.Others)} — causes network conflicts"
-                                : $"MAC address {x.Entry.Mac} is used by more than one interface of this guest — causes network conflicts",
+                                ? $"Duplicate MAC address {x.Entry.Mac} shared with guest(s) {string.Join(", ", x.Others)}: causes network conflicts"
+                                : $"MAC address {x.Entry.Mac} is used by more than one interface of this guest: causes network conflicts",
                 descriptionOk: "",
                 compliance: macControls);
         }
@@ -741,7 +741,7 @@ public partial class DiagnosticEngine
                 subContext: "Agent",
                 context: DiagnosticResultContext.Qemu,
                 gravityKo: DiagnosticResultGravity.Warning,
-                descriptionKo: "Template has QEMU agent enabled — agent is unused on templates and clones will inherit this setting",
+                descriptionKo: "Template has QEMU agent enabled: agent is unused on templates and clones will inherit this setting",
                 descriptionOk: "Template does not have QEMU agent enabled",
                 compliance: []);
             #endregion

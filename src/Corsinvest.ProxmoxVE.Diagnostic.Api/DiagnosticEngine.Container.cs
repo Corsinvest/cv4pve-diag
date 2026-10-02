@@ -94,7 +94,7 @@ public partial class DiagnosticEngine
                         subContext: "Features",
                         context: DiagnosticResultContext.Lxc,
                         gravityKo: DiagnosticResultGravity.Info,
-                        descriptionKo: "Container has nesting=1 without keyctl=1 — Docker or systemd inside the container may not work",
+                        descriptionKo: "Container has nesting=1 without keyctl=1: Docker or systemd inside the container may not work",
                         descriptionOk: "Container has nesting=1 with keyctl=1",
                         compliance: []);
                 }
@@ -109,7 +109,7 @@ public partial class DiagnosticEngine
                     subContext: "Security",
                     context: DiagnosticResultContext.Lxc,
                     gravityKo: DiagnosticResultGravity.Warning,
-                    descriptionKo: "Container is privileged (Unprivileged=false) — root inside the container has host-level access",
+                    descriptionKo: "Container is privileged (Unprivileged=false): root inside the container has host-level access",
                     descriptionOk: "Container is unprivileged",
                     compliance: containerIsolationControls);
 
@@ -128,7 +128,7 @@ public partial class DiagnosticEngine
                         subContext: "Security",
                         context: DiagnosticResultContext.Lxc,
                         gravityKo: DiagnosticResultGravity.Critical,
-                        descriptionKo: "Privileged container has AppArmor disabled — no kernel confinement, root inside has unrestricted host access",
+                        descriptionKo: "Privileged container has AppArmor disabled: no kernel confinement, root inside has unrestricted host access",
                         descriptionOk: "Privileged container retains AppArmor confinement",
                         compliance: containerIsolationControls);
                 }
@@ -143,7 +143,7 @@ public partial class DiagnosticEngine
                     subContext: "Memory",
                     context: DiagnosticResultContext.Lxc,
                     gravityKo: DiagnosticResultGravity.Warning,
-                    descriptionKo: "Container has no memory limit (Memory=0) — can consume all host RAM and starve other guests",
+                    descriptionKo: "Container has no memory limit (Memory=0): can consume all host RAM and starve other guests",
                     descriptionOk: $"Container has a memory limit configured ({lxc.Memory} MB)",
                     compliance: []);
                 #endregion
@@ -157,7 +157,7 @@ public partial class DiagnosticEngine
                     subContext: "Memory",
                     context: DiagnosticResultContext.Lxc,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "Container has swap=0 — OOM killer may terminate processes under memory pressure",
+                    descriptionKo: "Container has swap=0: OOM killer may terminate processes under memory pressure",
                     descriptionOk: $"Container has swap configured ({lxc.Swap} MB)",
                     compliance: []);
                 #endregion
@@ -170,7 +170,7 @@ public partial class DiagnosticEngine
                     subContext: "Config",
                     context: DiagnosticResultContext.Lxc,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "Container has no hostname configured — difficult to identify in logs",
+                    descriptionKo: "Container has no hostname configured: difficult to identify in logs",
                     descriptionOk: $"Container hostname is configured ('{lxc.Hostname}')",
                     compliance: []);
                 #endregion
@@ -185,7 +185,7 @@ public partial class DiagnosticEngine
                     subContext: "Config",
                     context: DiagnosticResultContext.Lxc,
                     gravityKo: DiagnosticResultGravity.Warning,
-                    descriptionKo: $"Container has raw LXC config entries ({string.Join(", ", rawLxcKeys)}) — bypasses PVE abstractions",
+                    descriptionKo: $"Container has raw LXC config entries ({string.Join(", ", rawLxcKeys)}): bypasses PVE abstractions",
                     descriptionOk: "Container has no raw lxc.* config entries",
                     compliance: containerIsolationControls);
                 #endregion

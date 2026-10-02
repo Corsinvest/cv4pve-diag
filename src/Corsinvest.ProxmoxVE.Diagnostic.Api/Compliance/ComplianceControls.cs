@@ -661,23 +661,23 @@ public static class ComplianceControls
 
         /// <summary>OPS-06 — Data Backup and Recovery – Concept.</summary>
         public static readonly ComplianceMapping OPS_06 =
-            new(ComplianceStandard.C5, "OPS-06", "Data Backup and Recovery – Concept");
+            new(ComplianceStandard.C5, "OPS-06", "Data Backup and Recovery - Concept");
 
         /// <summary>OPS-10 — Logging and Monitoring – Concept.</summary>
         public static readonly ComplianceMapping OPS_10 =
-            new(ComplianceStandard.C5, "OPS-10", "Logging and Monitoring – Concept");
+            new(ComplianceStandard.C5, "OPS-10", "Logging and Monitoring - Concept");
 
         /// <summary>OPS-13 — Logging and Monitoring – Identification of Events.</summary>
         public static readonly ComplianceMapping OPS_13 =
-            new(ComplianceStandard.C5, "OPS-13", "Logging and Monitoring – Identification of Events");
+            new(ComplianceStandard.C5, "OPS-13", "Logging and Monitoring - Identification of Events");
 
         /// <summary>OPS-18 — Managing Vulnerabilities, Malfunctions and Errors – Concept.</summary>
         public static readonly ComplianceMapping OPS_18 =
-            new(ComplianceStandard.C5, "OPS-18", "Managing Vulnerabilities, Malfunctions and Errors – Concept");
+            new(ComplianceStandard.C5, "OPS-18", "Managing Vulnerabilities, Malfunctions and Errors - Concept");
 
         /// <summary>OPS-23 — Managing Vulnerabilities, Malfunctions and Errors – System Hardening.</summary>
         public static readonly ComplianceMapping OPS_23 =
-            new(ComplianceStandard.C5, "OPS-23", "Managing Vulnerabilities, Malfunctions and Errors – System Hardening");
+            new(ComplianceStandard.C5, "OPS-23", "Managing Vulnerabilities, Malfunctions and Errors - System Hardening");
 
         /// <summary>BCM-03 — Planning business continuity (redundancy, HA, replication).</summary>
         public static readonly ComplianceMapping BCM_03 =

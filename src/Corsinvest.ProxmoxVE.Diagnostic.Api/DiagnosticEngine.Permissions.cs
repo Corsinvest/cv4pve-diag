@@ -42,23 +42,23 @@ public partial class DiagnosticEngine
         new("VM.Audit",
             "/vms",
             null,
-            "VMs and containers are missing from the analysis entirely — they are filtered out of /cluster/resources",
+            "VMs and containers are missing from the analysis entirely: they are filtered out of /cluster/resources",
             DisablesOrphanChecks: true),
 
         new("Datastore.Audit",
             "/storage",
             null,
-            "storages are missing from the analysis — storage capacity and orphaned-image checks cannot run"),
+            "storages are missing from the analysis: storage capacity and orphaned-image checks cannot run"),
 
         new("Sys.Audit",
             "/nodes",
             null,
-            "node details are unavailable — services, disks, certificates and version checks cannot run"),
+            "node details are unavailable: services, disks, certificates and version checks cannot run"),
 
         new("Pool.Audit",
             "/pool",
             null,
-            "pools are missing — pool-based backup jobs cannot be resolved to their guests"),
+            "pools are missing: pool-based backup jobs cannot be resolved to their guests"),
 
         // check_volume_access takes the Datastore.Allocate short-circuit before reaching the
         // per-content-type branches, so it substitutes for Datastore.AllocateSpace.
@@ -149,11 +149,11 @@ public partial class DiagnosticEngine
                 Id = "access/permissions",
                 ErrorCode = "WC0020",
                 Description = partial.Contains(item)
-                    ? $"Privilege {name} is granted on part of '{item.Root}' — the analysis covers only that subset. "
+                    ? $"Privilege {name} is granted on part of '{item.Root}': the analysis covers only that subset. "
                       + $"Outside it, {item.Impact}. This is expected if the account is scoped on purpose; "
                       + (item.DisablesOrphanChecks ? "the orphaned image and backup checks (WS0002, WS0003) are skipped; " : "")
                       + $"grant {name} on '{item.Root}' to cover everything."
-                    : $"Privilege {name} is not granted on '{item.Root}' — {item.Impact}. "
+                    : $"Privilege {name} is not granted on '{item.Root}': {item.Impact}. "
                       + "Proxmox omits these from its response without reporting an error, so the analysis cannot see what is missing. "
                       + (item.DisablesBackupChecks ? "The backup checks (WG0019, WG0020, WS0003) are skipped. " : "")
                       + (item.DisablesOrphanChecks ? "The orphaned image and backup checks (WS0002, WS0003) are skipped. " : "")

@@ -59,7 +59,7 @@ public partial class DiagnosticEngine
             subContext: "Topology",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "Cluster has a single node — HA, quorum and replication provide no real protection",
+            descriptionKo: "Cluster has a single node: HA, quorum and replication provide no real protection",
             descriptionOk: $"Cluster has {nodeCount} nodes",
             compliance:
             [
@@ -130,7 +130,7 @@ public partial class DiagnosticEngine
             subContext: "Metrics",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "No external metric server configured — long-term monitoring relies only on volatile RRD data",
+            descriptionKo: "No external metric server configured: long-term monitoring relies only on volatile RRD data",
             descriptionOk: $"{servers.Count} metric server(s) configured at cluster level",
             compliance: observabilityControls);
         if (servers.Count == 0) { return; }
@@ -144,7 +144,7 @@ public partial class DiagnosticEngine
             subContext: "Metrics",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: $"All {servers.Count} configured metric server(s) are disabled — no metrics are being exported",
+            descriptionKo: $"All {servers.Count} configured metric server(s) are disabled: no metrics are being exported",
             descriptionOk: $"{enabledCount} of {servers.Count} metric server(s) are enabled",
             compliance: observabilityControls);
     }
@@ -163,7 +163,7 @@ public partial class DiagnosticEngine
             subContext: "Log",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: $"Cluster log has {errors} error-level entries in the last 200 — review the journal",
+            descriptionKo: $"Cluster log has {errors} error-level entries in the last 200: review the journal",
             descriptionOk: $"Cluster log has {errors} error-level entries in the last 200 (below threshold)",
             compliance:
             [
@@ -231,7 +231,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "No backup job configured — no automated backup for any VM/CT",
+            descriptionKo: "No backup job configured: no automated backup for any VM/CT",
             descriptionOk: $"{backupList.Count} backup job(s) configured at cluster level",
             compliance:
             [
@@ -294,7 +294,7 @@ public partial class DiagnosticEngine
             items: backupList.Where(a => a.Enabled && JobRetention(a) != null).ToList(),
             isItemOk: a => JobRetention(a) == true,
             itemId: a => $"cluster/backup/{a.Id}",
-            itemDescriptionKo: a => $"Backup job '{a.Id}' has no retention policy (prune-backups) on the job or on storage '{a.Storage}' — storage will fill up"
+            itemDescriptionKo: a => $"Backup job '{a.Id}' has no retention policy (prune-backups) on the job or on storage '{a.Storage}': storage will fill up"
                                     + (IsPbsStorage(a.Storage) ? " unless a prune job on the Proxmox Backup Server removes old backups" : ""),
             aggregatedIdOk: "cluster/backup",
             aggregatedDescriptionOk: _ => "All enabled backup jobs have a retention policy",
@@ -309,7 +309,7 @@ public partial class DiagnosticEngine
             items: backupList.Where(a => a.Enabled).ToList(),
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Schedule),
             itemId: a => $"cluster/backup/{a.Id}",
-            itemDescriptionKo: a => $"Backup job '{a.Id}' is enabled but has no schedule — it will never run automatically",
+            itemDescriptionKo: a => $"Backup job '{a.Id}' is enabled but has no schedule: it will never run automatically",
             aggregatedIdOk: "cluster/backup",
             aggregatedDescriptionOk: _ => "All enabled backup jobs have a schedule",
             errorCode: "WC0017",
@@ -421,7 +421,7 @@ public partial class DiagnosticEngine
                 subContext: "Tasks",
                 context: DiagnosticResultContext.Cluster,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"Cluster task failure rate is {ratio:P0} ({failed}/{finishedTasks.Count}) — investigate recurring errors",
+                descriptionKo: $"Cluster task failure rate is {ratio:P0} ({failed}/{finishedTasks.Count}): investigate recurring errors",
                 descriptionOk: $"Cluster task failure rate is {ratio:P0} ({failed}/{finishedTasks.Count})",
                 compliance:
                 [
@@ -492,7 +492,7 @@ public partial class DiagnosticEngine
                 subContext: "HA",
                 context: DiagnosticResultContext.Cluster,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: "No HA resources configured — VMs will not automatically restart on node failure",
+                descriptionKo: "No HA resources configured: VMs will not automatically restart on node failure",
                 descriptionOk: $"{haResourceCount} HA resource(s) configured",
                 compliance:
                 [
@@ -546,7 +546,7 @@ public partial class DiagnosticEngine
             isItemOk: a => string.IsNullOrWhiteSpace(a.State)
                             || !a.State.Equals("error", StringComparison.OrdinalIgnoreCase),
             itemId: a => $"cluster/ha/{a.Sid}",
-            itemDescriptionKo: a => $"HA resource '{a.Sid}' is in error state on node '{a.Node}' — manual recovery required",
+            itemDescriptionKo: a => $"HA resource '{a.Sid}' is in error state on node '{a.Node}': manual recovery required",
             aggregatedIdOk: "cluster/ha",
             aggregatedDescriptionOk: _ => "No HA resource in error state",
             errorCode: "CC0005",
@@ -567,7 +567,7 @@ public partial class DiagnosticEngine
             subContext: "Replication",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: "No storage replication jobs configured — no redundant copy of VM data across nodes",
+            descriptionKo: "No storage replication jobs configured: no redundant copy of VM data across nodes",
             descriptionOk: $"{replJobs.Count} storage replication job(s) configured",
             compliance: resilienceControls);
 
@@ -576,7 +576,7 @@ public partial class DiagnosticEngine
             items: replJobs,
             isItemOk: a => !a.Disable,
             itemId: a => $"cluster/replication/{a.Id}",
-            itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) is disabled — data is no longer replicated",
+            itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) is disabled: data is no longer replicated",
             aggregatedIdOk: "cluster/replication",
             aggregatedDescriptionOk: _ => "No disabled replication jobs",
             errorCode: "WC0009",
@@ -590,7 +590,7 @@ public partial class DiagnosticEngine
             items: replJobs.Where(a => !a.Disable).ToList(),
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Schedule),
             itemId: a => $"cluster/replication/{a.Id}",
-            itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) has no schedule — it will never run automatically",
+            itemDescriptionKo: a => $"Replication job '{a.Id}' (guest {a.Guest} → {a.Target}) has no schedule: it will never run automatically",
             aggregatedIdOk: "cluster/replication",
             aggregatedDescriptionOk: _ => "All enabled replication jobs have a schedule",
             errorCode: "WC0010",
@@ -637,7 +637,7 @@ public partial class DiagnosticEngine
                 subContext: "Quorum",
                 context: DiagnosticResultContext.Cluster,
                 gravityKo: DiagnosticResultGravity.Critical,
-                descriptionKo: "Cluster has lost quorum — VM operations may be blocked",
+                descriptionKo: "Cluster has lost quorum: VM operations may be blocked",
                 descriptionOk: "Cluster has quorum",
                 compliance: resilienceControls);
 
@@ -656,7 +656,7 @@ public partial class DiagnosticEngine
                     items: NodesBreakingQuorum(votes),
                     isItemOk: _ => false,
                     itemId: n => $"nodes/{n.Node}",
-                    itemDescriptionKo: n => $"Losing node '{n.Node}' ({n.Votes} of {total} votes) leaves the cluster without quorum — add a node or a QDevice",
+                    itemDescriptionKo: n => $"Losing node '{n.Node}' ({n.Votes} of {total} votes) leaves the cluster without quorum: add a node or a QDevice",
                     aggregatedIdOk: "cluster",
                     aggregatedDescriptionOk: _ => $"The cluster keeps quorum when any single node fails ({total} votes)",
                     errorCode: "CC0002",
@@ -753,7 +753,7 @@ public partial class DiagnosticEngine
             items: pools.Where(a => _resources.Any(r => r.ResourceType != ClusterResourceType.Pool && r.Pool == a.Id)).ToList(),
             isItemOk: a => poolPathsWithAcl.Contains(a.Id),
             itemId: a => $"cluster/pool/{a.Id}",
-            itemDescriptionKo: a => $"Pool '{a.Id}' has members but no ACL entry at '/pool/{a.Id}' — the pool is not used as a privilege boundary",
+            itemDescriptionKo: a => $"Pool '{a.Id}' has members but no ACL entry at '/pool/{a.Id}': the pool is not used as a privilege boundary",
             aggregatedIdOk: "cluster/pools",
             aggregatedDescriptionOk: _ => "All non-empty pools have at least one ACL entry",
             errorCode: "IC0020",
@@ -778,7 +778,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "Cluster firewall is disabled — no traffic filtering is active",
+            descriptionKo: "Cluster firewall is disabled: no traffic filtering is active",
             descriptionOk: "Cluster firewall is enabled",
             compliance:
             [
@@ -836,7 +836,7 @@ public partial class DiagnosticEngine
             isItemOk: p => p.Policy.Equals("DROP", StringComparison.OrdinalIgnoreCase)
                            || p.Policy.Equals("REJECT", StringComparison.OrdinalIgnoreCase),
             itemId: _ => "cluster",
-            itemDescriptionKo: p => $"Cluster firewall {p.Direction} policy is '{p.Policy}' — unmatched traffic is let through, use DROP or REJECT",
+            itemDescriptionKo: p => $"Cluster firewall {p.Direction} policy is '{p.Policy}': unmatched traffic is let through, use DROP or REJECT",
             aggregatedIdOk: "cluster",
             aggregatedDescriptionOk: _ => $"Cluster firewall inbound policy is {policyIn}",
             errorCode: "WC0004",
@@ -881,7 +881,7 @@ public partial class DiagnosticEngine
                                            && string.Equals(r.Type, "in", StringComparison.OrdinalIgnoreCase)).ToList(),
             isItemOk: r => !IsAnyAddress(r.Source),
             itemId: r => $"cluster/firewall/rules/{r.Positon}",
-            itemDescriptionKo: r => $"Firewall rule #{r.Positon} accepts incoming traffic from any address ({(string.IsNullOrWhiteSpace(r.Source) ? "any" : r.Source)}{(string.IsNullOrWhiteSpace(r.Macro) ? "" : $", {r.Macro}")}{(string.IsNullOrWhiteSpace(r.DestinationPort) ? "" : $", port {r.DestinationPort}")}) — overly permissive",
+            itemDescriptionKo: r => $"Firewall rule #{r.Positon} accepts incoming traffic from any address ({(string.IsNullOrWhiteSpace(r.Source) ? "any" : r.Source)}{(string.IsNullOrWhiteSpace(r.Macro) ? "" : $", {r.Macro}")}{(string.IsNullOrWhiteSpace(r.DestinationPort) ? "" : $", port {r.DestinationPort}")}): overly permissive",
             aggregatedIdOk: "cluster/firewall/rules",
             aggregatedDescriptionOk: _ => "No enabled inbound ACCEPT rule allows traffic from any address",
             errorCode: "WC0008",
@@ -904,7 +904,7 @@ public partial class DiagnosticEngine
                 subContext: "Firewall",
                 context: DiagnosticResultContext.Cluster,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"Cluster firewall has {enabledRules.Count} enabled rules but none have logging configured — no audit trail",
+                descriptionKo: $"Cluster firewall has {enabledRules.Count} enabled rules but none have logging configured: no audit trail",
                 descriptionOk: $"At least one of {enabledRules.Count} enabled firewall rules has logging configured",
                 compliance:
                 [
@@ -944,7 +944,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Info,
-            descriptionKo: $"Cluster firewall has {disabledCount} disabled rules — consider cleaning up stale configuration",
+            descriptionKo: $"Cluster firewall has {disabledCount} disabled rules: consider cleaning up stale configuration",
             descriptionOk: $"Cluster firewall has {disabledCount} disabled rules (below clutter threshold)",
             compliance: firewallControls);
     }
@@ -990,7 +990,7 @@ public partial class DiagnosticEngine
             subContext: "Access",
             context: DiagnosticResultContext.Cluster,
             gravityKo: DiagnosticResultGravity.Critical,
-            descriptionKo: "root@pam has no TFA configured — full access protected only by password",
+            descriptionKo: "root@pam has no TFA configured: full access protected only by password",
             descriptionOk: "root@pam has TFA configured",
             compliance:
             [
@@ -1094,7 +1094,7 @@ public partial class DiagnosticEngine
                                    && !disabledUserIds.Contains(a.UsersGroupid)).ToList(),
             isItemOk: _ => false,
             itemId: _ => "access/acl",
-            itemDescriptionKo: a => $"User '{a.UsersGroupid}' has Administrator role at root path '/' — prefer pool/node-scoped permissions",
+            itemDescriptionKo: a => $"User '{a.UsersGroupid}' has Administrator role at root path '/': prefer pool/node-scoped permissions",
             aggregatedIdOk: "access/acl",
             aggregatedDescriptionOk: _ => "No user has Administrator role directly on '/'",
             errorCode: "WC0005",
@@ -1110,7 +1110,7 @@ public partial class DiagnosticEngine
                               .ToList(),
             isItemOk: _ => false,
             itemId: ut => $"access/users/{ut.User.Id}",
-            itemDescriptionKo: ut => $"Disabled user '{ut.User.Id}' has active API token '{ut.User.Id}!{ut.Token.Id}' — token remains valid and should be revoked",
+            itemDescriptionKo: ut => $"Disabled user '{ut.User.Id}' has active API token '{ut.User.Id}!{ut.Token.Id}': token remains valid and should be revoked",
             aggregatedIdOk: "access/users",
             aggregatedDescriptionOk: _ => "No disabled user has active API tokens",
             errorCode: "WC0006",
@@ -1170,7 +1170,7 @@ public partial class DiagnosticEngine
             items: accessUsers.SelectMany(u => u.Tokens.Select(t => (User: u, Token: t))).ToList(),
             isItemOk: ut => !string.IsNullOrWhiteSpace(ut.Token.Comment),
             itemId: ut => $"access/users/{ut.User.Id}",
-            itemDescriptionKo: ut => $"API token '{ut.User.Id}!{ut.Token.Id}' has no comment — purpose and owner cannot be attributed at audit time",
+            itemDescriptionKo: ut => $"API token '{ut.User.Id}!{ut.Token.Id}' has no comment: purpose and owner cannot be attributed at audit time",
             aggregatedIdOk: "access/users",
             aggregatedDescriptionOk: _ => "All API tokens have a comment describing their purpose",
             errorCode: "IC0021",
@@ -1185,7 +1185,7 @@ public partial class DiagnosticEngine
             items: accessUsers.Where(a => a.Enable).ToList(),
             isItemOk: a => !string.IsNullOrWhiteSpace(a.Email),
             itemId: a => $"access/users/{a.Id}",
-            itemDescriptionKo: a => $"User '{a.Id}' has no email configured — will not receive notifications",
+            itemDescriptionKo: a => $"User '{a.Id}' has no email configured: will not receive notifications",
             aggregatedIdOk: "access/users",
             aggregatedDescriptionOk: _ => "All enabled users have an email address configured",
             errorCode: "IC0007",
@@ -1246,7 +1246,7 @@ public partial class DiagnosticEngine
             items: roles.Where(a => a.Special == 0).ToList(),
             isItemOk: a => rolesInUse.Contains(a.Id),
             itemId: a => $"access/roles/{a.Id}",
-            itemDescriptionKo: a => $"Custom role '{a.Id}' is not assigned in any ACL — unused",
+            itemDescriptionKo: a => $"Custom role '{a.Id}' is not assigned in any ACL: unused",
             aggregatedIdOk: "access/roles",
             aggregatedDescriptionOk: _ => "All custom roles are referenced by at least one ACL entry",
             errorCode: "IC0009",
@@ -1292,7 +1292,7 @@ public partial class DiagnosticEngine
                                     && disabledUserIds.Contains(a.UsersGroupid)).ToList(),
             isItemOk: _ => false,
             itemId: a => $"access/users/{a.UsersGroupid}",
-            itemDescriptionKo: a => $"Disabled user '{a.UsersGroupid}' still has Administrator role on '/' — revoke the ACL entry",
+            itemDescriptionKo: a => $"Disabled user '{a.UsersGroupid}' still has Administrator role on '/': revoke the ACL entry",
             aggregatedIdOk: "access/acl",
             aggregatedDescriptionOk: _ => "No disabled user retains Administrator role on '/'",
             errorCode: "WC0014",
@@ -1306,7 +1306,7 @@ public partial class DiagnosticEngine
             items: acls.Where(a => a.Path == "/" && a.Roleid == "Administrator" && a.Propagate == 0).ToList(),
             isItemOk: _ => false,
             itemId: _ => "access/acl",
-            itemDescriptionKo: a => $"{a.Type} '{a.UsersGroupid}' has Administrator role on '/' but Propagate is disabled — children resources do not inherit it",
+            itemDescriptionKo: a => $"{a.Type} '{a.UsersGroupid}' has Administrator role on '/' but Propagate is disabled: children resources do not inherit it",
             aggregatedIdOk: "access/acl",
             aggregatedDescriptionOk: _ => "All Administrator ACLs on '/' have Propagate enabled",
             errorCode: "IC0010",
@@ -1338,7 +1338,7 @@ public partial class DiagnosticEngine
                 items: root.Tokens.ToList(),
                 isItemOk: t => t.Privsep != 0,
                 itemId: _ => "access/users/root@pam",
-                itemDescriptionKo: t => $"root@pam token '{t.Id}' has no privilege separation — it has full root rights",
+                itemDescriptionKo: t => $"root@pam token '{t.Id}' has no privilege separation: it has full root rights",
                 aggregatedIdOk: "access/users/root@pam",
                 aggregatedDescriptionOk: _ => "All root@pam tokens have privilege separation enabled",
                 errorCode: "WC0015",
@@ -1354,7 +1354,7 @@ public partial class DiagnosticEngine
             items: accessUsers.Where(u => u.Enable && u.Expire > 0).ToList(),
             isItemOk: u => u.Expire >= nowUnix,
             itemId: u => $"access/users/{u.Id}",
-            itemDescriptionKo: u => $"User '{u.Id}' is enabled but expired on {DateTimeOffset.FromUnixTimeSeconds(u.Expire):yyyy-MM-dd} — account should be deactivated",
+            itemDescriptionKo: u => $"User '{u.Id}' is enabled but expired on {DateTimeOffset.FromUnixTimeSeconds(u.Expire):yyyy-MM-dd}: account should be deactivated",
             aggregatedIdOk: "access/users",
             aggregatedDescriptionOk: _ => "No enabled user has an expiration date in the past",
             errorCode: "WC0016",

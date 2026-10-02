@@ -93,6 +93,6 @@ internal static class DiagnosticSafeExtensions
         var apiError = r.GetError();
         if (!string.IsNullOrWhiteSpace(apiError)) { parts.Add(apiError); }
         if (!string.IsNullOrWhiteSpace(r.RequestResource)) { parts.Add($"{r.MethodType} {r.RequestResource}"); }
-        return string.Join(" — ", parts);
+        return string.Join(" - ", parts);
     }
 }

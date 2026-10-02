@@ -175,7 +175,7 @@ public partial class DiagnosticEngine
             items: config.Disks.ToList(),
             isItemOk: a => !a.IsUnused,
             itemId: _ => id,
-            itemDescriptionKo: a => $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : "")} — detached from VM but still in storage",
+            itemDescriptionKo: a => $"Unused disk '{a.Id}'{(a.SizeBytes > 0 ? $" ({FormatHelper.FromBytes(a.SizeBytes)})" : "")}: detached from VM but still in storage",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "No unused disks left attached to storage",
             errorCode: "WG0018",
@@ -201,7 +201,7 @@ public partial class DiagnosticEngine
                                                     && (!string.IsNullOrEmpty(d.MountSourcePath) || d.Passthrough))).ToList(),
                 isItemOk: d => replicated || _storageResources.Any(s => s.Storage == d.Storage && s.Shared),
                 itemId: _ => id,
-                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated — migration and failover will fail",
+                itemDescriptionKo: d => $"Disk '{d.Id}' is on non-shared storage '{d.Storage}' but {guest} is managed by HA and not replicated: migration and failover will fail",
                 aggregatedIdOk: id,
                 aggregatedDescriptionOk: _ => replicated
                                                 ? $"HA {guest} is replicated to the other nodes"
@@ -341,7 +341,7 @@ public partial class DiagnosticEngine
                     subContext: "HA",
                     context: context,
                     gravityKo: DiagnosticResultGravity.Info,
-                    descriptionKo: "Guest is not managed by any HA resource — it will not be restarted automatically on node failure",
+                    descriptionKo: "Guest is not managed by any HA resource: it will not be restarted automatically on node failure",
                     descriptionOk: "Guest is managed by an HA resource",
                     compliance: resilienceControls);
             }
@@ -450,7 +450,7 @@ public partial class DiagnosticEngine
             items: realSnapshots,
             isItemOk: s => !s.VmStatus,
             itemId: _ => id,
-            itemDescriptionKo: snap => $"Snapshot '{snap.Name}' includes RAM state — wastes disk space and blocks storage migration",
+            itemDescriptionKo: snap => $"Snapshot '{snap.Name}' includes RAM state: wastes disk space and blocks storage migration",
             aggregatedIdOk: id,
             aggregatedDescriptionOk: _ => "No snapshot includes RAM state",
             errorCode: "WG0035",
@@ -513,7 +513,7 @@ public partial class DiagnosticEngine
             subContext: "Firewall",
             context: context,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: $"{kind} firewall is disabled — the guest is exposed to all traffic on the node bridge",
+            descriptionKo: $"{kind} firewall is disabled: the guest is exposed to all traffic on the node bridge",
             descriptionOk: $"{kind} firewall is enabled",
             compliance: firewallControls);
 
@@ -526,7 +526,7 @@ public partial class DiagnosticEngine
                 subContext: "Firewall",
                 context: context,
                 gravityKo: DiagnosticResultGravity.Info,
-                descriptionKo: $"{kind} firewall IP filter is disabled — the guest can spoof source IP addresses",
+                descriptionKo: $"{kind} firewall IP filter is disabled: the guest can spoof source IP addresses",
                 descriptionOk: $"{kind} firewall IP filter is enabled",
                 compliance: firewallControls);
         }

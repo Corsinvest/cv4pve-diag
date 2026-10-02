@@ -21,7 +21,7 @@ public class DiagnosticEngineSafeTests
     {
         var r = MakeResult(HttpStatusCode.Forbidden, "Forbidden", "/cluster/firewall/options", responseError: null);
         var msg = DiagnosticSafeExtensions.BuildApiErrorMessage(r);
-        Assert.Equal("403 Forbidden — Get /cluster/firewall/options", msg);
+        Assert.Equal("403 Forbidden - Get /cluster/firewall/options", msg);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class DiagnosticEngineSafeTests
         // a sensible string in case any code path calls it for a 501.
         var r = MakeResult(HttpStatusCode.NotImplemented, "Not Implemented", "/cluster/ha/groups", responseError: null);
         var msg = DiagnosticSafeExtensions.BuildApiErrorMessage(r);
-        Assert.Equal("501 Not Implemented — Get /cluster/ha/groups", msg);
+        Assert.Equal("501 Not Implemented - Get /cluster/ha/groups", msg);
     }
 
     [Fact]

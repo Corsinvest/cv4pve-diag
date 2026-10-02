@@ -236,8 +236,8 @@ public partial class DiagnosticEngine
                         return _storageResources.FirstOrDefault(s => s.Node == node && s.Storage == storage)?.GetWebUrl() ?? $"nodes/{node}/storage/{storage}";
                     },
                     itemDescriptionKo: ob => ob.Backups.Count == 1
-                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}' — VMID {ob.VmId} no longer exists"
-                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}) — VMID {ob.VmId} no longer exists",
+                                                ? $"Orphaned backup {FormatHelper.FromBytes(ob.Backups[0].Size)} '{ob.Backups[0].FileName}': VMID {ob.VmId} no longer exists"
+                                                : $"{ob.Backups.Count} orphaned backups ({FormatHelper.FromBytes(ob.Backups.Sum(b => b.Size))}): VMID {ob.VmId} no longer exists",
                     aggregatedIdOk: "cluster/storage",
                     aggregatedDescriptionOk: _ => "No orphaned backup files found on any storage",
                     errorCode: "WS0003",
@@ -357,7 +357,7 @@ public partial class DiagnosticEngine
             subContext: "Backup",
             context: DiagnosticResultContext.Storage,
             gravityKo: DiagnosticResultGravity.Warning,
-            descriptionKo: "No storage has 'backup' content type configured — backups cannot be stored",
+            descriptionKo: "No storage has 'backup' content type configured: backups cannot be stored",
             descriptionOk: "At least one storage is configured with 'backup' content type",
             compliance:
             [
@@ -404,7 +404,7 @@ public partial class DiagnosticEngine
                                                  && r.Node == jn.Node
                                                  && r.Storage == jn.Job.Storage),
             itemId: jn => $"nodes/{jn.Node}",
-            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not enabled on node '{jn.Node}' — VMs on this node will not be backed up",
+            itemDescriptionKo: jn => $"Backup job '{jn.Job.Id}' storage '{jn.Job.Storage}' is not enabled on node '{jn.Node}': VMs on this node will not be backed up",
             aggregatedIdOk: "cluster",
             aggregatedDescriptionOk: _ => "All backup job storages are enabled on every online node the job runs on",
             errorCode: "WS0007",
