@@ -5,26 +5,30 @@ sidebar:
   label: Getting started
 ---
 
-import CliInstall from '@corsinvest/cv4pve-docs-theme/components/CliInstall.astro';
+import CliGettingStarted from '@corsinvest/cv4pve-docs-theme/components/CliGettingStarted.astro';
 
 cv4pve-diag runs **outside the cluster** (on your workstation, a management VM or a scheduled job)
 and talks only to the Proxmox VE REST API on port 8006. Nothing is installed on the nodes.
 
-## Installation
-
-<CliInstall repo="cv4pve-diag" />
-
 ## First run
 
-Create a dedicated user and API token first: see [Permissions](/cv4pve-diag/permissions/). Then point
-the tool at any node:
+<CliGettingStarted
+  repo="cv4pve-diag"
+  run={['--host=pve01', "--api-token='diag@pve!audit=<uuid>'", 'execute']}
+  result="Read the report"
+>
 
-```bash
-cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=<uuid>' execute
-```
+<Fragment slot="notes">
 
 Several nodes, username and password, certificates and options in a file for scheduled runs: see
 [Connection](/cv4pve-diag/connection/).
+
+</Fragment>
+
+The report lists one finding per row, with a code, a severity and the resource it concerns:
+[Reading the report](../reading-the-report/) explains every column and the output formats.
+
+</CliGettingStarted>
 
 ## Run
 
@@ -39,20 +43,15 @@ cv4pve-diag has three commands:
 The two `create-` commands need no connection to the cluster.
 
 ```bash
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute           # standard profile
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute --fast    # quick scan of a large cluster
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' execute --full    # everything, for audits
+cv4pve-diag --host=pve01 --api-token='diag@pve!audit=<uuid>' execute           # standard profile
+cv4pve-diag --host=pve01 --api-token='diag@pve!audit=<uuid>' execute --fast    # quick scan of a large cluster
+cv4pve-diag --host=pve01 --api-token='diag@pve!audit=<uuid>' execute --full    # everything, for audits
 
 # Your own thresholds and accepted findings
 cv4pve-diag create-settings                 # then edit settings.json
 cv4pve-diag create-ignored-issues           # then edit ignored-issues.json
-cv4pve-diag --host=pve1 --api-token='diag@pve!audit=<uuid>' \
+cv4pve-diag --host=pve01 --api-token='diag@pve!audit=<uuid>' \
   --settings-file=settings.json --ignored-issues-file=ignored-issues.json execute
 ```
 
 `--fast` and `--full` go **after** the command. A settings file always wins over them.
-
-## Next
-
-The report lists one finding per row, with a code, a severity and the resource it concerns:
-[Reading the report](../reading-the-report/) explains every column and the output formats.

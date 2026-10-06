@@ -10,7 +10,7 @@ export default defineConfig({
     starlight({
       title: 'cv4pve-diag',
       description: 'Health checks and diagnostics for Proxmox VE.',
-      // Brand, logo, GitHub and "Edit page" links, the Corsinvest sidebar group and
+      // Brand, product icon, GitHub link, the Corsinvest sidebar group and
       // external links in a new tab come from the shared cv4pve theme.
       plugins: [
         corsinvestTheme({
@@ -21,21 +21,18 @@ export default defineConfig({
           admin: { module: 'diagnostics' },
           // Visits, without cookies.
           matomo: { url: 'https://matomo.corsinvest.it/', siteId: 6 },
-          // Install-and-run panel in the home hero.
-          install: {
-            targets: ['linux', 'macos', 'windows'],
-            run: ['--host=pve01', "--api-token='diag@pve!audit=…'", 'execute --full'],
-            // Same counts as the report preview below the hero.
-            output: [
-              { text: '2 critical', tone: 'critical' },
-              { text: '5 warning', tone: 'warning' },
-              { text: '2 info', tone: 'info' },
-              { text: '4 ok', tone: 'ok' },
+          // Steps panel in the home hero: the same steps, in the same order and words, as
+          // Getting started (CliGettingStarted). The commands are in the pages (CliInstall).
+          steps: {
+            items: [
+              'Install cv4pve-diag',
+              { text: 'Create an API token', href: 'permissions/#user-and-token' },
+              'Run `cv4pve-diag execute`',
+              'Read the report',
             ],
           },
         }),
       ],
-      lastUpdated: true,
       sidebar: [
         {
           label: 'Start here',
