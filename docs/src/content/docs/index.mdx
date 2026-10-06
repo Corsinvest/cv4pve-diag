@@ -27,16 +27,25 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 import FeatureGrid from '@corsinvest/cv4pve-docs-theme/components/FeatureGrid.astro';
 import ReportPreview from '../../components/ReportPreview.astro';
 import CtaBand from '@corsinvest/cv4pve-docs-theme/components/CtaBand.astro';
+import Motto from '@corsinvest/cv4pve-docs-theme/components/Motto.astro';
+import CliInstall from '@corsinvest/cv4pve-docs-theme/components/CliInstall.astro';
 import proxmoxLogo from '../../assets/proxmox-logo.svg';
 
 export const features = [
-  { title: "Cluster-wide in one run", text: "Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks: cluster, nodes, storages, VMs and containers together.", href: 'checks/' },
-  { title: "Audit evidence, not just alerts", text: "100+ findings carry the controls they relate to. Filter with --compliance and the report gets a ControlId column ready for your auditor.", href: 'compliance/' },
-  { title: "Honest about what it cannot see", text: "Proxmox VE silently filters what a token may not read. cv4pve-diag checks the privileges first and states in the report what the analysis does not cover.", href: 'permissions/' },
-  { title: "Tuned to your cluster", text: "Thresholds for CPU, memory, PSI pressure, SMART and health score, fast / standard / full profiles, parallel API requests for large clusters.", href: 'settings/' },
-  { title: "Silence what you accepted", text: "Ignore rules by code, resource, context or severity keep the report focused on what is new, and can still be shown for review.", href: 'ignored-issues/' },
-  { title: "Every format you need", text: "Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation, from one self-contained binary.", href: 'getting-started/' },
+  { icon: 'mdi:server-network', title: "Cluster-wide in one run", text: "Quorum, HA, replication, backups, firewall, TFA, SMART, ZFS, LVM-thin, snapshots, guest agent, CPU flags, orphaned disks: cluster, nodes, storages, VMs and containers together.", href: 'checks/' },
+  { icon: 'mdi:clipboard-check-outline', title: "Audit evidence, not just alerts", text: "100+ findings carry the controls they relate to. Filter with --compliance and the report gets a ControlId column ready for your auditor.", href: 'compliance/' },
+  { icon: 'mdi:eye-off-outline', title: "Honest about what it cannot see", text: "Proxmox VE silently filters what a token may not read. cv4pve-diag checks the privileges first and states in the report what the analysis does not cover.", href: 'permissions/' },
+  { icon: 'mdi:tune', title: "Tuned to your cluster", text: "Thresholds for CPU, memory, PSI pressure, SMART and health score, fast / standard / full profiles, parallel API requests for large clusters.", href: 'settings/' },
+  { icon: 'mdi:bell-off-outline', title: "Silence what you accepted", text: "Ignore rules by code, resource, context or severity keep the report focused on what is new, and can still be shown for review.", href: 'ignored-issues/' },
+  { icon: 'mdi:file-document-multiple-outline', title: "Every format you need", text: "Text in the terminal, HTML for people, Excel for auditors, JSON and Markdown for automation.", href: 'getting-started/' },
 ];
+
+<Motto />
+
+<CliInstall
+  repo="cv4pve-diag"
+  run={['--host=pve01', "--api-token='diag@pve!audit=…'", 'execute']}
+/>
 
 <Tabs>
   <TabItem label="Report">

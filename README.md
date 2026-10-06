@@ -73,7 +73,7 @@ ISO 27001 · **NIS2** · NIS2 Implementing Regulation · **ACN NIS2 Italy** · D
 
 ## Features
 
-- **Every format**: Text, HTML, Excel, JSON, Markdown, from one self-contained binary.
+- **Every format**: Text, HTML, Excel, JSON, Markdown.
 - **Profiles**: `--fast` for a quick scan of a large cluster, `--full` for audits: every optional check, passing checks too.
 - **Ignore rules**: hide the findings you have accepted, and still show them for review when you want.
 - **CVE lookup**: optional NVD check of the installed Proxmox VE version.
@@ -93,7 +93,7 @@ wget https://github.com/Corsinvest/cv4pve-diag/releases/latest/download/cv4pve-d
 unzip cv4pve-diag-linux-x64.zip && chmod +x cv4pve-diag
 
 # Run against any node of the cluster, with an API token
-./cv4pve-diag --host=pve1.local --api-token='diag@pve!audit=<uuid>' --output-file=report.html execute
+./cv4pve-diag --host=pve01 --api-token='diag@pve!audit=<uuid>' execute
 ```
 
 The API token needs the privileges listed in [Permissions](https://corsinvest.github.io/cv4pve-diag/permissions/): note that `PVEAuditor` alone cannot see backups.
@@ -128,6 +128,10 @@ Professional support and consulting available through [Corsinvest](https://www.c
 
 ---
 
-Part of [cv4pve](https://www.corsinvest.it/cv4pve) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+**By sysadmins, for sysadmins.**
+
+Part of [cv4pve](https://www.corsinvest.it/en/cv4pve/) suite | Made with ❤️ in Italy by [Corsinvest](https://www.corsinvest.it)
+
+Proxmox® is a registered trademark of Proxmox Server Solutions GmbH. cv4pve is developed by Corsinvest and is not a Proxmox product.
 
 Copyright © Corsinvest Srl
