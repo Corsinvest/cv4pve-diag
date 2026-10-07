@@ -4,6 +4,7 @@
  */
 
 using System.Text.Json;
+using Corsinvest.ProxmoxVE.Api;
 using Xunit;
 
 namespace Corsinvest.ProxmoxVE.Diagnostic.Api.Tests;
@@ -111,8 +112,23 @@ public class DiagnosticIgnoreRuleTests
     }
 
     [Fact]
-    public void Json_unknown_name_throws()
-        => Assert.Throws<JsonException>(() => Deserialize("""{ "Gravity": "Fatal" }"""));
+    public void Json_legacy_number_of_Ok_is_minus_one()
+        => Assert.Equal(DiagnosticResultGravity.Ok, Deserialize("""{ "Gravity": -1 }""").Gravity);
+
+    // A value out of its list does not throw: the rule is read, is not valid and matches nothing
+    [Theory]
+    [InlineData("""{ "Gravity": 99 }""", "'99' is not a valid DiagnosticResultGravity. Values: Info, Warning, Critical, Ok")]
+    [InlineData("""{ "Context": -1 }""", "'-1' is not a valid DiagnosticResultContext. Values: Node, Cluster, Storage, Qemu, Lxc")]
+    [InlineData("""{ "Gravity": "Fatal" }""", "'Fatal' is not a valid DiagnosticResultGravity. Values: Info, Warning, Critical, Ok")]
+    [InlineData("""{ "Gravity": true }""", "'true' is not a valid DiagnosticResultGravity. Values: Info, Warning, Critical, Ok")]
+    [InlineData("""{ "Context": 1.5 }""", "'1.5' is not a valid DiagnosticResultContext. Values: Node, Cluster, Storage, Qemu, Lxc")]
+    [InlineData("""{ "Context": [] }""", "'[]' is not a valid DiagnosticResultContext. Values: Node, Cluster, Storage, Qemu, Lxc")]
+    public void Json_value_out_of_its_list_makes_the_rule_not_valid(string json, string error)
+    {
+        var rule = Deserialize(json);
+        Assert.Equal([error], rule.Validate());
+        Assert.False(rule.IsMatch(MakeFinding()));
+    }
 
     [Fact]
     public void Json_explicit_null_means_any()
@@ -121,13 +137,6 @@ public class DiagnosticIgnoreRuleTests
         Assert.Null(rule.Context);
         Assert.Null(rule.Gravity);
     }
-
-    [Theory]
-    [InlineData("""{ "Gravity": true }""")]
-    [InlineData("""{ "Context": 1.5 }""")]
-    [InlineData("""{ "Context": [] }""")]
-    public void Json_value_that_is_not_a_name_or_a_number_throws(string json)
-        => Assert.Throws<JsonException>(() => Deserialize(json));
 
     // The template of the older versions was a whole DiagnosticResult, with numbers
     [Fact]
@@ -200,6 +209,83 @@ public class DiagnosticIgnoreRuleTests
         });
         Assert.Equal(DiagnosticResultContext.Qemu, rule.Context);
         Assert.Equal(DiagnosticResultGravity.Warning, rule.Gravity);
+    }
+
+    // -------- Validate: a rule that cannot be applied --------
+
+    [Fact]
+    public void Validate_rule_that_matches_nothing_is_valid()
+        => Assert.Empty(new DiagnosticIgnoreRule { Id = "^nodes/no-such-node/qemu/999999$", Gravity = DiagnosticResultGravity.Ok }.Validate());
+
+    [Fact]
+    public void Validate_reports_each_broken_pattern_with_its_field()
+    {
+        var errors = new DiagnosticIgnoreRule { Id = "nodes/(", Description = "[a-" }.Validate();
+        Assert.Equal(2, errors.Count);
+        Assert.Contains(errors, a => a.StartsWith("invalid regular expression in Id 'nodes/('"));
+        Assert.Contains(errors, a => a.StartsWith("invalid regular expression in Description '[a-'"));
+    }
+
+    [Fact]
+    public void Validate_reports_Context_and_Gravity_out_of_their_values()
+    {
+        var errors = new DiagnosticIgnoreRule
+        {
+            Context = (DiagnosticResultContext)99,
+            Gravity = (DiagnosticResultGravity)7,
+        }.Validate();
+
+        Assert.Equal(2, errors.Count);
+        Assert.Contains(errors, a => a.StartsWith("'99' is not a valid DiagnosticResultContext"));
+        Assert.Contains(errors, a => a.StartsWith("'7' is not a valid DiagnosticResultGravity"));
+    }
+
+    // -------- RemoveInvalid: reported as findings, not thrown --------
+
+    [Fact]
+    public void RemoveInvalid_keeps_the_valid_rules_and_reports_the_others()
+    {
+        var first = new DiagnosticIgnoreRule { ErrorCode = "WG0017" };
+        var third = new DiagnosticIgnoreRule { Gravity = DiagnosticResultGravity.Info };
+
+        var findings = DiagnosticIgnoreRule.RemoveInvalid([first, new DiagnosticIgnoreRule { Id = "nodes/(" }, third], out var valid);
+
+        Assert.Equal([first, third], valid);
+        var finding = Assert.Single(findings);
+        Assert.Equal(DiagnosticIgnoreRule.InvalidRuleErrorCode, finding.ErrorCode);
+        Assert.Equal(DiagnosticResultGravity.Critical, finding.Gravity);
+        Assert.Equal(DiagnosticResultContext.Cluster, finding.Context);
+        Assert.StartsWith("Ignore rule #2 is not applied: invalid regular expression in Id 'nodes/('", finding.Description);
+        Assert.False(finding.IsIgnoredIssue);
+    }
+
+    [Fact]
+    public void RemoveInvalid_no_rules_reports_nothing()
+    {
+        Assert.Empty(DiagnosticIgnoreRule.RemoveInvalid(null, out var valid));
+        Assert.Empty(valid);
+    }
+
+    [Fact]
+    public void InvalidRuleErrorCode_is_stable()
+        => Assert.Equal("CU0002", DiagnosticIgnoreRule.InvalidRuleErrorCode);
+
+    // -------- AnalyzeAsync: a broken rule does not stop the analysis --------
+
+    [Fact]
+    public async Task AnalyzeAsync_broken_rule_is_a_finding_that_no_rule_hides()
+    {
+        // Nothing listens on port 1: every call fails at once and the analysis stops early.
+        using var httpClient = new HttpClient();
+        var engine = new DiagnosticEngine(new PveClient("127.0.0.1", 1) { Timeout = TimeSpan.FromSeconds(5) },
+                                          new Settings(),
+                                          httpClient);
+
+        var result = await engine.AnalyzeAsync([new DiagnosticIgnoreRule { Id = "nodes/(" }, new DiagnosticIgnoreRule()]);
+
+        var finding = Assert.Single(result, a => a.ErrorCode == DiagnosticIgnoreRule.InvalidRuleErrorCode);
+        Assert.StartsWith("Ignore rule #1 is not applied", finding.Description);
+        Assert.False(finding.IsIgnoredIssue);
     }
 
     // -------- helpers --------

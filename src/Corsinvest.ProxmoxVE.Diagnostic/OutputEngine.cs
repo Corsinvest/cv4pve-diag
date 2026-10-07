@@ -6,7 +6,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Corsinvest.ProxmoxVE.Api;
 using Corsinvest.ProxmoxVE.Api.Extension;
@@ -22,9 +21,10 @@ internal class OutputEngine
     public static string PrintEnum(string title, Type typeEnum)
         => $"Values for {title}: {string.Join(", ", Enum.GetNames(typeEnum))}";
 
-    // Findings that say the analysis is incomplete: kept even when --compliance filters the rest.
-    // WG0042 = API call failed, CU0001 = cluster resources unreadable, WC0020 = missing privileges.
-    private static readonly HashSet<string> _analysisScopeCodes = ["WG0042", "CU0001", "WC0020"];
+    // Findings that say the report is not what was asked for: kept even when --compliance filters
+    // the rest. WG0042 = API call failed, CU0001 = cluster resources unreadable, WC0020 = missing
+    // privileges, CU0002 = ignore rule not applied.
+    private static readonly HashSet<string> _analysisScopeCodes = ["WG0042", "CU0001", "WC0020", DiagnosticIgnoreRule.InvalidRuleErrorCode];
 
     private static readonly JsonSerializerOptions _ignoredIssuesJsonOptions = new()
     {
@@ -34,28 +34,23 @@ internal class OutputEngine
 
     /// <summary>
     /// Reads the ignore file. Context and Gravity are names ("Qemu"), matched exactly; the numbers
-    /// written by older versions are still read, with 0 meaning "any" as it did. Every pattern
-    /// is checked here, so a broken regex stops the run before the API calls, not after them.
+    /// written by older versions are still read, with 0 meaning "any" as it did. A rule with a
+    /// broken pattern or a value out of its list does not stop the run: the engine leaves it out
+    /// and reports it as a CU0002 finding.
     /// </summary>
     internal static List<DiagnosticIgnoreRule> LoadIgnoredIssues(string json)
+        => JsonSerializer.Deserialize<List<DiagnosticIgnoreRule>>(json, _ignoredIssuesJsonOptions) ?? [];
+
+    /// <summary>
+    /// Writes one line for each rule that cannot be applied, with its position in the file, from 1.
+    /// </summary>
+    internal static void WarnInvalidIgnoredIssues(IReadOnlyList<DiagnosticIgnoreRule> rules, TextWriter writer)
     {
-        var rules = JsonSerializer.Deserialize<List<DiagnosticIgnoreRule>>(json, _ignoredIssuesJsonOptions) ?? [];
         for (var i = 0; i < rules.Count; i++)
         {
-            foreach (var (field, pattern) in new[] { ("ErrorCode", rules[i].ErrorCode),
-                                                     ("Id", rules[i].Id),
-                                                     ("SubContext", rules[i].SubContext),
-                                                     ("Description", rules[i].Description) })
-            {
-                if (pattern == null) { continue; }
-                try { _ = new Regex(pattern); }
-                catch (ArgumentException ex)
-                {
-                    throw new FormatException($"Ignore rule #{i + 1}: invalid regular expression in {field} '{pattern}': {ex.Message}", ex);
-                }
-            }
+            var errors = rules[i].Validate();
+            if (errors.Count > 0) { writer.WriteLine($"WARNING: Ignore rule #{i + 1} is not applied: {string.Join("; ", errors)}"); }
         }
-        return rules;
     }
 
     public static async Task CreateAsync(PveClient client,
@@ -75,6 +70,9 @@ internal class OutputEngine
         var ignoredIssues = !string.IsNullOrWhiteSpace(ignoredIssuesFile)
                                 ? LoadIgnoredIssues(File.ReadAllText(ignoredIssuesFile!))
                                 : [];
+
+        // Said at once, on the error stream: the CU0002 findings come only at the end of the analysis.
+        WarnInvalidIgnoredIssues(ignoredIssues, Console.Error);
 
         // Infer the output format from the file extension when the user passed --output-file
         // but left --output on its default (Text). Keeps the CLI feeling natural:

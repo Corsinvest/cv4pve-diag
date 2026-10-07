@@ -35,7 +35,7 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 
 A JSON array of rule objects. A finding is suppressed when **every** field declared on a rule matches the finding (logical AND within the rule). Multiple rules are evaluated independently (logical OR across rules).
 
-All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
+All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. A rule that cannot be applied (a pattern that is not a regular expression, a `Context` or `Gravity` that is not one of the accepted values) is left out, and the report contains a `CU0002` finding that says which rule and why: no rule can hide it. A rule that matches no finding is not an error.
 
 The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`) and match that value only: `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read: there `0` keeps meaning "any", as it did.
 

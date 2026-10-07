@@ -93,6 +93,9 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
         var originalCulture = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
+        // Added after the valid rules are applied, so that no rule can hide them
+        var ignoreRuleErrors = DiagnosticIgnoreRule.RemoveInvalid(ignoreRules, out var validIgnoreRules);
+
         try
         {
             // First: PVE filters /cluster/resources by what the caller may audit, so a missing
@@ -118,6 +121,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                     SubContext = "ApiError",
                     Gravity = DiagnosticResultGravity.Critical,
                 });
+                _result.AddRange(ignoreRuleErrors);
                 return _result;
             }
 
@@ -206,7 +210,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
             await CheckVmAsync(hasCluster);
             await CheckContainerAsync();
 
-            foreach (var ignoreRule in ignoreRules ?? [])
+            foreach (var ignoreRule in validIgnoreRules)
             {
                 foreach (var item in _result.Where(ignoreRule.IsMatch))
                 {
@@ -214,6 +218,7 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
                 }
             }
 
+            _result.AddRange(ignoreRuleErrors);
             return _result;
         }
         finally
