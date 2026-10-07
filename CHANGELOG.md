@@ -2,17 +2,26 @@
 
 ---
 
-## [Unreleased]
+## [2.8.0] - 2026-10-07
 
-### Ignore rules
+### Ignore rules: Node and Info
 
 `Context: "Node"` and `Gravity: "Info"` are now values like the others. They are the first value of their list and used to mean "any": a rule could not hide only the Info findings, and `{ "Gravity": "Info" }` hid every finding. **Breaking:** a rule that sets `"Context": "Node"` or `"Gravity": "Info"` by name now matches Node or Info only, so it may hide fewer findings than before. Remove the field to match any value. Files written by older versions, with numbers, keep their meaning (`0` is "any").
 
 - `create-ignored-issues`: the example `Id` is anchored (`^nodes/pve01/qemu/100$`), so it matches VM 100 only. The template no longer contains `Compliance` and `IsIgnoredIssue`
 - API: ignore rules are `DiagnosticIgnoreRule` objects, with nullable `Context` and `Gravity` (null is "any"), passed to `DiagnosticEngine.AnalyzeAsync(IEnumerable<DiagnosticIgnoreRule>)`. `AnalyzeAsync(List<DiagnosticResult>)` and `DiagnosticResult.CheckIgnoreIssue` still work, with the old meaning, and are marked obsolete. A call written as `AnalyzeAsync([])` no longer compiles: write `AnalyzeAsync()`
+
+### Ignore rules that cannot be applied: `CU0002`
+
+A rule with a pattern that is not a regular expression, or with a `Context` or `Gravity` that is not one of the accepted values, no longer stops the run. It is left out and reported as a new Critical finding, `CU0002`, that says which rule and why. The rest of the report is produced, and no rule can hide that finding. **Breaking:** a broken pattern used to end the run with exit code 1 before the analysis; the run now completes with exit code 0, so a script that only checks the exit code has to look for `CU0002` in the report.
+
+- One `WARNING` line for each such rule is written on the error stream before the analysis starts
+- `CU0002` is kept in the report filtered with `--compliance`
+- A number out of the list (`"Gravity": 99`) is reported too: it was read without a warning and the rule never matched
+- A rule that matches no finding is valid: nothing is reported for it
 - A rule with a pattern on a field the finding does not have no longer stops the run with an error
-- New code `CU0002` (Critical): a rule that cannot be applied, because a pattern is not a regular expression or `Context`/`Gravity` is not one of the accepted values, is left out and reported as a finding that says which rule and why. The rest of the report is produced, and no rule can hide that finding. Before, a broken pattern stopped the run, and a number out of the list was read without a warning and never matched. A file that is not valid JSON still stops the run
-- API: `DiagnosticIgnoreRule.Validate()` returns the problems of a rule, to check it before it is saved. `AnalyzeAsync` does not throw on a rule that is not valid
+- A file that is not valid JSON still stops the run
+- API: `DiagnosticIgnoreRule.Validate()` returns the problems of a rule, to check it before it is saved. `AnalyzeAsync` does not throw on a rule that is not valid: before, a broken pattern threw at the end of the analysis and the result was lost
 
 ### Changed
 - Messages of the checks: a colon in place of the long dash ("Cluster has lost quorum: VM operations may be blocked"); the parts of an API error are joined with " - ". The codes do not change: a filter on the text of a message has to be updated

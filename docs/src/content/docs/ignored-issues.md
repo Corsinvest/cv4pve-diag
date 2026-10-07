@@ -35,8 +35,7 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 
 A JSON array of rule objects. A finding is suppressed when **every** field declared on a rule matches the finding (logical AND within the rule). Multiple rules are evaluated independently (logical OR across rules).
 
-All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. A rule that cannot be applied (a pattern that is not a regular expression, a `Context` or `Gravity` that is not one of the accepted values) is left out, and the report contains a `CU0002` finding that says which rule and why: no rule can hide it. A rule that matches no finding is not an error.
-
+All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`.
 The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`) and match that value only: `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read: there `0` keeps meaning "any", as it did.
 
 ```json
@@ -75,7 +74,27 @@ In the example above:
 
 All fields are optional: only specified fields are matched. To match any context or any gravity, leave the field out. An empty object `{}` matches every finding and is almost never what you want.
 
-> **Changed in the next release.** `Context: "Node"` and `Gravity: "Info"` used to mean "any", so `{ "Gravity": "Info" }` matched every finding. They now match Node and Info only. A rule that carried them without meaning it (the old template wrote `"Gravity": "Info"` in its example) hides fewer findings than before: remove the field to get the old behaviour.
+> **Changed in 2.8.0.** `Context: "Node"` and `Gravity: "Info"` used to mean "any", so `{ "Gravity": "Info" }` matched every finding. They now match Node and Info only. A rule that carried them without meaning it (the old template wrote `"Gravity": "Info"` in its example) hides fewer findings than before: remove the field to get the old behaviour.
+
+---
+
+## Rules that cannot be applied
+
+A rule cannot be applied when one of its patterns is not a regular expression, or when its `Context` or `Gravity` is not one of the accepted values. The run does not stop:
+
+- the rule is left out, so the findings it was meant to hide are in the report
+- the report contains one `CU0002` finding, Critical, for each such rule, with its position in the file and the reason
+- one `WARNING` line for each such rule is written on the error stream before the analysis starts
+
+```text
+WARNING: Ignore rule #2 is not applied: invalid regular expression in Id 'nodes/(': Invalid pattern 'nodes/(' at offset 7. Not enough )'s.
+```
+
+No rule can hide a `CU0002` finding, an empty `{}` included, and it is kept when the report is filtered with `--compliance`. The exit code stays 0: a script has to look for `CU0002` in the report, not at the exit code.
+
+A rule that matches no finding is valid, for example a rule for a guest that has been removed: nothing is reported for it. A file that is not valid JSON does stop the run, with an error.
+
+> **Changed in 2.8.0.** A broken pattern used to stop the run with an error before the cluster was analyzed.
 
 ---
 
