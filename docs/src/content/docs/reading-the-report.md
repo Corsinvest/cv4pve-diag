@@ -36,7 +36,7 @@ the run duration, the cv4pve-diag version, the analysed nodes and, with `--compl
 standard. Its table has filters on every column, and always includes the `Ignored Issue` column.
 
 Rows are sorted by gravity, then context and subcontext. On a single Proxmox VE host, `IC0017` (single-node topology) is reported on every run by design: see [Single-node setups](/cv4pve-diag/compliance/#single-node-setups-and-compliance); on a lab host, hide it with an [ignore rule](/cv4pve-diag/ignored-issues/). If the report contains `WC0020`, `WG0042` or `CU0001`, part of the
-cluster could not be read: the rest of the report is incomplete for that part. See [Permissions](../permissions/).
+cluster could not be read: the rest of the report is incomplete for that part. See [Permissions](../permissions/). `CU0002` says that an [ignore rule](/cv4pve-diag/ignored-issues/#rules-that-cannot-be-applied) was not applied: the findings it was meant to hide are in the report.
 
 ## Output formats
 

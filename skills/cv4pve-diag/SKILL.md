@@ -20,6 +20,8 @@ names: if you do not know its path, ask.
   other code is a failure, with a line starting `ERROR:`.
 - An account that cannot see part of the cluster gets fewer findings, not an error: look for `WC0020` and
   `WG0042` before saying that an area is clean.
+- An ignore rule that cannot be applied does not stop the run either: it is reported as `CU0002`, and the
+  findings it was meant to hide are in the report.
 - Do not write `ignored-issues.json` or a settings file unless the user asks: propose the rule and let the
   user decide.
 - If an option is refused, check `cv4pve-diag --help`: this skill can be newer than the tool.
