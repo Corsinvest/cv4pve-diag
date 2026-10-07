@@ -58,12 +58,12 @@ cmdCreateSettings.SetAction((action) =>
 app.AddCommand("create-ignored-issues", $"Create File ignored issues ({ignoredIssuesFileName})")
    .SetAction((_) =>
    {
-       // An empty DiagnosticResult matched every finding (default Context/Gravity mean "any"):
-       // the template is a real, narrow example instead: edit it before use.
-       var example = new DiagnosticResult
+       // An empty rule matches every finding: the template is a real, narrow example instead:
+       // edit it before use.
+       var example = new DiagnosticIgnoreRule
        {
            ErrorCode = "IG0011",
-           Id = "nodes/pve01/qemu/100",
+           Id = "^nodes/pve01/qemu/100$",
            Context = DiagnosticResultContext.Qemu,
            Gravity = DiagnosticResultGravity.Info,
        };

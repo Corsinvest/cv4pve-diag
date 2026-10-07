@@ -57,7 +57,7 @@ If you run `cv4pve-diag` on a lab or dev single-node setup and the noise bothers
 
 When you pass `--compliance=<standard>` on the `execute` command, two things happen:
 
-1. The output is **filtered**: only findings that have at least one mapping for the selected standard are kept, plus `WG0042`, `CU0001` and `WC0020`, which are always kept because they say what the analysis could not verify.
+1. The output is **filtered**: only findings that have at least one mapping for the selected standard are kept, plus `WG0042`, `CU0001` and `WC0020`, which are always kept because they say what the analysis could not verify, and `CU0002`, which says that an ignore rule was not applied.
 2. A `ControlId` column (`Control Id` in Excel) is **added** to the report, listing the control identifiers of that standard for each finding (comma-separated when more than one). In Excel the summary also shows a `Compliance:` row with the selected standard.
 
 Accepted values: the `--compliance` column of [Frameworks](#frameworks).

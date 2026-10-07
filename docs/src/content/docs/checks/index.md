@@ -63,6 +63,7 @@ The first letter is always the severity of the finding. Checks with a warning an
 Exceptions to the scheme:
 
 - **`CU0001`**: `U` is not an area: it is emitted by the engine when a cluster resource cannot be classified (see [Meta codes](#meta-codes)).
+- **`CU0002`**: emitted by the engine for an [ignore rule](/cv4pve-diag/ignored-issues/) that cannot be applied (see [Meta codes](#meta-codes)).
 - **`WG0042`**: reported on any object, not only guests, whenever an API call fails (see [Meta codes](#meta-codes)).
 - **`WN0044`**/**`CN0044`** (ZFS pool usage) are reported with Context `Storage`, but their Id is the node with the pool name, e.g. `nodes/pve1 (rpool)`: an ignore rule must match that Id.
 - **`WC0020`** is reported as Info or Warning depending on which privilege is missing.
@@ -98,8 +99,9 @@ These codes are not regular checks: they are emitted by the engine itself when s
 | Code   | SubContext | Gravity | Description                                                                                                  |
 | ------ | ---------- | ------- | ------------------------------------------------------------------------------------------------------------ |
 | CU0001 | Status / ApiError | Critical | A cluster resource has an unknown type, or `/cluster/resources` could not be read at all: in that case nothing else can be analysed. |
+| CU0002 | IgnoreRule | Critical | An ignore rule cannot be applied: a pattern is not a regular expression, or `Context`/`Gravity` is not one of the accepted values. The rule is left out, so the findings it was meant to hide are in the report; the description gives the position of the rule in the file and the reason. No ignore rule hides this finding. |
 | WG0042 | ApiError   | Warning | A Proxmox VE API call failed during analysis (network error, permission denied, timeout, …); an endpoint that does not exist on the installed Proxmox VE version (HTTP 501) is skipped silently. The affected check was skipped; the underlying call/endpoint is reported in the description. |
 
 ---
 
-> All checks can be suppressed via [ignore rules](/cv4pve-diag/ignored-issues/). Use the `ErrorCode` field to target specific checks precisely.
+> All checks, except `CU0002`, can be suppressed via [ignore rules](/cv4pve-diag/ignored-issues/). Use the `ErrorCode` field to target specific checks precisely.

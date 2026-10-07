@@ -35,9 +35,9 @@ cv4pve-diag --host=pve.local --api-token=user@realm!token=uuid \
 
 A JSON array of rule objects. A finding is suppressed when **every** field declared on a rule matches the finding (logical AND within the rule). Multiple rules are evaluated independently (logical OR across rules).
 
-All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. An invalid pattern stops the run with an error before the cluster is analyzed.
+All string fields support **regex** patterns, **case-sensitive**: use `.*` to match anything. A pattern matches if it is found **anywhere** in the value: `"Id": "nodes/pve01/qemu/105"` also matches `nodes/pve01/qemu/1050`. To match one guest only, anchor it: `"^nodes/pve01/qemu/105$"`. A rule that cannot be applied (a pattern that is not a regular expression, a `Context` or `Gravity` that is not one of the accepted values) is left out, and the report contains a `CU0002` finding that says which rule and why: no rule can hide it. A rule that matches no finding is not an error.
 
-The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`): `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read.
+The file may contain `//` comments and trailing commas. `Context` and `Gravity` take names (`"Qemu"`, `"Warning"`) and match that value only: `create-ignored-issues` prints the accepted values. Files written by older versions, with numbers, are still read: there `0` keeps meaning "any", as it did.
 
 ```json
 [
@@ -73,9 +73,9 @@ In the example above:
 | `Context`     | The finding context type                    | `"Qemu"` / `"Node"` / …  |
 | `Gravity`     | The severity                                | `"Info"` / `"Warning"` / `"Critical"` / `"Ok"` |
 
-All fields are optional: only specified fields are matched. The generated template also contains `"Compliance": []` and `"IsIgnoredIssue": false`: they are ignored when matching and can be deleted. Its example `Id` is not anchored, so `nodes/pve01/qemu/100` would also match VM 1000: anchor it (`^…$`) before use. An empty object `{}` matches every finding and is almost never what you want.
+All fields are optional: only specified fields are matched. To match any context or any gravity, leave the field out. An empty object `{}` matches every finding and is almost never what you want.
 
-> **`Node` and `Info` mean "any".** `Context: "Node"` and `Gravity: "Info"` are the default values, so a rule setting them does not filter on them: `{ "Gravity": "Info" }` matches every finding. Filter on `ErrorCode` instead (codes starting with `I` are Info, the second letter `N` is Node: see [Diagnostic Checks](../checks/#code-nomenclature)).
+> **Changed in the next release.** `Context: "Node"` and `Gravity: "Info"` used to mean "any", so `{ "Gravity": "Info" }` matched every finding. They now match Node and Info only. A rule that carried them without meaning it (the old template wrote `"Gravity": "Info"` in its example) hides fewer findings than before: remove the field to get the old behaviour.
 
 ---
 

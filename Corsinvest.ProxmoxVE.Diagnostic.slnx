@@ -35,5 +35,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Corsinvest.ProxmoxVE.Diagnostic.Api.Tests/Corsinvest.ProxmoxVE.Diagnostic.Api.Tests.csproj" />
+    <Project Path="tests/Corsinvest.ProxmoxVE.Diagnostic.Tests/Corsinvest.ProxmoxVE.Diagnostic.Tests.csproj" />
   </Folder>
 </Solution>

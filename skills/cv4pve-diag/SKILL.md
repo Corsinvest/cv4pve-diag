@@ -58,8 +58,8 @@ A code is `<Severity><Area><NNNN>`: severity `C` Critical, `W` Warning, `I` Info
 - `?S…` → https://corsinvest.github.io/cv4pve-diag/checks/storage/
 - `?G…` → https://corsinvest.github.io/cv4pve-diag/checks/vm/ (`Context` `Qemu`) or
   https://corsinvest.github.io/cv4pve-diag/checks/container/ (`Lxc`)
-- `CU0001`, `WG0042` (an API call failed) and `WC0020` (missing privileges) →
-  https://corsinvest.github.io/cv4pve-diag/checks/
+- `CU0001`, `CU0002` (an ignore rule was not applied), `WG0042` (an API call failed) and `WC0020`
+  (missing privileges) → https://corsinvest.github.io/cv4pve-diag/checks/
 
 Give the user the resource, what is wrong, why it matters and how to fix it in Proxmox VE. Do not fix it
 yourself: cv4pve-diag only reads, and a change is the user's decision.
