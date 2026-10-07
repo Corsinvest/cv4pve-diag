@@ -79,6 +79,7 @@ public class DiagnosticResult
     /// </summary>
     /// <param name="result"></param>
     /// <returns></returns>
+    [Obsolete("Use DiagnosticIgnoreRule.IsMatch: here the Node context and the Info gravity mean \"any\".")]
     public bool CheckIgnoreIssue(DiagnosticResult result)
         => CheckString(result.ErrorCode, ErrorCode)
             && CheckString(result.Id, Id)

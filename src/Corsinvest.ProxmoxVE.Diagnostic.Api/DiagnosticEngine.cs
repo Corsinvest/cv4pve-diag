@@ -73,7 +73,15 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
     /// <summary>
     /// Analyze cluster by querying PVE API directly
     /// </summary>
-    public async Task<ICollection<DiagnosticResult>> AnalyzeAsync(List<DiagnosticResult> ignoredIssues)
+    [Obsolete("Use AnalyzeAsync(IEnumerable<DiagnosticIgnoreRule>): a rule held in a DiagnosticResult cannot match only the Node context or only the Info gravity.")]
+    public Task<ICollection<DiagnosticResult>> AnalyzeAsync(List<DiagnosticResult> ignoredIssues)
+        => AnalyzeAsync(ignoredIssues.Select(DiagnosticIgnoreRule.FromLegacy));
+
+    /// <summary>
+    /// Analyze cluster by querying PVE API directly
+    /// </summary>
+    /// <param name="ignoreRules">Findings matching one of the rules are returned with IsIgnoredIssue set</param>
+    public async Task<ICollection<DiagnosticResult>> AnalyzeAsync(IEnumerable<DiagnosticIgnoreRule>? ignoreRules = null)
     {
         var originalTimeout = client.Timeout;
         if (settings.ApiTimeout > 0) { client.Timeout = TimeSpan.FromSeconds(settings.ApiTimeout); }
@@ -198,9 +206,9 @@ public partial class DiagnosticEngine(PveClient client, Settings settings, HttpC
             await CheckVmAsync(hasCluster);
             await CheckContainerAsync();
 
-            foreach (var ignoredIssue in ignoredIssues)
+            foreach (var ignoreRule in ignoreRules ?? [])
             {
-                foreach (var item in _result.Where(a => ignoredIssue.CheckIgnoreIssue(a)))
+                foreach (var item in _result.Where(ignoreRule.IsMatch))
                 {
                     item.IsIgnoredIssue = true;
                 }

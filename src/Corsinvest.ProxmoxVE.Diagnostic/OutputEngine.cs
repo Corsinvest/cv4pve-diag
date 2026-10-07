@@ -33,12 +33,13 @@ internal class OutputEngine
     };
 
     /// <summary>
-    /// Reads the ignore file. Context and Gravity may be names ("Qemu") or numbers. Every pattern
+    /// Reads the ignore file. Context and Gravity are names ("Qemu"), matched exactly; the numbers
+    /// written by older versions are still read, with 0 meaning "any" as it did. Every pattern
     /// is checked here, so a broken regex stops the run before the API calls, not after them.
     /// </summary>
-    internal static List<DiagnosticResult> LoadIgnoredIssues(string json)
+    internal static List<DiagnosticIgnoreRule> LoadIgnoredIssues(string json)
     {
-        var rules = JsonSerializer.Deserialize<List<DiagnosticResult>>(json, _ignoredIssuesJsonOptions) ?? [];
+        var rules = JsonSerializer.Deserialize<List<DiagnosticIgnoreRule>>(json, _ignoredIssuesJsonOptions) ?? [];
         for (var i = 0; i < rules.Count; i++)
         {
             foreach (var (field, pattern) in new[] { ("ErrorCode", rules[i].ErrorCode),
@@ -93,7 +94,7 @@ internal class OutputEngine
 
         var duration = Stopwatch.StartNew();
         using var httpClient = new HttpClient();
-        var result = await new DiagnosticEngine(client, settings!, httpClient).AnalyzeAsync(ignoredIssues!);
+        var result = await new DiagnosticEngine(client, settings!, httpClient).AnalyzeAsync(ignoredIssues);
         duration.Stop();
 
         // When --compliance is passed, keep only findings mapped to that standard, plus the ones

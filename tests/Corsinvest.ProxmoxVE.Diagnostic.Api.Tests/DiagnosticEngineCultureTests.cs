@@ -28,7 +28,7 @@ public class DiagnosticEngineCultureTests
             var engine = new DiagnosticEngine(new PveClient("127.0.0.1", 1) { Timeout = TimeSpan.FromSeconds(5) },
                                               new Settings(),
                                               httpClient);
-            await engine.AnalyzeAsync([]);
+            await engine.AnalyzeAsync();
 
             Assert.Equal(italian, CultureInfo.CurrentCulture);
         }

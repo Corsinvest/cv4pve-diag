@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Ignore rules
+
+`Context: "Node"` and `Gravity: "Info"` are now values like the others. They are the first value of their list and used to mean "any": a rule could not hide only the Info findings, and `{ "Gravity": "Info" }` hid every finding. **Breaking:** a rule that sets `"Context": "Node"` or `"Gravity": "Info"` by name now matches Node or Info only, so it may hide fewer findings than before. Remove the field to match any value. Files written by older versions, with numbers, keep their meaning (`0` is "any").
+
+- `create-ignored-issues`: the example `Id` is anchored (`^nodes/pve01/qemu/100$`), so it matches VM 100 only. The template no longer contains `Compliance` and `IsIgnoredIssue`
+- API: ignore rules are `DiagnosticIgnoreRule` objects, with nullable `Context` and `Gravity` (null is "any"), passed to `DiagnosticEngine.AnalyzeAsync(IEnumerable<DiagnosticIgnoreRule>)`. `AnalyzeAsync(List<DiagnosticResult>)` and `DiagnosticResult.CheckIgnoreIssue` still work, with the old meaning, and are marked obsolete. A call written as `AnalyzeAsync([])` no longer compiles: write `AnalyzeAsync()`
+- A rule with a pattern on a field the finding does not have no longer stops the run with an error
+
 ### Changed
 - Messages of the checks: a colon in place of the long dash ("Cluster has lost quorum: VM operations may be blocked"); the parts of an API error are joined with " - ". The codes do not change: a filter on the text of a message has to be updated
 - Windows executable icon

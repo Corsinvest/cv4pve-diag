@@ -30,6 +30,10 @@ public class DiagnosticResultTests
     public void DecodeContext_unknown_falls_back_to_Cluster(string text)
         => Assert.Equal(DiagnosticResultContext.Cluster, DiagnosticResult.DecodeContext(text));
 
+    // CheckIgnoreIssue is obsolete (see DiagnosticIgnoreRuleTests): its behaviour stays covered
+    // for the callers that still use it
+#pragma warning disable CS0618
+
     // -------- CheckIgnoreIssue: positive matches --------
 
     [Fact]
